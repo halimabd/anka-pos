@@ -10956,11 +10956,16 @@
           console.log("Email Klien:", dataUser.email);
           console.log("Nama Klien:", dataUser.name);
           
-          // 2. Munculkan loading
+          // 2. Munculkan loading dengan UI kustom
           Swal.fire({
-              title: 'Memverifikasi Akun...',
-              html: 'Sedang menyiapkan database toko Anda',
+              title: '<strong style="font-size: 16px;">Memverifikasi Akun...</strong>',
+              html: '<span style="font-size: 13px; color: var(--text-muted, #64748b);">Sedang menyiapkan database toko Anda</span>',
               allowOutsideClick: false,
+              background: 'var(--surface, #ffffff)',
+              color: 'var(--text-dark, #333333)',
+              width: '280px', 
+              padding: '20px',
+              customClass: { popup: 'swal-custom-small' },
               didOpen: () => { Swal.showLoading(); }
           });
       
@@ -10973,22 +10978,59 @@
               });
       
               if (responBackend.success) {
-                  Swal.fire('Berhasil!', `Selamat datang, ${dataUser.name}`, 'success');
+                  // Berhasil Login (Otomatis tertutup setelah 1.5 detik)
+                  Swal.fire({
+                      title: '<strong style="font-size: 16px;">Berhasil!</strong>',
+                      html: `<span style="font-size: 13px;">Selamat datang, <b>${dataUser.name}</b></span>`,
+                      icon: 'success',
+                      timer: 1500,
+                      showConfirmButton: false,
+                      background: 'var(--surface, #ffffff)',
+                      color: 'var(--text-dark, #333333)',
+                      width: '280px', 
+                      padding: '20px',
+                      customClass: { popup: 'swal-custom-small', icon: 'ikon-mini-swal' }
+                  }).then(() => {
+                      // Simpan info user di browser agar tidak perlu login terus
+                      localStorage.setItem('klien_email', dataUser.email);
+                      localStorage.setItem('klien_nama', dataUser.name);
+                      localStorage.setItem('db_klien_id', responBackend.databaseId); 
+                      
+                      // Arahkan ke halaman utama POS
+                      // window.location.href = '?page=dashboard'; 
+                  });
                   
-                  // Simpan info user di browser agar tidak perlu login terus
-                  localStorage.setItem('klien_email', dataUser.email);
-                  localStorage.setItem('klien_nama', dataUser.name);
-                  localStorage.setItem('db_klien_id', responBackend.databaseId); // ID Spreadsheet khusus klien ini
-                  
-                  // Arahkan ke halaman utama POS
-                  // window.location.href = '?page=dashboard'; 
               } else {
-                  Swal.fire('Akses Ditolak', responBackend.message, 'error'); // Misal: Trial Habis
+                  // Akses Ditolak (Misal: Trial Habis)
+                  Swal.fire({
+                      title: '<strong style="font-size: 16px;">Akses Ditolak</strong>',
+                      html: `<span style="font-size: 13px;">${responBackend.message}</span>`,
+                      icon: 'warning',
+                      background: 'var(--surface, #ffffff)',
+                      color: 'var(--text-dark, #333333)',
+                      width: '280px', 
+                      padding: '20px',
+                      confirmButtonColor: '#ef4444',
+                      confirmButtonText: '<span style="font-size: 13px;">Tutup</span>',
+                      customClass: { popup: 'swal-custom-small', icon: 'ikon-mini-swal' }
+                  }); 
               }
       
           } catch (error) {
               console.error("Gagal terhubung ke server:", error);
-              Swal.fire('Error', 'Gagal memverifikasi login.', 'error');
+              // Error Jaringan / Server
+              Swal.fire({
+                  title: '<strong style="font-size: 16px;">Gagal Terhubung</strong>',
+                  html: '<span style="font-size: 13px;">Terjadi kesalahan koneksi saat memverifikasi login.</span>',
+                  icon: 'error',
+                  background: 'var(--surface, #ffffff)',
+                  color: 'var(--text-dark, #333333)',
+                  width: '280px', 
+                  padding: '20px',
+                  confirmButtonColor: '#ef4444',
+                  confirmButtonText: '<span style="font-size: 13px;">Tutup</span>',
+                  customClass: { popup: 'swal-custom-small', icon: 'ikon-mini-swal' }
+              });
           }
       }
           
