@@ -11037,16 +11037,11 @@
       document.addEventListener("DOMContentLoaded", function() {
           const signinDiv = document.querySelector('.g_id_signin');
           if (signinDiv) {
-              // Skrip ini mengecek berbagai cara umum yang biasa digunakan web untuk mendeteksi dark mode:
-              // 1. Apakah tag body/html memiliki class 'dark'
-              // 2. Apakah ada atribut khusus seperti data-theme="dark"
-              // 3. Apakah tersimpan di localStorage dengan key 'theme' atau 'darkMode'
-              const dark-theme = 
-                  document.body.classList.contains('dark') || 
-                  document.documentElement.classList.contains('dark') ||
-                  document.documentElement.getAttribute('data-theme') === 'dark' ||
-                  localStorage.getItem('theme') === 'dark' ||
-                  localStorage.getItem('darkMode') === 'true';
+              const isDarkMode = 
+                  document.body.classList.contains('dark-theme') || 
+                  document.documentElement.classList.contains('dark-theme') ||
+                  localStorage.getItem('theme') === 'dark-theme' ||
+                  localStorage.getItem('mode') === 'dark-theme';
   
               // Mengubah skema warna tombol Google secara dinamis
               signinDiv.setAttribute('data-color_scheme', isDarkMode ? 'dark' : 'light');
