@@ -2841,7 +2841,7 @@
                   <input type="text" id="searchProdukKasir" placeholder="Cari Nama / Barcode / SKU produk..." oninput="jalankanPencarianProdukKasir()" autocomplete="off" style="border: none; outline: none; background: transparent; width: 100%; padding: 12px 0; font-size: 14px; font-family: 'Inter', sans-serif; color: var(--text-dark);">
                 </div>
                 
-                <button onclick="bukaLiveScanner()" style="display: flex; align-items: center; justify-content: center; height: 44px; width: 44px; padding: 0; background: var(--surface); border: 1px solid var(--border-color); border-radius: 100px; color: var(--text-muted); cursor: pointer; margin: 0; box-shadow: 0 1px 2px rgba(0,0,0,0.05); transition: 0.2s; flex-shrink: 0; box-sizing: border-box;" onmouseover="this.style.borderColor='var(--primary)'; this.style.background='rgba(26,115,232,0.05)';" onmouseout="this.style.borderColor='var(--border-color)'; this.style.background='var(--surface)';" title="Live Scan Barcode">
+                <button onclick="bukaLiveScannerContinuous()" style="display: flex; align-items: center; justify-content: center; height: 44px; width: 44px; padding: 0; background: var(--surface); border: 1px solid var(--border-color); border-radius: 100px; color: var(--text-muted); cursor: pointer; margin: 0; box-shadow: 0 1px 2px rgba(0,0,0,0.05); transition: 0.2s; flex-shrink: 0; box-sizing: border-box;" onmouseover="this.style.borderColor='var(--primary)'; this.style.background='rgba(26,115,232,0.05)';" onmouseout="this.style.borderColor='var(--border-color)'; this.style.background='var(--surface)';" title="Live Scan Barcode">
                     <svg style="margin-top: -2px;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
                         <circle cx="12" cy="13" r="4"></circle>
@@ -8235,11 +8235,12 @@
       }
 
       let html5QrCodeLive = null;
-
-      function bukaLiveScanner() {
-          // Buka Pop-up SweetAlert untuk wadah kamera
+      let lastScanTime = 0; // Untuk mengatur jeda antar scan agar tidak ter-scan dobel beruntun
+      
+      function bukaLiveScannerContinuous() {
+          // Buka Pop-up SweetAlert
           Swal.fire({
-              title: '<strong style="font-size: 16px;">Live Scanner Barcode</strong>',
+              title: '<strong style="font-size: 16px;">Live Scanner Kasir</strong>',
               html: `
                   <div style="text-align: left; margin-bottom: 10px;">
                       <label style="font-size: 12px; font-weight: 600;">Pilih Kamera:</label>
@@ -8247,23 +8248,35 @@
                           <option value="">Mencari kamera...</option>
                       </select>
                   </div>
+                  
                   <div id="readerLive" style="width: 100%; min-height: 250px; background: #000; border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; color: white;">
                       Memuat kamera...
                   </div>
+                  
+                  <div id="statusScanText" style="margin-top: 10px; font-size: 13px; font-weight: 600; color: #10b981; min-height: 18px;"></div>
               `,
               showCancelButton: true,
               showConfirmButton: false,
               cancelButtonText: 'Tutup Scanner',
-              cancelButtonColor: '#d33',
               allowOutsideClick: false,
               background: 'var(--surface, #ffffff)',
               color: 'var(--text-dark, #333333)',
               width: '350px',
               didOpen: () => {
-                  initLiveScanner(); // Jalankan kamera saat pop-up terbuka
+                  // ✨ Styling tombol Batal agar menjadi Pill Button
+                  const cancelBtn = Swal.getCancelButton();
+                  if(cancelBtn) {
+                      cancelBtn.style.cssText = "background-color: #ef4444; color: #ffffff; border: none; padding: 10px 24px; border-radius: 50px; font-weight: 600; font-size: 13px; cursor: pointer; box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.3); transition: 0.2s; width: 100%; margin: 0;";
+                      
+                      // Efek hover sederhana
+                      cancelBtn.onmouseover = () => { cancelBtn.style.transform = 'scale(1.02)'; };
+                      cancelBtn.onmouseout = () => { cancelBtn.style.transform = 'scale(1)'; };
+                  }
+                  
+                  initLiveScanner();
               },
               willClose: () => {
-                  // Pastikan kamera dimatikan saat pop-up ditutup (klik tombol Batal)
+                  // Pastikan kamera dimatikan HANYA saat pop-up ditutup (klik tombol Tutup)
                   if (html5QrCodeLive && html5QrCodeLive.isScanning) {
                       html5QrCodeLive.stop().catch(err => console.error("Gagal stop kamera:", err));
                   }
@@ -8292,20 +8305,19 @@
                   let kameraAktif = devices.length > 1 ? devices[1].id : devices[0].id;
                   dropdown.value = kameraAktif;
       
-                  // Event saat kasir ganti kamera di dropdown (GANTI KAMERA SECARA LIVE)
+                  // Event saat ganti kamera di dropdown
                   dropdown.addEventListener('change', function() {
                       let camId = this.value;
                       if (html5QrCodeLive.isScanning) {
-                          // Stop dulu yang lama, baru mulai yang baru
                           html5QrCodeLive.stop().then(() => {
-                              mulaiStream(camId);
+                              mulaiStreamContinuous(camId);
                           });
                       } else {
-                          mulaiStream(camId);
+                          mulaiStreamContinuous(camId);
                       }
                   });
       
-                  mulaiStream(kameraAktif);
+                  mulaiStreamContinuous(kameraAktif);
               } else {
                   document.getElementById('readerLive').innerHTML = "Kamera tidak ditemukan.";
               }
@@ -8315,36 +8327,44 @@
           }
       }
       
-      function mulaiStream(cameraId) {
+      function mulaiStreamContinuous(cameraId) {
           html5QrCodeLive.start(
               cameraId,
               { 
-                  fps: 10, // Frame rate per detik
-                  qrbox: { width: 220, height: 220 } // Ukuran kotak fokus
+                  fps: 10, 
+                  qrbox: { width: 220, height: 220 } 
               },
               (decodedText, decodedResult) => {
                   // ==========================================
                   // KETIKA BARCODE BERHASIL TERBACA SECARA LIVE
                   // ==========================================
                   
-                  // 1. Matikan kamera & Tutup Pop-up SweetAlert
-                  if (html5QrCodeLive.isScanning) {
-                      html5QrCodeLive.stop().then(() => {
-                          Swal.close();
-                      });
+                  let currentTime = new Date().getTime();
+                  
+                  // JEDA 2 DETIK ANTAR SCAN (Agar 1 barcode tidak masuk ke keranjang 10x dalam 1 detik)
+                  if (currentTime - lastScanTime < 2000) {
+                      return; // Abaikan bacaan beruntun dalam rentang 2 detik
                   }
+                  lastScanTime = currentTime;
       
-                  // 2. Bunyikan suara Beep (Logika kamu)
+                  // 1. Bunyikan suara Beep
                   let audio = new Audio('https://www.soundjay.com/buttons/beep-07a.wav');
                   audio.play().catch(e => console.log(e));
       
-                  // 3. Masukkan hasil ke kolom pencarian (Logika kamu)
+                  // 2. Tampilkan teks sukses sementara di pop-up
+                  let statusText = document.getElementById('statusScanText');
+                  if (statusText) {
+                      statusText.innerHTML = `✅ Ditemukan: ${decodedText}`;
+                      setTimeout(() => { statusText.innerHTML = ''; }, 1500); // Hilangkan teks setelah 1.5 detik
+                  }
+      
+                  // 3. Masukkan hasil ke kolom pencarian
                   let searchInput = document.getElementById('searchProdukKasir');
                   if (searchInput) {
                       searchInput.value = decodedText;
                       jalankanPencarianProdukKasir();
       
-                      // 4. AUTO-ADD: Masukkan otomatis ke keranjang (Logika kamu)
+                      // 4. AUTO-ADD: Masukkan otomatis ke keranjang
                       setTimeout(() => {
                           let produkTampil = document.querySelectorAll('#productGrid .product-card:not(.disabled)');
                           if (produkTampil.length === 1) {
@@ -8354,16 +8374,16 @@
                           }
                       }, 200);
                   }
+                  
+                  // Perhatikan: html5QrCodeLive.stop() DIHAPUS dari sini agar kamera jalan terus!
               },
               (errorMessage) => {
-                  // Akan terus terpanggil selama kamera mencari barcode, 
-                  // biarkan kosong agar konsol browser tidak penuh pesan error
+                  // Abaikan error saat proses mencari fokus barcode
               }
           ).catch(err => {
               console.error("Gagal memulai kamera", err);
           });
       }
-
       function scanBarcodeProduk(event) {
         if (event.target.files && event.target.files.length > 0) {
             let file = event.target.files[0];
