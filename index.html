@@ -3585,10 +3585,12 @@
               <label>Barcode Scanner</label>
               <div style="display: flex; gap: 8px; align-items: center; width: 100%;">
                 <input type="text" id="prodBarcode" placeholder="Scan / Ketik Barcode" style="flex: 1; margin: 0;">
-                <label style="display: flex; align-items: center; justify-content: center; height: 42px; width: 42px; padding: 0; background: var(--surface); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-muted); cursor: pointer; margin: 0; flex-shrink: 0; box-sizing: border-box;" onmouseover="this.style.borderColor='var(--primary)'; this.style.background='rgba(26,115,232,0.05)';" onmouseout="this.style.borderColor='var(--border-color)'; this.style.background='var(--surface)';" title="Scan Barcode via Kamera">
-                  <svg style="margin-top: -2px;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-                  <input type="file" accept="image/*" capture="environment" style="display: none;" onchange="scanBarcodeProduk(event)">
-                </label>
+                <button type="button" onclick="bukaScannerProdukSatuKali()" style="display: flex; align-items: center; justify-content: center; height: 42px; width: 42px; padding: 0; background: var(--surface); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-muted); cursor: pointer; margin: 0; flex-shrink: 0; box-sizing: border-box;" onmouseover="this.style.borderColor='var(--primary)'; this.style.background='rgba(26,115,232,0.05)';" onmouseout="this.style.borderColor='var(--border-color)'; this.style.background='var(--surface)';" title="Live Scan Barcode">
+                    <svg style="margin-top: -2px;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                        <circle cx="12" cy="13" r="4"></circle>
+                    </svg>
+                </button>
               </div>
               <label>Kategori</label><input type="text" id="prodKategori" placeholder="Makanan, Minuman">
               <label>Nama Produk</label><input type="text" id="prodNama" placeholder="Espresso Gayo">
@@ -8384,50 +8386,131 @@
               console.error("Gagal memulai kamera", err);
           });
       }
-      function scanBarcodeProduk(event) {
-        if (event.target.files && event.target.files.length > 0) {
-            let file = event.target.files[0];
-            
-            // Tampilkan indikator loading saat memproses gambar
-            Swal.fire({
-                title: '<strong style="font-size: 16px;">Membaca Barcode...</strong>',
-                html: '<span style="font-size: 13px;">Sedang memproses gambar</span>',
-                allowOutsideClick: false,
-                background: 'var(--surface, #ffffff)',
-                color: 'var(--text-dark, #333333)',
-                didOpen: () => { Swal.showLoading(); }
-            });
-
-            // Menggunakan wadah tersembunyi yang sama (#hiddenReader)
-            const html5QrCode = new Html5Qrcode("hiddenReader");
-            html5QrCode.scanFile(file, true)
-            .then(decodedText => {
-                Swal.close();
-                
-                // Bunyikan suara konfirmasi
-                let audio = new Audio('https://www.soundjay.com/buttons/beep-07a.wav');
-                audio.play().catch(e => console.log(e));
-
-                // Masukkan hasil scan secara otomatis ke input barcode form produk
-                document.getElementById('prodBarcode').value = decodedText;
-            })
-            .catch(err => {
-                Swal.fire({
-                    title: '<strong style="font-size: 16px;">Gagal Terbaca</strong>',
-                    html: '<span style="font-size: 13px;">Barcode tidak ditemukan. Pastikan foto fokus dan terang.</span>',
-                    icon: 'error',
-                    width: '300px',
-                    padding: '15px',
-                    background: 'var(--surface, #ffffff)',
-                    color: 'var(--text-dark, #333333)',
-                    confirmButtonColor: '#d33',
-                    confirmButtonText: '<span style="font-size: 13px;">Coba Lagi</span>'
-                });
-            });
-            
-            // Reset file input agar bisa dipakai scan ulang
-            event.target.value = '';
-        }
+      
+      let html5QrCodeProduk = null;
+      // Fungsi untuk membuka pop-up SweetAlert Scanner
+      function bukaScannerProdukSatuKali() {
+          Swal.fire({
+              title: '<strong style="font-size: 16px;">Scan Barcode Produk</strong>',
+              html: `
+                  <div style="text-align: left; margin-bottom: 10px;">
+                      <label style="font-size: 12px; font-weight: 600;">Pilih Kamera:</label>
+                      <select id="pilihanKameraProduk" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border-color, #ccc); font-size: 13px; margin-top: 4px; background: transparent; color: inherit;">
+                          <option value="">Mencari kamera...</option>
+                      </select>
+                  </div>
+                  <div id="readerProduk" style="width: 100%; min-height: 250px; background: #000; border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; color: white;">
+                      Memuat kamera...
+                  </div>
+              `,
+              showCancelButton: true,
+              showConfirmButton: false,
+              cancelButtonText: 'Batal',
+              allowOutsideClick: false,
+              background: 'var(--surface, #ffffff)',
+              color: 'var(--text-dark, #333333)',
+              width: '350px',
+              didOpen: () => {
+                  // Styling tombol Batal agar menjadi Pill Button
+                  const cancelBtn = Swal.getCancelButton();
+                  if(cancelBtn) {
+                      cancelBtn.style.cssText = "background-color: #ef4444; color: #ffffff; border: none; padding: 10px 24px; border-radius: 50px; font-weight: 600; font-size: 13px; cursor: pointer; box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.3); transition: 0.2s; width: 100%; margin: 0;";
+                      cancelBtn.onmouseover = () => { cancelBtn.style.transform = 'scale(1.02)'; };
+                      cancelBtn.onmouseout = () => { cancelBtn.style.transform = 'scale(1)'; };
+                  }
+                  // Nyalakan kamera
+                  initScannerProduk();
+              },
+              willClose: () => {
+                  // Matikan kamera jika user menekan tombol 'Batal'
+                  if (html5QrCodeProduk && html5QrCodeProduk.isScanning) {
+                      html5QrCodeProduk.stop().catch(err => console.error("Gagal stop kamera:", err));
+                  }
+              }
+          });
+      }
+      
+      // Fungsi inisialisasi dropdown kamera
+      async function initScannerProduk() {
+          html5QrCodeProduk = new Html5Qrcode("readerProduk");
+          
+          try {
+              const devices = await Html5Qrcode.getCameras();
+              if (devices && devices.length > 0) {
+                  let dropdown = document.getElementById('pilihanKameraProduk');
+                  dropdown.innerHTML = ''; 
+                  
+                  devices.forEach(device => {
+                      let option = document.createElement('option');
+                      option.value = device.id;
+                      option.text = device.label || `Kamera ${dropdown.length + 1}`;
+                      dropdown.appendChild(option);
+                  });
+      
+                  // Prioritaskan kamera belakang
+                  let kameraAktif = devices.length > 1 ? devices[1].id : devices[0].id;
+                  dropdown.value = kameraAktif;
+      
+                  // Event saat ganti kamera live
+                  dropdown.addEventListener('change', function() {
+                      let camId = this.value;
+                      if (html5QrCodeProduk.isScanning) {
+                          html5QrCodeProduk.stop().then(() => {
+                              mulaiStreamProduk(camId);
+                          });
+                      } else {
+                          mulaiStreamProduk(camId);
+                      }
+                  });
+      
+                  mulaiStreamProduk(kameraAktif);
+              } else {
+                  document.getElementById('readerProduk').innerHTML = "Kamera tidak ditemukan.";
+              }
+          } catch (err) {
+              console.error(err);
+              document.getElementById('readerProduk').innerHTML = "Izin akses kamera ditolak browser.";
+          }
+      }
+      
+      // Fungsi utama stream kamera (Satu Kali Scan Langsung Tutup)
+      function mulaiStreamProduk(cameraId) {
+          html5QrCodeProduk.start(
+              cameraId,
+              { 
+                  fps: 10, 
+                  qrbox: { width: 220, height: 220 } 
+              },
+              (decodedText, decodedResult) => {
+                  // ==========================================
+                  // KETIKA BARCODE TERBACA
+                  // ==========================================
+                  if (html5QrCodeProduk.isScanning) {
+                      // 1. Matikan kamera DULU
+                      html5QrCodeProduk.stop().then(() => {
+                          // 2. Tutup Pop-up
+                          Swal.close();
+                          
+                          // 3. Bunyikan Beep!
+                          let audio = new Audio('https://www.soundjay.com/buttons/beep-07a.wav');
+                          audio.play().catch(e => console.log(e));
+      
+                          // 4. Tempel hasilnya ke input Barcode di Form
+                          let prodBarcode = document.getElementById('prodBarcode');
+                          if (prodBarcode) {
+                              prodBarcode.value = decodedText;
+                          }
+                      }).catch(err => {
+                          console.error("Gagal menghentikan kamera", err);
+                      });
+                  }
+              },
+              (errorMessage) => {
+                  // Abaikan error saat sedang fokus
+              }
+          ).catch(err => {
+              console.error("Gagal memulai kamera", err);
+          });
       }
 
       // ==========================================
