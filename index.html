@@ -7,6 +7,7 @@
     <meta name="theme-color" content="#3b82f6">
     <link rel="icon" type="image/png" href="ANKA-192.png">
     <link rel="apple-touch-icon" href="ANKA-192.png">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
 
     <style>
       :root { 
@@ -2166,6 +2167,25 @@
         <input type="password" id="password" placeholder="Password">
         <button class="btn-primary" onclick="login()">Masuk</button>
         <div id="loginStatus" style="color:var(--danger); margin-top:16px; font-size:13px; font-weight:500;"></div>
+        <div style="display: flex; justify-content: center; margin-top: 50px;">
+            <!-- Ganti YOUR_CLIENT_ID dengan Client ID yang kamu dapatkan di Langkah 1 -->
+            <div id="g_id_onload"
+                 data-client_id="878748553807-1ljk1eq5q9vl15fnde828nvta1q4ko7u.apps.googleusercontent.com.apps.googleusercontent.com"
+                 data-context="signin"
+                 data-ux_mode="popup"
+                 data-callback="handleCredentialResponse"
+                 data-auto_prompt="false">
+            </div>    
+            <!-- Ini akan otomatis dirender menjadi tombol biru khas Google -->
+            <div class="g_id_signin"
+                 data-type="standard"
+                 data-shape="rectangular"
+                 data-theme="outline"
+                 data-text="signin_with"
+                 data-size="large"
+                 data-logo_alignment="left">
+            </div>
+        </div>
       </div>
     </div>
 
@@ -10915,6 +10935,60 @@
               oscillator.stop(ctx.currentTime + 0.1);
           } catch (e) {
               console.error("Browser tidak mendukung suara beep", e);
+          }
+      }
+
+      // Fungsi untuk memecah token rahasia dari Google menjadi data yang bisa dibaca
+      function decodeJwtResponse(token) {
+          let base64Url = token.split('.')[1];
+          let base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+          let jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+              return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+          }).join(''));
+          return JSON.parse(jsonPayload);
+      }
+      
+      // Fungsi ini otomatis dipanggil oleh Google saat user berhasil login
+      async function handleCredentialResponse(response) {
+          // 1. Ekstrak data pengguna
+          const dataUser = decodeJwtResponse(response.credential);
+          
+          console.log("Email Klien:", dataUser.email);
+          console.log("Nama Klien:", dataUser.name);
+          
+          // 2. Munculkan loading
+          Swal.fire({
+              title: 'Memverifikasi Akun...',
+              html: 'Sedang menyiapkan database toko Anda',
+              allowOutsideClick: false,
+              didOpen: () => { Swal.showLoading(); }
+          });
+      
+          try {
+              // 3. Kirim data ke Google Apps Script (Backend) untuk proses pengecekan Trial/Berlangganan
+              let responBackend = await panggilBackend('verifikasiLoginSaaS', {
+                  email: dataUser.email,
+                  nama: dataUser.name,
+                  token: response.credential // Opsional: untuk keamanan ekstra
+              });
+      
+              if (responBackend.success) {
+                  Swal.fire('Berhasil!', `Selamat datang, ${dataUser.name}`, 'success');
+                  
+                  // Simpan info user di browser agar tidak perlu login terus
+                  localStorage.setItem('klien_email', dataUser.email);
+                  localStorage.setItem('klien_nama', dataUser.name);
+                  localStorage.setItem('db_klien_id', responBackend.databaseId); // ID Spreadsheet khusus klien ini
+                  
+                  // Arahkan ke halaman utama POS
+                  // window.location.href = '?page=dashboard'; 
+              } else {
+                  Swal.fire('Akses Ditolak', responBackend.message, 'error'); // Misal: Trial Habis
+              }
+      
+          } catch (error) {
+              console.error("Gagal terhubung ke server:", error);
+              Swal.fire('Error', 'Gagal memverifikasi login.', 'error');
           }
       }
           
