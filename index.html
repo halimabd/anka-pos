@@ -8350,8 +8350,7 @@
                   lastScanTime = currentTime;
       
                   // 1. Bunyikan suara Beep
-                  let audio = new Audio('https://www.soundjay.com/buttons/beep-07a.wav');
-                  audio.play().catch(e => console.log(e));
+                  bunyikanBeep();
       
                   // 2. Tampilkan teks sukses sementara di pop-up
                   let statusText = document.getElementById('statusScanText');
@@ -8492,8 +8491,7 @@
                           Swal.close();
                           
                           // 3. Bunyikan Beep!
-                          let audio = new Audio('https://www.soundjay.com/buttons/beep-07a.wav');
-                          audio.play().catch(e => console.log(e));
+                          bunyikanBeep();
       
                           // 4. Tempel hasilnya ke input Barcode di Form
                           let prodBarcode = document.getElementById('prodBarcode');
@@ -10889,6 +10887,33 @@
                 alert('Terjadi kesalahan pada server: ' + (error.message || error));
             }
         }
+      }
+
+      // Fungsi untuk membuat suara Beep instan bawaan browser (Tanpa File Mp3/Wav luar)
+      function bunyikanBeep() {
+          try {
+              let AudioContext = window.AudioContext || window.webkitAudioContext;
+              if (!AudioContext) return;
+              
+              let ctx = new AudioContext();
+              let oscillator = ctx.createOscillator();
+              let gainNode = ctx.createGain();
+      
+              // Pengaturan nada (880Hz = Nada nyaring khas kasir)
+              oscillator.type = 'sine';
+              oscillator.frequency.value = 880; 
+      
+              // Menyambungkan suara ke speaker
+              oscillator.connect(gainNode);
+              gainNode.connect(ctx.destination);
+      
+              // Memulai suara dan mematikannya perlahan dalam 0.1 detik (100ms) agar halus
+              oscillator.start();
+              gainNode.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.1);
+              oscillator.stop(ctx.currentTime + 0.1);
+          } catch (e) {
+              console.error("Browser tidak mendukung suara beep", e);
+          }
       }
           
     </script>
