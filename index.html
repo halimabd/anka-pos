@@ -2165,7 +2165,7 @@
         <h2>POS MASUK</h2>
         <input type="text" id="username" placeholder="Username" autocomplete="off">
         <input type="password" id="password" placeholder="Password">
-        <button class="btn-primary" onclick="loginkasir()">Masuk</button>
+        <button class="btn-primary" onclick="login()">Masuk</button>
         <div id="loginStatus" style="color:var(--danger); margin-top:16px; font-size:13px; font-weight:500;"></div>
         <div style="display: flex; justify-content: center; margin-top: 50px;">
             <button id="btnGoogleLogin" style="display: flex; align-items: center; justify-content: center; gap: 10px; padding: 10px 20px; font-family: sans-serif; font-weight: bold; background-color: white; border: 1px solid #dadce0; border-radius: 4px; cursor: pointer; color: #3c4043; width: 100%; max-width: 300px;">
@@ -4725,7 +4725,7 @@
         else { tabProd.className = "main-area hide-view"; tabCart.className = "sidebar-cart active-view"; btnProd.classList.remove('active'); btnCart.classList.add('active'); }
       }
 
-      async function loginkasir() { 
+      async function login() { 
         let u = document.getElementById('username').value; 
         let p = document.getElementById('password').value; 
         document.getElementById('loginStatus').innerText = "Memeriksa..."; 
@@ -10943,54 +10943,53 @@
       // 1. Inisialisasi Supabase (Ganti dengan URL dan Key dari Dashboard Supabase Anda)
       const supabaseUrl = 'https://xnbsbfhyzcwsofcydybw.supabase.co';
       const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhuYnNiZmh5emN3c29mY3lkeWJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0ODA0NjcsImV4cCI6MjEwMjA1NjQ2N30.WWC2nmzHLk2D3rssFswpidlq0S6ExwLU6xEoSS2w_2k';
-      const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+      const supabaseCLient = supabase.createClient(supabaseUrl, supabaseKey);
   
       // 2. Fungsi untuk memicu Login Google saat tombol diklik
       document.getElementById('btnGoogleLogin').addEventListener('click', async function() {
           // Mengubah teks tombol agar terlihat merespons
           this.innerHTML = 'Memproses...';
           this.disabled = true;
-  
-          const { data, error } = await supabase.auth.signInWithOAuth({
+      
+          // Perhatikan penggunaan supabaseClient di sini
+          const { data, error } = await supabaseClient.auth.signInWithOAuth({
               provider: 'google',
               options: {
-                  // Mengarahkan kembali ke halaman ini atau halaman kasir utama setelah login sukses di server Google
+                  // Mengarahkan kembali ke halaman ini setelah login sukses
                   redirectTo: window.location.origin 
               }
           });
-  
+      
           if (error) {
               alert("Terjadi kesalahan saat login: " + error.message);
               this.innerHTML = 'Masuk dengan Google';
               this.disabled = false;
           }
       });
-  
+      
       // 3. Pengecekan Sesi Otomatis (Dijalankan setiap kali halaman dimuat)
       window.addEventListener('DOMContentLoaded', async () => {
-          // Mengambil sesi pengguna yang sedang aktif dari Supabase
-          const { data: { session } } = await supabase.auth.getSession();
+          // Mengambil sesi pengguna yang sedang aktif
+          const { data: { session } } = await supabaseClient.auth.getSession();
           
           if (session) {
               console.log("Autentikasi Berhasil! Email:", session.user.email);
               
-              // Menyimpan ID unik pengguna ke localStorage. 
-              // ID ini akan digunakan sebagai 'klien_id' untuk proses RLS di seluruh tabel (produk, transaksi, dll)
+              // Menyimpan ID unik pengguna ke localStorage
               localStorage.setItem('klien_id', session.user.id);
               localStorage.setItem('user_email', session.user.email);
               
-              // Lanjut arahkan pengguna ke halaman dashboard POS atau sistem kasir utama
+              // Lanjut arahkan pengguna ke halaman dashboard POS 
               // window.location.href = '/dashboard.html'; 
           } else {
               console.log("Menunggu pengguna melakukan login...");
           }
-  
-          // Listener tambahan jika status login berubah (misal: user melakukan logout di tab lain)
-          supabase.auth.onAuthStateChange((event, session) => {
+      
+          // Listener tambahan jika status login berubah
+          supabaseClient.auth.onAuthStateChange((event, session) => {
               if (event === 'SIGNED_OUT') {
                   localStorage.removeItem('klien_id');
                   localStorage.removeItem('user_email');
-                  // Arahkan kembali ke halaman login jika diperlukan
               }
           });
       });
