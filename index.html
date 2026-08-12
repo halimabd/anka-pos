@@ -4134,20 +4134,6 @@
       // GANTI DENGAN URL YANG KAMU DAPATKAN DI TAHAP 2
       //const API_URL = "https://script.google.com/macros/s/AKfycbyI5NdK9YWhjrfFTqDu3t82bw9-78oPJIr_aySiPsAY34Q8mVU5YuU6EThcoxdWZUrVSw/exec"; 
 
-      // Fungsi universal pengganti google.script.run
-      async function panggilBackend(actionName, dataPayload = {}) {
-        try {
-            const response = await fetch(API_URL, {
-                method: 'POST',
-                body: JSON.stringify({ action: actionName, payload: dataPayload })
-            });
-            return await response.json(); 
-        } catch (error) {
-            console.error("Error:", error);
-            throw error;
-        }
-      }
-
       // Fungsi Penjinak Tanda Kutip
       function escJS(str) {
         if(str === null || str === undefined) return '';
@@ -4308,15 +4294,35 @@
         }
       }
 
+      // --- 1. Fungsi Mengambil Data Pengaturan dari Supabase ---
       async function muatPengaturanData() { 
-        try {
-            let config = await panggilBackend('getPengaturanData');
-            appSettings = config; 
-            terapkanPengaturanKeUI(); 
-            isiFormPengaturan(); 
-        } catch (error) {
-            console.error(error);
-        }
+          try {
+              const klienId = localStorage.getItem('klien_id');
+              if (!klienId) return; // Hentikan jika belum login
+      
+              // Tarik data dari tabel pengaturan
+              const { data, error } = await window.supabaseClient
+                  .from('pengaturan')
+                  .select('*')
+                  .eq('klien_id', klienId)
+                  .maybeSingle(); // maybeSingle agar tidak error jika toko baru belum punya pengaturan
+      
+              if (error) {
+                  console.error("Supabase Error:", error.message);
+                  return;
+              }
+      
+              // Jika data ada, gunakan itu. Jika toko baru (null), beri nilai default
+              appSettings = data || {
+                  namaPOS: 'ANKA POS',
+                  namaToko: 'Toko Baru'
+              }; 
+              
+              terapkanPengaturanKeUI(); 
+              isiFormPengaturan(); 
+          } catch (error) {
+              console.error("Gagal memuat pengaturan:", error);
+          }
       }
       function isiFormPengaturan() { 
         document.getElementById('setNamaPOS').value = appSettings.namaPOS; 
@@ -4453,55 +4459,89 @@
         }
       }
 
+      // --- 2. Fungsi Menyimpan Data Pengaturan ke Supabase ---
       async function simpanPengaturanFrontend() { 
-        let configPayload = { 
-            namaPOS: document.getElementById('setNamaPOS').value, 
-            namaToko: document.getElementById('setNamaToko').value, 
-            alamatToko: document.getElementById('setAlamatToko').value,
-            logoUrl: document.getElementById('setLogoUrl').value, 
-            fiturMeja: document.getElementById('setFiturMeja').checked, 
-            fiturKOT: document.getElementById('setFiturKOT').checked, 
-            fiturCatatanKasir: document.getElementById('setFiturCatatanKasir').checked, 
-            fiturDiskon: document.getElementById('setFiturDiskon').checked, 
-            fiturPPN: document.getElementById('setFiturPPN').checked, 
-            fiturPPh: document.getElementById('setFiturPPh').checked,
-            fiturWhatsApp: document.getElementById('setFiturWhatsApp').checked,
-            
-            // ✨ TAMBAHAN SIMPAN DELIVERY ✨
-            fiturDelivery: document.getElementById('setFiturDelivery') ? document.getElementById('setFiturDelivery').checked : false,
-            
-            linkQRIS: document.getElementById('setLinkQRIS').value.trim(),
-            rawQRIS: document.getElementById('inputRawQRIS') ? document.getElementById('inputRawQRIS').value.trim() : "",
-            nmid: document.getElementById('inputNmidQris') ? document.getElementById('inputNmidQris').value.trim() : "",
-            
-            namaBank: document.getElementById('settingNamaBank').value.trim(),
-            noRekening: document.getElementById('settingNoRekening').value.trim(),
-            namaPenerima: document.getElementById('settingNamaPenerima').value.trim(),
-
-            midtransAktif: document.getElementById('setMidtransAktif') ? document.getElementById('setMidtransAktif').checked : false,
-            midtransEnv: document.getElementById('setMidtransEnv') ? document.getElementById('setMidtransEnv').value : "sandbox",
-            midtransMerchant: document.getElementById('setMidtransMerchant') ? document.getElementById('setMidtransMerchant').value.trim() : "",
-            midtransClientKey: document.getElementById('setMidtransClientKey') ? document.getElementById('setMidtransClientKey').value.trim() : ""
-        }; 
-
-        let elServerKey = document.getElementById('setMidtransServerKey');
-        if (elServerKey && elServerKey.value !== "••••••••••••••••") {
-            configPayload.midtransServerKey = elServerKey.value.trim();
-        }
-        
-        try {
-            // 1. Kirim data ke backend dan tunggu jawabannya (sebagai pengganti simpanPengaturanData)
-            let msg = await panggilBackend('simpanPengaturanData', configPayload);
-            
-            // 2. Jika berhasil, eksekusi kode ini (sebagai pengganti withSuccessHandler)
-            alert(msg); 
-            appSettings = { ...appSettings, ...configPayload }; 
-            terapkanPengaturanKeUI(); 
-            
-        } catch (error) {
-            // 3. Tangkap error jika gagal terhubung
-            alert("Gagal menyimpan pengaturan: " + error.message);
-        } 
+          const klienId = localStorage.getItem('klien_id');
+          if (!klienId) {
+              alert("Sesi tidak valid, harap login ulang.");
+              return;
+          }
+      
+          // Payload ini 100% sama dengan milik Anda
+          let configPayload = { 
+              namaPOS: document.getElementById('setNamaPOS').value, 
+              namaToko: document.getElementById('setNamaToko').value, 
+              alamatToko: document.getElementById('setAlamatToko').value,
+              logoUrl: document.getElementById('setLogoUrl').value, 
+              fiturMeja: document.getElementById('setFiturMeja').checked, 
+              fiturKOT: document.getElementById('setFiturKOT').checked, 
+              fiturCatatanKasir: document.getElementById('setFiturCatatanKasir').checked, 
+              fiturDiskon: document.getElementById('setFiturDiskon').checked, 
+              fiturPPN: document.getElementById('setFiturPPN').checked, 
+              fiturPPh: document.getElementById('setFiturPPh').checked,
+              fiturWhatsApp: document.getElementById('setFiturWhatsApp').checked,
+              
+              // ✨ TAMBAHAN SIMPAN DELIVERY ✨
+              fiturDelivery: document.getElementById('setFiturDelivery') ? document.getElementById('setFiturDelivery').checked : false,
+              
+              linkQRIS: document.getElementById('setLinkQRIS').value.trim(),
+              rawQRIS: document.getElementById('inputRawQRIS') ? document.getElementById('inputRawQRIS').value.trim() : "",
+              nmid: document.getElementById('inputNmidQris') ? document.getElementById('inputNmidQris').value.trim() : "",
+              
+              namaBank: document.getElementById('settingNamaBank').value.trim(),
+              noRekening: document.getElementById('settingNoRekening').value.trim(),
+              namaPenerima: document.getElementById('settingNamaPenerima').value.trim(),
+      
+              midtransAktif: document.getElementById('setMidtransAktif') ? document.getElementById('setMidtransAktif').checked : false,
+              midtransEnv: document.getElementById('setMidtransEnv') ? document.getElementById('setMidtransEnv').value : "sandbox",
+              midtransMerchant: document.getElementById('setMidtransMerchant') ? document.getElementById('setMidtransMerchant').value.trim() : "",
+              midtransClientKey: document.getElementById('setMidtransClientKey') ? document.getElementById('setMidtransClientKey').value.trim() : ""
+          }; 
+      
+          let elServerKey = document.getElementById('setMidtransServerKey');
+          if (elServerKey && elServerKey.value !== "••••••••••••••••") {
+              configPayload.midtransServerKey = elServerKey.value.trim();
+          }
+          
+          // ✨ WAJIB DITAMBAHKAN: Masukkan klien_id agar Supabase tahu ini milik toko siapa
+          configPayload.klien_id = klienId;
+          
+          try {
+              // Cek dulu apakah toko ini sudah pernah menyimpan pengaturan sebelumnya
+              const { data: existing } = await window.supabaseClient
+                  .from('pengaturan')
+                  .select('klien_id')
+                  .eq('klien_id', klienId)
+                  .maybeSingle();
+      
+              let dbError;
+      
+              if (existing) {
+                  // Jika sudah ada -> UPDATE baris yang ada
+                  const { error } = await window.supabaseClient
+                      .from('pengaturan')
+                      .update(configPayload)
+                      .eq('klien_id', klienId);
+                  dbError = error;
+              } else {
+                  // Jika baru pertama kali -> INSERT baris baru
+                  const { error } = await window.supabaseClient
+                      .from('pengaturan')
+                      .insert([configPayload]);
+                  dbError = error;
+              }
+              
+              if (dbError) throw dbError;
+      
+              // Jika berhasil, perbarui UI
+              alert("Pengaturan toko berhasil disimpan!"); 
+              appSettings = { ...appSettings, ...configPayload }; 
+              terapkanPengaturanKeUI(); 
+              
+          } catch (error) {
+              alert("Gagal menyimpan pengaturan: " + error.message);
+              console.error("Simpan Error:", error);
+          } 
       }
 
       function terapkanPengaturanKeUI() {
