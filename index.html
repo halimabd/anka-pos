@@ -8,6 +8,7 @@
     <link rel="icon" type="image/png" href="ANKA-192.png">
     <link rel="apple-touch-icon" href="ANKA-192.png">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
       :root { 
@@ -4128,6 +4129,16 @@
       let appSettings = { namaToko: "TOKO MODERN", alamatToko: "", namaPOS: "POS STORE", logoUrl: "", fiturMeja: true, fiturKOT: true, fiturCatatanKasir: true, fiturDiskon: true, fiturPPN: true, fiturPPh: true };
 
       let dataPenjualanGlobal = {};
+
+      // Konfigurasi Koneksi Supabase
+      const supabaseUrl = 'https://xnbsbfhyzcwsofcydybw.supabase.co';
+      const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhuYnNiZmh5emN3c29mY3lkeWJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0ODA0NjcsImV4cCI6MjEwMjA1NjQ2N30.WWC2nmzHLk2D3rssFswpidlq0S6ExwLU6xEoSS2w_2k';
+      
+      // Inisialisasi klien Supabase
+      const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+      
+      // Contoh tes koneksi sederhana
+      console.log("Koneksi Supabase siap:", supabase);
 
       // GANTI DENGAN URL YANG KAMU DAPATKAN DI TAHAP 2
       const API_URL = "https://script.google.com/macros/s/AKfycbyI5NdK9YWhjrfFTqDu3t82bw9-78oPJIr_aySiPsAY34Q8mVU5YuU6EThcoxdWZUrVSw/exec"; 
