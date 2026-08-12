@@ -2169,23 +2169,15 @@
         <button class="btn-primary" onclick="login()">Masuk</button>
         <div id="loginStatus" style="color:var(--danger); margin-top:16px; font-size:13px; font-weight:500;"></div>
         <div style="display: flex; justify-content: center; margin-top: 50px;">
-            <!-- Ganti YOUR_CLIENT_ID dengan Client ID yang kamu dapatkan di Langkah 1 -->
-            <div id="g_id_onload"
-                 data-client_id="878748553807-1ljk1eq5q9vl15fnde828nvta1q4ko7u.apps.googleusercontent.com"
-                 data-context="signin"
-                 data-ux_mode="popup"
-                 data-callback="handleCredentialResponse"
-                 data-auto_prompt="false">
-            </div>    
-            <!-- Ini akan otomatis dirender menjadi tombol biru khas Google -->
-            <div class="g_id_signin"
-                 data-type="standard"
-                 data-shape="rectangular"
-                 data-theme="outline"
-                 data-text="signin_with"
-                 data-size="large"
-                 data-logo_alignment="left">
-            </div>
+            <button id="btnGoogleLogin" style="display: flex; align-items: center; justify-content: center; gap: 10px; padding: 10px 20px; font-family: sans-serif; font-weight: bold; background-color: white; border: 1px solid #dadce0; border-radius: 4px; cursor: pointer; color: #3c4043; width: 100%; max-width: 300px;">
+                <svg width="18" height="18" viewBox="0 0 18 18">
+                    <path fill="#4285F4" d="M17.64 9.2c0-.63-.06-1.25-.16-1.84H9v3.49h4.84c-.21 1.12-.84 2.07-1.78 2.71v2.26h2.87c1.68-1.55 2.76-3.83 2.76-6.62z"/>
+                    <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.87-2.26c-.81.54-1.84.86-3.09.86-2.37 0-4.38-1.6-5.1-3.75H.95v2.33C2.43 15.98 5.48 18 9 18z"/>
+                    <path fill="#FBBC05" d="M3.9 10.67c-.19-.54-.3-1.12-.3-1.72s.11-1.18.3-1.72V4.9H.95C.34 6.11 0 7.5 0 9s.34 2.89.95 4.1l2.95-2.33z"/>
+                    <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0 5.48 0 2.43 2.02.95 4.9l2.95 2.33c.72-2.15 2.73-3.75 5.1-3.75z"/>
+                </svg>
+                Masuk dengan Google
+            </button>
         </div>
       </div>
     </div>
@@ -10959,103 +10951,59 @@
           return JSON.parse(jsonPayload);
       }
       
-      // Fungsi ini otomatis dipanggil oleh Google saat user berhasil login
-      async function handleCredentialResponse(response) {
-          // 1. Ekstrak data pengguna
-          const dataUser = decodeJwtResponse(response.credential);
-          
-          console.log("Email Klien:", dataUser.email);
-          console.log("Nama Klien:", dataUser.name);
-          
-          // 2. Munculkan loading dengan UI kustom
-          Swal.fire({
-              title: '<strong style="font-size: 16px;">Memverifikasi Akun...</strong>',
-              html: '<span style="font-size: 13px; color: var(--text-muted, #64748b);">Sedang menyiapkan database toko Anda</span>',
-              allowOutsideClick: false,
-              background: 'var(--surface, #ffffff)',
-              color: 'var(--text-dark, #333333)',
-              width: '280px', 
-              padding: '20px',
-              customClass: { popup: 'swal-custom-small' },
-              didOpen: () => { Swal.showLoading(); }
-          });
-      
-          try {
-              // 3. Kirim data ke Google Apps Script (Backend) untuk proses pengecekan Trial/Berlangganan
-              let responBackend = await panggilBackend('verifikasiLoginSaaS', {
-                  email: dataUser.email,
-                  nama: dataUser.name,
-                  token: response.credential // Opsional: untuk keamanan ekstra
-              });
-      
-              if (responBackend.success) {
-                  // Berhasil Login (Otomatis tertutup setelah 1.5 detik)
-                  Swal.fire({
-                      title: '<strong style="font-size: 16px;">Berhasil!</strong>',
-                      html: `<span style="font-size: 13px;">Selamat datang, <b>${dataUser.name}</b></span>`,
-                      icon: 'success',
-                      timer: 1500,
-                      showConfirmButton: false,
-                      background: 'var(--surface, #ffffff)',
-                      color: 'var(--text-dark, #333333)',
-                      width: '280px', 
-                      padding: '20px',
-                      customClass: { popup: 'swal-custom-small', icon: 'ikon-mini-swal' }
-                  }).then(() => {
-                      // Simpan info user di browser agar tidak perlu login terus
-                      localStorage.setItem('klien_email', dataUser.email);
-                      localStorage.setItem('klien_nama', dataUser.name);
-                      localStorage.setItem('db_klien_id', responBackend.databaseId); 
-                      
-                      // Arahkan ke halaman utama POS
-                      // window.location.href = '?page=dashboard'; 
-                  });
-                  
-              } else {
-                  // Akses Ditolak (Misal: Trial Habis)
-                  Swal.fire({
-                      title: '<strong style="font-size: 16px;">Akses Ditolak</strong>',
-                      html: `<span style="font-size: 13px;">${responBackend.message}</span>`,
-                      icon: 'warning',
-                      background: 'var(--surface, #ffffff)',
-                      color: 'var(--text-dark, #333333)',
-                      width: '280px', 
-                      padding: '20px',
-                      confirmButtonColor: '#ef4444',
-                      confirmButtonText: '<span style="font-size: 13px;">Tutup</span>',
-                      customClass: { popup: 'swal-custom-small', icon: 'ikon-mini-swal' }
-                  }); 
-              }
-      
-          } catch (error) {
-              console.error("Gagal terhubung ke server:", error);
-              // Error Jaringan / Server
-              Swal.fire({
-                  title: '<strong style="font-size: 16px;">Gagal Terhubung</strong>',
-                  html: '<span style="font-size: 13px;">Terjadi kesalahan koneksi saat memverifikasi login.</span>',
-                  icon: 'error',
-                  background: 'var(--surface, #ffffff)',
-                  color: 'var(--text-dark, #333333)',
-                  width: '280px', 
-                  padding: '20px',
-                  confirmButtonColor: '#ef4444',
-                  confirmButtonText: '<span style="font-size: 13px;">Tutup</span>',
-                  customClass: { popup: 'swal-custom-small', icon: 'ikon-mini-swal' }
-              });
-          }
-      }
-
-      document.addEventListener("DOMContentLoaded", function() {
-          const signinDiv = document.querySelector('.g_id_signin');
-          if (signinDiv) {
-              // Mengecek apakah body memiliki class 'dark-theme' atau localStorage 'pos_theme' bernilai 'dark'
-              const isDarkMode = 
-                  document.body.classList.contains('dark-theme') || 
-                  localStorage.getItem('pos_theme') === 'dark';
+      // 1. Inisialisasi Supabase (Ganti dengan URL dan Key dari Dashboard Supabase Anda)
+      const supabaseUrl = 'MASUKKAN_PROJECT_URL_ANDA_DISINI';
+      const supabaseKey = 'MASUKKAN_ANON_PUBLIC_KEY_ANDA_DISINI';
+      const supabase = supabase.createClient(supabaseUrl, supabaseKey);
   
-              // Mengatur skema warna tombol Google secara dinamis
-              signinDiv.setAttribute('data-color_scheme', isDarkMode ? 'dark' : 'light');
+      // 2. Fungsi untuk memicu Login Google saat tombol diklik
+      document.getElementById('btnGoogleLogin').addEventListener('click', async function() {
+          // Mengubah teks tombol agar terlihat merespons
+          this.innerHTML = 'Memproses...';
+          this.disabled = true;
+  
+          const { data, error } = await supabase.auth.signInWithOAuth({
+              provider: 'google',
+              options: {
+                  // Mengarahkan kembali ke halaman ini atau halaman kasir utama setelah login sukses di server Google
+                  redirectTo: window.location.origin 
+              }
+          });
+  
+          if (error) {
+              alert("Terjadi kesalahan saat login: " + error.message);
+              this.innerHTML = 'Masuk dengan Google';
+              this.disabled = false;
           }
+      });
+  
+      // 3. Pengecekan Sesi Otomatis (Dijalankan setiap kali halaman dimuat)
+      window.addEventListener('DOMContentLoaded', async () => {
+          // Mengambil sesi pengguna yang sedang aktif dari Supabase
+          const { data: { session } } = await supabase.auth.getSession();
+          
+          if (session) {
+              console.log("Autentikasi Berhasil! Email:", session.user.email);
+              
+              // Menyimpan ID unik pengguna ke localStorage. 
+              // ID ini akan digunakan sebagai 'klien_id' untuk proses RLS di seluruh tabel (produk, transaksi, dll)
+              localStorage.setItem('klien_id', session.user.id);
+              localStorage.setItem('user_email', session.user.email);
+              
+              // Lanjut arahkan pengguna ke halaman dashboard POS atau sistem kasir utama
+              // window.location.href = '/dashboard.html'; 
+          } else {
+              console.log("Menunggu pengguna melakukan login...");
+          }
+  
+          // Listener tambahan jika status login berubah (misal: user melakukan logout di tab lain)
+          supabase.auth.onAuthStateChange((event, session) => {
+              if (event === 'SIGNED_OUT') {
+                  localStorage.removeItem('klien_id');
+                  localStorage.removeItem('user_email');
+                  // Arahkan kembali ke halaman login jika diperlukan
+              }
+          });
       });
           
     </script>
