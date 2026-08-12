@@ -4294,25 +4294,25 @@
         }
       }
 
-      // --- 1. Fungsi Mengambil Data Pengaturan dari Supabase ---
+      // --- 1. Fungsi Mengambil Data Pengaturan (Model Menyamping) ---
       async function muatPengaturanData() { 
           try {
               const klienId = localStorage.getItem('klien_id');
-              if (!klienId) return; // Hentikan jika belum login
+              if (!klienId) return; 
       
-              // Tarik data dari tabel pengaturan
+              // Tarik 1 baris data pengaturan milik toko ini
               const { data, error } = await window.supabaseClient
                   .from('pengaturan')
                   .select('*')
                   .eq('klien_id', klienId)
-                  .maybeSingle(); // maybeSingle agar tidak error jika toko baru belum punya pengaturan
+                  .maybeSingle(); 
       
               if (error) {
                   console.error("Supabase Error:", error.message);
                   return;
               }
       
-              // Jika data ada, gunakan itu. Jika toko baru (null), beri nilai default
+              // Jika data ada, gunakan. Jika null (toko baru), pakai default.
               appSettings = data || {
                   namaPOS: 'ANKA POS',
                   namaToko: 'Toko Baru'
@@ -4459,7 +4459,7 @@
         }
       }
 
-      // --- 2. Fungsi Menyimpan Data Pengaturan ke Supabase ---
+      // --- 2. Fungsi Menyimpan Data Pengaturan (Model Menyamping) ---
       async function simpanPengaturanFrontend() { 
           const klienId = localStorage.getItem('klien_id');
           if (!klienId) {
@@ -4467,8 +4467,8 @@
               return;
           }
       
-          // Payload ini 100% sama dengan milik Anda
           let configPayload = { 
+              klien_id: klienId, // WAJIB ADA sebagai kunci unik
               namaPOS: document.getElementById('setNamaPOS').value, 
               namaToko: document.getElementById('setNamaToko').value, 
               alamatToko: document.getElementById('setAlamatToko').value,
@@ -4480,18 +4480,13 @@
               fiturPPN: document.getElementById('setFiturPPN').checked, 
               fiturPPh: document.getElementById('setFiturPPh').checked,
               fiturWhatsApp: document.getElementById('setFiturWhatsApp').checked,
-              
-              // ✨ TAMBAHAN SIMPAN DELIVERY ✨
               fiturDelivery: document.getElementById('setFiturDelivery') ? document.getElementById('setFiturDelivery').checked : false,
-              
               linkQRIS: document.getElementById('setLinkQRIS').value.trim(),
               rawQRIS: document.getElementById('inputRawQRIS') ? document.getElementById('inputRawQRIS').value.trim() : "",
               nmid: document.getElementById('inputNmidQris') ? document.getElementById('inputNmidQris').value.trim() : "",
-              
               namaBank: document.getElementById('settingNamaBank').value.trim(),
               noRekening: document.getElementById('settingNoRekening').value.trim(),
               namaPenerima: document.getElementById('settingNamaPenerima').value.trim(),
-      
               midtransAktif: document.getElementById('setMidtransAktif') ? document.getElementById('setMidtransAktif').checked : false,
               midtransEnv: document.getElementById('setMidtransEnv') ? document.getElementById('setMidtransEnv').value : "sandbox",
               midtransMerchant: document.getElementById('setMidtransMerchant') ? document.getElementById('setMidtransMerchant').value.trim() : "",
@@ -4503,37 +4498,15 @@
               configPayload.midtransServerKey = elServerKey.value.trim();
           }
           
-          // ✨ WAJIB DITAMBAHKAN: Masukkan klien_id agar Supabase tahu ini milik toko siapa
-          configPayload.klien_id = klienId;
-          
           try {
-              // Cek dulu apakah toko ini sudah pernah menyimpan pengaturan sebelumnya
-              const { data: existing } = await window.supabaseClient
+              // UPSERT: Jika klien_id sudah ada, Supabase otomatis melakukan UPDATE.
+              // Jika klien_id belum ada, Supabase otomatis melakukan INSERT. Sangat praktis!
+              const { error } = await window.supabaseClient
                   .from('pengaturan')
-                  .select('klien_id')
-                  .eq('klien_id', klienId)
-                  .maybeSingle();
+                  .upsert(configPayload, { onConflict: 'klien_id' });
+                  
+              if (error) throw error;
       
-              let dbError;
-      
-              if (existing) {
-                  // Jika sudah ada -> UPDATE baris yang ada
-                  const { error } = await window.supabaseClient
-                      .from('pengaturan')
-                      .update(configPayload)
-                      .eq('klien_id', klienId);
-                  dbError = error;
-              } else {
-                  // Jika baru pertama kali -> INSERT baris baru
-                  const { error } = await window.supabaseClient
-                      .from('pengaturan')
-                      .insert([configPayload]);
-                  dbError = error;
-              }
-              
-              if (dbError) throw dbError;
-      
-              // Jika berhasil, perbarui UI
               alert("Pengaturan toko berhasil disimpan!"); 
               appSettings = { ...appSettings, ...configPayload }; 
               terapkanPengaturanKeUI(); 
