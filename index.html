@@ -2165,7 +2165,7 @@
         <h2>POS MASUK</h2>
         <input type="text" id="username" placeholder="Username" autocomplete="off">
         <input type="password" id="password" placeholder="Password">
-        <button class="btn-primary" onclick="login()">Masuk</button>
+        <button class="btn-primary" onclick="loginkasir()">Masuk</button>
         <div id="loginStatus" style="color:var(--danger); margin-top:16px; font-size:13px; font-weight:500;"></div>
         <div style="display: flex; justify-content: center; margin-top: 50px;">
             <button id="btnGoogleLogin" style="display: flex; align-items: center; justify-content: center; gap: 10px; padding: 10px 20px; font-family: sans-serif; font-weight: bold; background-color: white; border: 1px solid #dadce0; border-radius: 4px; cursor: pointer; color: #3c4043; width: 100%; max-width: 300px;">
@@ -4725,7 +4725,7 @@
         else { tabProd.className = "main-area hide-view"; tabCart.className = "sidebar-cart active-view"; btnProd.classList.remove('active'); btnCart.classList.add('active'); }
       }
 
-      async function login() { 
+      async function loginkasir() { 
         let u = document.getElementById('username').value; 
         let p = document.getElementById('password').value; 
         document.getElementById('loginStatus').innerText = "Memeriksa..."; 
