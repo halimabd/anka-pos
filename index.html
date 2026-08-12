@@ -10956,7 +10956,7 @@
           
           // Simpan ke window agar bisa diakses dari mana saja tanpa kena error 'not defined'
           window.supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
-  
+      
           // 2. Logika Tombol Login
           const btnLogin = document.getElementById('btnGoogleLogin');
           
@@ -10964,7 +10964,7 @@
               btnLogin.addEventListener('click', async function() {
                   this.innerHTML = 'Memproses...';
                   this.disabled = true;
-  
+      
                   // Panggil menggunakan window.supabaseClient
                   const { data, error } = await window.supabaseClient.auth.signInWithOAuth({
                       provider: 'google',
@@ -10972,7 +10972,7 @@
                           redirectTo: window.location.origin 
                       }
                   });
-  
+      
                   if (error) {
                       alert("Terjadi kesalahan saat login: " + error.message);
                       this.innerHTML = 'Masuk dengan Google';
@@ -10982,22 +10982,69 @@
           } else {
               console.error("Elemen tombol dengan ID 'btnGoogleLogin' tidak ditemukan.");
           }
-  
-          // 3. Pengecekan Sesi Otomatis
-          window.supabaseClient.auth.getSession().then(({ data: { session } }) => {
+      
+          // 3. Pengecekan Sesi Otomatis & Pendaftaran Otomatis (Onboarding)
+          window.supabaseClient.auth.getSession().then(async ({ data: { session } }) => {
               if (session) {
                   console.log("Autentikasi Berhasil! Email:", session.user.email);
                   
-                  localStorage.setItem('klien_id', session.user.id);
-                  localStorage.setItem('user_email', session.user.email);
+                  const klienId = session.user.id;
+                  const userEmail = session.user.email;
                   
-                  // Jika ingin langsung pindah halaman, aktifkan kode di bawah:
-                  // window.location.href = '/dashboard.html'; 
+                  // Ambil nama dari Google (jika kosong, gunakan bagian depan email)
+                  const namaGoogle = session.user.user_metadata?.full_name || userEmail.split('@')[0];
+      
+                  // Simpan data dasar ke localStorage
+                  localStorage.setItem('klien_id', klienId);
+                  localStorage.setItem('user_email', userEmail);
+                  
+                  const statusEl = document.getElementById('loginStatus');
+                  if (statusEl) statusEl.innerText = "Membuka aplikasi...";
+      
+                  // Cek apakah akun Google ini sudah punya profil 'Owner' di tabel staff_toko
+                  const { data: staffData, error: staffError } = await window.supabaseClient
+                      .from('staff_toko')
+                      .select('*')
+                      .eq('klien_id', klienId)
+                      .eq('role', 'Owner')
+                      .maybeSingle();
+      
+                  if (staffData) {
+                      // PENGGUNA LAMA: Langsung masuk ke aplikasi
+                      console.log("Akun lama terdeteksi, masuk otomatis.");
+                      masukKeAplikasi(staffData);
+                  } else {
+                      // PENGGUNA BARU: Buat profil otomatis
+                      console.log("Akun baru terdeteksi, menyiapkan profil otomatis...");
+                      
+                      // Buat 4 digit angka acak untuk password (contoh: 8492)
+                      const sandiAcak = Math.floor(1000 + Math.random() * 9000).toString(); 
+                      
+                      const { data: newStaff, error: insertError } = await window.supabaseClient
+                          .from('staff_toko')
+                          .insert([{
+                              klien_id: klienId,
+                              username: 'admin',
+                              password: sandiAcak,
+                              role: 'Owner',
+                              nama: namaGoogle
+                          }])
+                          .select()
+                          .single();
+      
+                      if (!insertError && newStaff) {
+                          console.log("Profil otomatis berhasil dibuat!");
+                          masukKeAplikasi(newStaff);
+                      } else {
+                          console.error("Gagal membuat profil otomatis:", insertError);
+                          if (statusEl) statusEl.innerText = "Gagal menyiapkan akun baru.";
+                      }
+                  }
               } else {
                   console.log("Menunggu pengguna melakukan login...");
               }
           });
-  
+      
           // 4. Deteksi Perubahan Status Login
           window.supabaseClient.auth.onAuthStateChange((event, session) => {
               if (event === 'SIGNED_OUT') {
@@ -11006,6 +11053,38 @@
               }
           });
       });
+      
+      // 5. Fungsi Pembantu untuk Mengatur Tampilan setelah Login Sukses
+      function masukKeAplikasi(dataStaff) {
+          // Set variabel lokal/global aplikasi
+          currentUser = dataStaff.username; 
+          currentRole = dataStaff.role; 
+          currentNama = dataStaff.nama; 
+          
+          // Simpan data kasir/owner yang aktif ke Local Storage
+          localStorage.setItem('pos_aktif_user', currentUser); 
+          localStorage.setItem('pos_aktif_role', currentRole); 
+          localStorage.setItem('pos_aktif_nama', currentNama); 
+          
+          // Ubah UI
+          const namaKasirEl = document.getElementById('namaKasir');
+          if (namaKasirEl) namaKasirEl.innerText = currentNama; 
+          
+          if (typeof tampilkanNamaUser === "function") tampilkanNamaUser(); 
+          
+          // Sembunyikan form login, tampilkan layar utama aplikasi
+          const loginView = document.getElementById('loginView');
+          const appView = document.getElementById('appView');
+          
+          if (loginView) loginView.style.display = 'none'; 
+          if (appView) appView.style.display = 'flex'; 
+          
+          // Panggil fungsi inisialisasi aplikasi kasir
+          if (typeof aturHakAkses === "function") aturHakAkses(currentRole); 
+          if (typeof muatDataKatalog === "function") muatDataKatalog(); 
+          if (typeof muatPengaturanData === "function") muatPengaturanData(); 
+          if (typeof muatManajemenKas === "function") muatManajemenKas();
+      }
             
     </script>
   </body>
