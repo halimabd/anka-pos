@@ -10940,60 +10940,66 @@
           }
       }
       
-      // 1. Inisialisasi Supabase (Ganti dengan URL dan Key dari Dashboard Supabase Anda)
-      const supabaseUrl = 'https://xnbsbfhyzcwsofcydybw.supabase.co';
-      const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhuYnNiZmh5emN3c29mY3lkeWJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0ODA0NjcsImV4cCI6MjEwMjA1NjQ2N30.WWC2nmzHLk2D3rssFswpidlq0S6ExwLU6xEoSS2w_2k';
-      const supabaseCLient = supabase.createClient(supabaseUrl, supabaseKey);
+      // Bungkus semua kode agar menunggu elemen HTML (termasuk tombol) selesai dimuat
+      window.addEventListener('DOMContentLoaded', () => {
+          
+          // 1. Inisialisasi Supabase sebagai variabel GLOBAL (window.supabaseClient)
+          const supabaseUrl = 'https://xnbsbfhyzcwsofcydybw.supabase.co';
+          const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhuYnNiZmh5emN3c29mY3lkeWJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0ODA0NjcsImV4cCI6MjEwMjA1NjQ2N30.WWC2nmzHLk2D3rssFswpidlq0S6ExwLU6xEoSS2w_2k';
+          
+          // Simpan ke window agar bisa diakses dari mana saja tanpa kena error 'not defined'
+          window.supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
   
-      // 2. Fungsi untuk memicu Login Google saat tombol diklik
-      document.getElementById('btnGoogleLogin').addEventListener('click', async function() {
-          // Mengubah teks tombol agar terlihat merespons
-          this.innerHTML = 'Memproses...';
-          this.disabled = true;
-      
-          // Perhatikan penggunaan supabaseClient di sini
-          const { data, error } = await supabaseClient.auth.signInWithOAuth({
-              provider: 'google',
-              options: {
-                  // Mengarahkan kembali ke halaman ini setelah login sukses
-                  redirectTo: window.location.origin 
+          // 2. Logika Tombol Login
+          const btnLogin = document.getElementById('btnGoogleLogin');
+          
+          if (btnLogin) {
+              btnLogin.addEventListener('click', async function() {
+                  this.innerHTML = 'Memproses...';
+                  this.disabled = true;
+  
+                  // Panggil menggunakan window.supabaseClient
+                  const { data, error } = await window.supabaseClient.auth.signInWithOAuth({
+                      provider: 'google',
+                      options: {
+                          redirectTo: window.location.origin 
+                      }
+                  });
+  
+                  if (error) {
+                      alert("Terjadi kesalahan saat login: " + error.message);
+                      this.innerHTML = 'Masuk dengan Google';
+                      this.disabled = false;
+                  }
+              });
+          } else {
+              console.error("Elemen tombol dengan ID 'btnGoogleLogin' tidak ditemukan.");
+          }
+  
+          // 3. Pengecekan Sesi Otomatis
+          window.supabaseClient.auth.getSession().then(({ data: { session } }) => {
+              if (session) {
+                  console.log("Autentikasi Berhasil! Email:", session.user.email);
+                  
+                  localStorage.setItem('klien_id', session.user.id);
+                  localStorage.setItem('user_email', session.user.email);
+                  
+                  // Jika ingin langsung pindah halaman, aktifkan kode di bawah:
+                  // window.location.href = '/dashboard.html'; 
+              } else {
+                  console.log("Menunggu pengguna melakukan login...");
               }
           });
-      
-          if (error) {
-              alert("Terjadi kesalahan saat login: " + error.message);
-              this.innerHTML = 'Masuk dengan Google';
-              this.disabled = false;
-          }
-      });
-      
-      // 3. Pengecekan Sesi Otomatis (Dijalankan setiap kali halaman dimuat)
-      window.addEventListener('DOMContentLoaded', async () => {
-          // Mengambil sesi pengguna yang sedang aktif
-          const { data: { session } } = await supabaseClient.auth.getSession();
-          
-          if (session) {
-              console.log("Autentikasi Berhasil! Email:", session.user.email);
-              
-              // Menyimpan ID unik pengguna ke localStorage
-              localStorage.setItem('klien_id', session.user.id);
-              localStorage.setItem('user_email', session.user.email);
-              
-              // Lanjut arahkan pengguna ke halaman dashboard POS 
-              // window.location.href = '/dashboard.html'; 
-          } else {
-              console.log("Menunggu pengguna melakukan login...");
-          }
-      
-          // Listener tambahan jika status login berubah
-          supabaseClient.auth.onAuthStateChange((event, session) => {
+  
+          // 4. Deteksi Perubahan Status Login
+          window.supabaseClient.auth.onAuthStateChange((event, session) => {
               if (event === 'SIGNED_OUT') {
                   localStorage.removeItem('klien_id');
                   localStorage.removeItem('user_email');
               }
           });
       });
-          
+            
     </script>
   </body>
 </html>
