@@ -10962,7 +10962,7 @@
                   const { data, error } = await window.supabaseClient.auth.signInWithOAuth({
                       provider: 'google',
                       options: {
-                          redirectTo: window.location.origin 
+                          redirectTo: 'http://localhost:3000' 
                       }
                   });
   
