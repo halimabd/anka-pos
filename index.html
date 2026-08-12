@@ -4726,49 +4726,56 @@
       }
 
       async function login() { 
-        let u = document.getElementById('username').value; 
-        let p = document.getElementById('password').value; 
-        document.getElementById('loginStatus').innerText = "Memeriksa..."; 
-        
-        try {
-            // 1. Panggil backend dan kirim data u dan p di dalam payload
-            let res = await panggilBackend('verifikasiLogin', { username: u, password: p });
-            
-            // 2. Kode di bawah ini adalah pengganti withSuccessHandler
-            if(res.success) { 
-                currentUser = res.user; 
-                currentRole = res.role; // <-- Ini variabel aslimu
-                currentNama = res.nama || res.user; 
-                
-                localStorage.setItem('pos_aktif_user', currentUser); 
-                localStorage.setItem('pos_aktif_role', currentRole); 
-                localStorage.setItem('pos_aktif_nama', currentNama); 
-                
-                document.getElementById('namaKasir').innerText = currentNama; 
-                tampilkanNamaUser(); 
-                
-                document.getElementById('loginView').style.display = 'none'; 
-                document.getElementById('appView').style.display = 'flex'; 
-                
-                aturHakAkses(currentRole); 
-                muatDataKatalog(); 
-                muatPengaturanData(); 
-                
-                // 💡 TAMBAHKAN INI: Agar layar Manajemen Kas langsung menyesuaikan dengan Role yang baru login
-                if (typeof muatManajemenKas === "function") {
-                    muatManajemenKas();
-                }
-                
-            } else { 
-                // Jika password salah / user tidak ditemukan
-                document.getElementById('loginStatus').innerText = res.message; 
-            } 
-
-        } catch (error) {
-            // 3. Tangkap error jika internet putus atau server mati
-            document.getElementById('loginStatus').innerText = "Gagal terhubung ke server.";
-            console.error(error);
-        }
+          let u = document.getElementById('username').value; 
+          let p = document.getElementById('password').value; 
+          document.getElementById('loginStatus').innerText = "Memeriksa..."; 
+          
+          try {
+              // 1. Panggil Supabase: Cari di tabel 'staff_toko' yang username dan password-nya persis sama
+              const { data, error } = await window.supabaseClient
+                  .from('staff_toko')
+                  .select('*')
+                  .eq('username', u)
+                  .eq('password', p)
+                  .single(); // .single() digunakan agar Supabase hanya mengembalikan 1 objek (bukan array), atau error jika tidak ketemu
+      
+              // 2. Evaluasi Hasil Query (Pengganti if(res.success))
+              if (data) { 
+                  // Login Berhasil!
+                  currentUser = data.username; 
+                  currentRole = data.role; 
+                  currentNama = data.nama || data.username; 
+                  
+                  localStorage.setItem('pos_aktif_user', currentUser); 
+                  localStorage.setItem('pos_aktif_role', currentRole); 
+                  localStorage.setItem('pos_aktif_nama', currentNama); 
+                  
+                  document.getElementById('namaKasir').innerText = currentNama; 
+                  if (typeof tampilkanNamaUser === "function") tampilkanNamaUser(); 
+                  
+                  document.getElementById('loginView').style.display = 'none'; 
+                  document.getElementById('appView').style.display = 'flex'; 
+                  
+                  if (typeof aturHakAkses === "function") aturHakAkses(currentRole); 
+                  if (typeof muatDataKatalog === "function") muatDataKatalog(); 
+                  if (typeof muatPengaturanData === "function") muatPengaturanData(); 
+                  
+                  // 💡 TAMBAHKAN INI: Agar layar Manajemen Kas langsung menyesuaikan dengan Role yang baru login
+                  if (typeof muatManajemenKas === "function") {
+                      muatManajemenKas();
+                  }
+                  
+              } else { 
+                  // Jika password salah / user tidak ditemukan (data bernilai null)
+                  console.error("Gagal login manual:", error?.message);
+                  document.getElementById('loginStatus').innerText = "Username atau Password salah!"; 
+              } 
+      
+          } catch (err) {
+              // 3. Tangkap error jika internet putus atau server mati
+              document.getElementById('loginStatus').innerText = "Gagal terhubung ke database.";
+              console.error("Error catch login:", err);
+          }
       }
           
       function logout() { currentUser = ""; currentRole = ""; localStorage.removeItem('pos_aktif_user'); localStorage.removeItem('pos_aktif_role'); document.getElementById('username').value = ""; document.getElementById('password').value = ""; document.getElementById('appView').style.display = 'none'; document.getElementById('loginView').style.display = 'flex';
