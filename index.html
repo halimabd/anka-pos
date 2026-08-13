@@ -4738,21 +4738,31 @@
         else { tabProd.className = "main-area hide-view"; tabCart.className = "sidebar-cart active-view"; btnProd.classList.remove('active'); btnCart.classList.add('active'); }
       }
 
+      // --- FUNGSI LOGIN MANUAL (Untuk Kasir / Admin) ---
       async function login() { 
           let u = document.getElementById('username').value; 
           let p = document.getElementById('password').value; 
           document.getElementById('loginStatus').innerText = "Memeriksa..."; 
           
           try {
-              // 1. Panggil Supabase: Cari di tabel 'staff_toko' yang username dan password-nya persis sama
+              // 1. Ambil ID Toko dari perangkat ini
+              const klienId = localStorage.getItem('klien_id');
+              
+              if (!klienId) {
+                  document.getElementById('loginStatus').innerText = "Perangkat belum diotorisasi oleh Owner (Google Login).";
+                  return; // Hentikan proses jika belum ada koneksi toko
+              }
+      
+              // 2. Panggil Supabase dengan filter klien_id dan maybeSingle()
               const { data, error } = await window.supabaseClient
                   .from('staff_toko')
                   .select('*')
+                  .eq('klien_id', klienId) // 💡 PENTING: Pastikan login di toko yang tepat
                   .eq('username', u)
                   .eq('password', p)
-                  .single(); // .single() digunakan agar Supabase hanya mengembalikan 1 objek (bukan array), atau error jika tidak ketemu
+                  .maybeSingle(); // 💡 PENTING: Gunakan maybeSingle agar tidak error saat salah password
       
-              // 2. Evaluasi Hasil Query (Pengganti if(res.success))
+              // 3. Evaluasi Hasil
               if (data) { 
                   // Login Berhasil!
                   currentUser = data.username; 
@@ -4773,30 +4783,50 @@
                   if (typeof muatDataKatalog === "function") muatDataKatalog(); 
                   if (typeof muatPengaturanData === "function") muatPengaturanData(); 
                   
-                  // 💡 TAMBAHKAN INI: Agar layar Manajemen Kas langsung menyesuaikan dengan Role yang baru login
                   if (typeof muatManajemenKas === "function") {
                       muatManajemenKas();
                   }
                   
               } else { 
-                  // Jika password salah / user tidak ditemukan (data bernilai null)
-                  console.error("Gagal login manual:", error?.message);
+                  // Jika salah password atau username
                   document.getElementById('loginStatus').innerText = "Username atau Password salah!"; 
+                  if(error) console.error("Error dari Supabase:", error.message);
               } 
       
           } catch (err) {
-              // 3. Tangkap error jika internet putus atau server mati
               document.getElementById('loginStatus').innerText = "Gagal terhubung ke database.";
               console.error("Error catch login:", err);
           }
       }
+      
+      // --- FUNGSI LOGOUT (Berfungsi sebagai "Lock Screen" Kasir) ---
+      function logout() { 
+          // Bersihkan variabel lokal
+          currentUser = ""; 
+          currentRole = ""; 
+          currentNama = "";
           
-      function logout() { currentUser = ""; currentRole = ""; localStorage.removeItem('pos_aktif_user'); localStorage.removeItem('pos_aktif_role'); document.getElementById('username').value = ""; document.getElementById('password').value = ""; document.getElementById('appView').style.display = 'none'; document.getElementById('loginView').style.display = 'flex';
-      let userDisplay = document.getElementById('userDisplay');
-      if (userDisplay) {
-          userDisplay.innerText = ""; 
+          // Hapus sesi kasir dari Local Storage (Tapi biarkan klien_id dan user_email tetap ada)
+          localStorage.removeItem('pos_aktif_user'); 
+          localStorage.removeItem('pos_aktif_role'); 
+          localStorage.removeItem('pos_aktif_nama'); // 💡 Tambahan: bersihkan nama juga
+          
+          // Bersihkan formulir login
+          document.getElementById('username').value = ""; 
+          document.getElementById('password').value = ""; 
+          document.getElementById('loginStatus').innerText = ""; 
+          
+          // Ganti tampilan
+          document.getElementById('appView').style.display = 'none'; 
+          document.getElementById('loginView').style.display = 'flex';
+          
+          let userDisplay = document.getElementById('userDisplay');
+          if (userDisplay) {
+              userDisplay.innerText = ""; 
+          }
+          
+          if (typeof closeMobileSidebar === "function") closeMobileSidebar(); 
       }
-      closeMobileSidebar(); }
 
       async function muatDataKatalog() { 
         try {
