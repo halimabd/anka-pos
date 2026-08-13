@@ -5539,6 +5539,16 @@
               // Kita siapkan no_struk sederhana:
               let randomNum = Math.floor(1000 + Math.random() * 9000);
               let noStrukBaru = "INV-" + Date.now().toString().slice(-6) + "-" + randomNum;
+
+              // ✨ MENGHITUNG TOTAL HPP TRANSAKSI
+              let totalHppGlobal = 0;
+              if (keranjang && keranjang.length > 0) {
+                  keranjang.forEach(item => {
+                      // Pastikan item.hpp ada nilainya, jika tidak anggap 0
+                      let hppProduk = parseFloat(item.hpp) || 0; 
+                      totalHppGlobal += (hppProduk * item.jumlah);
+                  });
+              }
       
               // Payload yang disesuaikan PERSIS dengan kolom tabel 'transaksi' di Supabase Anda
               let payloadDB = {
@@ -5563,7 +5573,8 @@
                   total_akhir: totalAkhirGlobal, 
                   uang_bayar: bayar,                   
                   kembalian: (bayar - totalAkhirGlobal),
-                  status_transaksi: "Lunas"            
+                  status_transaksi: "Lunas",
+                  total_hpp_transaksi: totalHppGlobal
               };
                   
               jenisStrukOpen = "baru"; 
