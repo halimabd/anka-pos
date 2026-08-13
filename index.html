@@ -5668,30 +5668,89 @@
 
       // FUNGSI PEMBANTU: Memecah logika keberhasilan agar kode tidak terlalu panjang berulang
       function selesaikanTransaksiFrontend(res, payload, btnPay) {
-          btnPay.disabled = false; 
-          btnPay.innerHTML = "Konfirmasi Pembayaran";                   
+          if (btnPay) {
+              btnPay.disabled = false; 
+              btnPay.innerHTML = "Konfirmasi Pembayaran";
+          }                    
           
-          if(res.success) { 
-            Swal.close();              
-            let cbWa = document.getElementById('cbKirimWa');
-            let inputWa = document.getElementById('noWaPelanggan').value;            
-            if (cbWa && cbWa.checked) {
-              if (!inputWa || inputWa.trim() === "") {
-                alert("Perhatian: Struk WA tidak terkirim karena nomor pelanggan kosong!");
-              } else {
-                let totalTeks = "Rp " + payload.total.toLocaleString('id-ID');
-                buatStrukWA(inputWa, res.struk.noStruk, payload.keranjang, totalTeks, payload.pelanggan, payload.ppn, payload.kembalian, payload.catatanKasir, payload.bayar, payload.diskon, payload.diskonPoin);
+          // 💡 PENYESUAIAN 1: Cek keberhasilan berdasarkan adanya 'id' dari Supabase (bukan res.success)
+          if (res && res.id) { 
+              Swal.close();              
+              
+              // 💡 PENYESUAIAN 2: Susun ulang data struk dari hasil Supabase dan Payload
+              let dataStruk = {
+                  noStruk: res.no_struk || payload.no_struk,
+                  tanggal: res.created_at || new Date().toLocaleString('id-ID'),
+                  kasir: payload.kasir,
+                  pelanggan: payload.pelanggan,
+                  meja: payload.nomor_meja,
+                  catatan: payload.catatan,
+                  catatanKasir: payload.catatan_kasir,
+                  metodeBayar: payload.metode_bayar,
+                  items: payload.keranjang || payload.items,
+                  subtotal: payload.subtotal,
+                  diskon: payload.diskon,
+                  poinDipakai: payload.poin_dipakai || 0,
+                  diskonPoin: payload.diskon_poin || 0,
+                  poinDidapat: Math.floor((payload.total_akhir || 0) / 10000), 
+                  pph: payload.pph,
+                  ppn: payload.ppn,
+                  ongkir: payload.ongkir,
+                  pembulatan: payload.pembulatan,
+                  total: payload.total_akhir, // Diambil dari total_akhir (bukan total)
+                  bayar: payload.bayar,
+                  kembalian: payload.kembalian
+              };
+      
+              let cbWa = document.getElementById('cbKirimWa');
+              let elNoWa = document.getElementById('noWaPelanggan');
+              let inputWa = elNoWa ? elNoWa.value : "";            
+              
+              if (cbWa && cbWa.checked) {
+                  if (!inputWa || inputWa.trim() === "") {
+                      alert("Perhatian: Struk WA tidak terkirim karena nomor pelanggan kosong!");
+                  } else {
+                      let totalTeks = "Rp " + dataStruk.total.toLocaleString('id-ID');
+                      
+                      // 💡 PENYESUAIAN 3: Gunakan dataStruk sebagai sumber parameter WA
+                      buatStrukWA(
+                          inputWa, 
+                          dataStruk.noStruk, 
+                          dataStruk.items, 
+                          totalTeks, 
+                          dataStruk.pelanggan, 
+                          dataStruk.ppn, 
+                          dataStruk.kembalian, 
+                          dataStruk.catatanKasir, 
+                          dataStruk.bayar, 
+                          dataStruk.diskon, 
+                          dataStruk.diskonPoin
+                      );
+                  }
               }
-            }
-            
-            document.getElementById('noWaPelanggan').value = "";   
-            document.getElementById('cbKirimWa').checked = false; 
-            document.getElementById('namaPembeliNonMember').value = "";
-
-            bukaLayarFormStruk(res.struk); 
-            if(typeof muatAnalitikBulanan === 'function') muatAnalitikBulanan();                        
+              
+              // Bersihkan form input tambahan
+              if (elNoWa) elNoWa.value = "";   
+              if (cbWa) cbWa.checked = false; 
+              
+              let elNamaNon = document.getElementById('namaPembeliNonMember');
+              if (elNamaNon) elNamaNon.value = "";
+              
+              let elUangBayar = document.getElementById('uangBayar');
+              if (elUangBayar) elUangBayar.value = "";
+      
+              // 💡 PENYESUAIAN 4: Kosongkan keranjang setelah transaksi sukses
+              keranjang = [];
+              if (typeof renderKeranjang === 'function') renderKeranjang();
+      
+              // Panggil layar struk menggunakan data yang sudah dirapikan
+              if (typeof bukaLayarFormStruk === 'function') {
+                  bukaLayarFormStruk(dataStruk); 
+              }
+      
+              if (typeof muatAnalitikBulanan === 'function') muatAnalitikBulanan();                        
           } else { 
-            alert("Gagal Tersimpan: " + res.message); 
+              alert("Gagal Tersimpan: Terjadi kesalahan saat membaca data dari database."); 
           } 
       }
 
