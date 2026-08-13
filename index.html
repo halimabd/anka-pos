@@ -6148,126 +6148,138 @@
 
       // FUNGSI UNTUK MERESET FILTER TANGGAL
       function resetFilter() {
-        // 1. Kosongkan elemen input tanggal
-        let inputMulai = document.getElementById('filterStart');
-        let inputSelesai = document.getElementById('filterEnd');
-        
-        if (inputMulai) inputMulai.value = "";
-        if (inputSelesai) inputSelesai.value = "";
-        
-        // 2. Muat ulang tabel dengan semua data
-        if (typeof muatDashboard === "function") {
-          muatDashboard(); 
-        } else {
-          console.log("Error: Fungsi muatDashboard tidak ditemukan.");
-        }
+          let inputMulai = document.getElementById('filterStart');
+          let inputSelesai = document.getElementById('filterEnd');
+          
+          if (inputMulai) inputMulai.value = "";
+          if (inputSelesai) inputSelesai.value = "";
+          
+          if (typeof muatDashboard === "function") {
+              muatDashboard(); 
+          } else {
+              console.log("Error: Fungsi muatDashboard tidak ditemukan.");
+          }
       }
-
+      
       let dataRiwayatPaginasi = [];
       let riwayatHalamanSaatIni = 1;
       let riwayatLimitBaris = 25;
-
-      // ✨ FUNGSI BARU 1: Menggambar Tabel & Tampilan Kartu HP (Sudah Gabung Paginasi)
+      
+      // ✨ FUNGSI BARU 1: Menggambar Tabel & Tampilan Kartu HP (Telah Disesuaikan untuk Supabase)
       function gambarTabelRiwayat(dataBaru) {
-        // Jika ada data masuk dari server/filter, perbarui state & reset ke halaman 1
-        if (dataBaru) {
-          dataRiwayatPaginasi = dataBaru;
-          riwayatHalamanSaatIni = 1;
-        }
-
-        let tableBody = document.getElementById('dashLogTable');
-        let totalData = dataRiwayatPaginasi.length;
-
-        // Jika Data Kosong
-        if (totalData === 0) {
-          tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:24px; color:var(--text-muted);">Tidak ada data transaksi</td></tr>`;
-          document.getElementById("teksInformasiPaginasi").innerText = "Tidak ada data riwayat.";
-          document.getElementById("tombolPaginasi").innerHTML = "";
-          return;
-        }
-
-        // LOGIKA PAGINASI (Memotong array sesuai halaman)
-        let indexMulai = (riwayatHalamanSaatIni - 1) * riwayatLimitBaris;
-        let indexAkhir = Math.min(indexMulai + riwayatLimitBaris, totalData);
-        let dataHalamanIni = dataRiwayatPaginasi.slice(indexMulai, indexAkhir);
-
-        // Update Teks Informasi (Contoh: Menampilkan 1 sampai 10 dari 45 data)
-        document.getElementById("teksInformasiPaginasi").innerText = `Menampilkan ${indexMulai + 1} sampai ${indexAkhir} dari${totalData} data`;
-
-        tableBody.innerHTML = "";
-        
-        // Loop HANYA pada data di halaman saat ini
-        dataHalamanIni.forEach((r, idxSlice) => {
-          // PENTING: Kalkulasi index asli untuk Cetak Struk agar tidak salah cetak di halaman 2+
-          let idxAsli = indexMulai + idxSlice; 
-
-          // --- LOGIKA VOID ---
-          let tombolVoidHtml = "";
-          if (r.status === 'Dibatalkan' || r.status === 'Batal') {
-            let voidNama = r.voidBy ? `(oleh: ${r.voidBy})` : "";
-            tombolVoidHtml = `<div style="text-align:center;"><span style="color:var(--danger); font-weight:700; font-size:12px;">BATAL</span><br><span style="font-size:10px; color:var(--text-muted);">${voidNama}</span></div>`;
-          } 
-          // PENGUNCI GANDA: Harus Supervisor/Owner DAN 'isToday' wajib true!
-          else if ((currentRole === 'Supervisor' || currentRole === 'Owner') && r.isToday === true) {
-            tombolVoidHtml = `<button onclick="event.stopPropagation(); prosesVoid(${r.rowNumber})" class="btn-void">void</button>`;
+          if (dataBaru) {
+              dataRiwayatPaginasi = dataBaru;
+              riwayatHalamanSaatIni = 1;
           }
-
-          // --- LOGIKA LABA ---
-          let labaTampil = "";
-          if (currentRole === 'Owner') {
-            labaTampil = (r.status === 'Dibatalkan' || r.status === 'Batal') ? `<s style="color:var(--text-muted);">Rp ${r.laba.toLocaleString('id-ID')}</s>` : `Rp ${r.laba.toLocaleString('id-ID')}`;
-          } else {
-            labaTampil = `<span style="font-size:12px; color:var(--text-muted); font-style:italic; text-align:center;">--</span>`;
+      
+          let tableBody = document.getElementById('dashLogTable');
+          let totalData = dataRiwayatPaginasi.length;
+      
+          if (totalData === 0) {
+              tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:24px; color:var(--text-muted);">Tidak ada data transaksi</td></tr>`;
+              if (document.getElementById("teksInformasiPaginasi")) document.getElementById("teksInformasiPaginasi").innerText = "Tidak ada data riwayat.";
+              if (document.getElementById("tombolPaginasi")) document.getElementById("tombolPaginasi").innerHTML = "";
+              return;
           }
-
-          // --- ✨ LOGIKA ICON STATUS (BARU) ✨ ---
-          let iconSvg = "";
-          let statusTrx = r.status || "Sukses"; // Pastikan status tidak kosong
+      
+          let indexMulai = (riwayatHalamanSaatIni - 1) * riwayatLimitBaris;
+          let indexAkhir = Math.min(indexMulai + riwayatLimitBaris, totalData);
+          let dataHalamanIni = dataRiwayatPaginasi.slice(indexMulai, indexAkhir);
+      
+          if (document.getElementById("teksInformasiPaginasi")) {
+              document.getElementById("teksInformasiPaginasi").innerText = `Menampilkan ${indexMulai + 1} sampai ${indexAkhir} dari ${totalData} data`;
+          }
+      
+          tableBody.innerHTML = "";
           
-          if (statusTrx === "Pending") {
-              // Icon Jam / Waktu (Warna Orange)
-              iconSvg = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>`;
-          } else if (statusTrx === "Dibatalkan" || statusTrx === "Batal") {
-              // Icon Silang (Warna Merah)
-              iconSvg = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>`;
-          } else {
-              // Default (Lunas / Sukses) - Icon Centang (Warna Hijau)
-              iconSvg = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
+          // Siapkan tanggal hari ini untuk perbandingan tombol Void
+          let todayStr = new Date().toISOString().split('T')[0];
+      
+          dataHalamanIni.forEach((r, idxSlice) => {
+              let idxAsli = indexMulai + idxSlice; 
+      
+              // 💡 PENYESUAIAN 1: Cek nama kolom status Supabase
+              let statusTrx = r.status_transaksi || r.status || "Sukses";
+              let namaVoid = r.void_by || r.voidBy || "";
+      
+              // 💡 PENYESUAIAN 2: Hitung 'isToday' dan 'laba' langsung di sini
+              let isToday = (r.created_at && r.created_at.startsWith(todayStr)) || r.isToday;
+              
+              let omset = parseFloat(r.total) || 0;
+              let hpp = parseFloat(r.total_hpp_transaksi) || 0;
+              let labaTrx = r.laba !== undefined ? parseFloat(r.laba) : (omset - hpp);
+      
+              // 💡 PENYESUAIAN 3: Format tanggal dari Supabase
+              let tanggalTampil = r.tanggalShort;
+              if (!tanggalTampil) {
+                  let d = new Date(r.created_at || r.tanggalFull);
+                  tanggalTampil = d.toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+              }
+      
+              // --- LOGIKA VOID ---
+              let tombolVoidHtml = "";
+              if (statusTrx === 'Dibatalkan' || statusTrx === 'Batal') {
+                  let voidText = namaVoid ? `(oleh: ${namaVoid})` : "";
+                  tombolVoidHtml = `<div style="text-align:center;"><span style="color:var(--danger); font-weight:700; font-size:12px;">BATAL</span><br><span style="font-size:10px; color:var(--text-muted);">${voidText}</span></div>`;
+              } 
+              else if ((currentRole === 'Supervisor' || currentRole === 'Owner') && isToday) {
+                  // 💡 PENYESUAIAN 4: Ganti r.rowNumber menjadi r.id (UUID Transaksi)
+                  tombolVoidHtml = `<button onclick="event.stopPropagation(); prosesVoid('${r.id}')" class="btn-void">void</button>`;
+              }
+      
+              // --- LOGIKA LABA ---
+              let labaTampil = "";
+              if (currentRole === 'Owner') {
+                  labaTampil = (statusTrx === 'Dibatalkan' || statusTrx === 'Batal') 
+                      ? `<s style="color:var(--text-muted);">Rp ${labaTrx.toLocaleString('id-ID')}</s>` 
+                      : `Rp ${labaTrx.toLocaleString('id-ID')}`;
+              } else {
+                  labaTampil = `<span style="font-size:12px; color:var(--text-muted); font-style:italic; text-align:center;">--</span>`;
+              }
+      
+              // --- LOGIKA ICON STATUS ---
+              let iconSvg = "";
+              if (statusTrx === "Pending") {
+                  iconSvg = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>`;
+              } else if (statusTrx === "Dibatalkan" || statusTrx === "Batal") {
+                  iconSvg = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>`;
+              } else {
+                  iconSvg = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
+              }
+              
+              // --- RENDERING HTML ---
+              tableBody.innerHTML += `
+                  <tr style="position: relative;">
+                    <td class="col-waktu">
+                      <span class="lbl-mob">Tgl & Waktu: </span>${tanggalTampil}
+                    </td>
+                    
+                    <td class="col-struk" onclick="reprintStrukLama(${idxAsli})" style="cursor:pointer;" title="Klik untuk Cetak Struk">
+                      <span class="lbl-mob">No. Struk: </span>
+                      <div style="display: inline-flex; align-items: center; gap: 8px;">
+                        <code style="background:var(--bg-main); padding:4px 8px; border-radius:4px; color:var(--primary); font-family:inherit;">${r.noStruk}</code>
+                        <span class="icon-status-riwayat" title="${statusTrx}">${iconSvg}</span>
+                      </div>
+                    </td>
+                    
+                    <td class="col-pelanggan">
+                      <span class="lbl-mob">Pelanggan: </span><strong>${r.pelanggan}</strong>
+                    </td>
+                    <td class="col-total">
+                      <span class="lbl-mob">Total Belanja: </span><strong style="color:var(--text-dark);">Rp ${omset.toLocaleString('id-ID')}</strong>
+                    </td>
+                    <td class="col-laba">
+                      <span class="lbl-mob">Laba: </span><strong style="color:var(--success);">${labaTampil}</strong>
+                    </td>
+                    <td class="col-aksi" style="text-align: center;">
+                      ${tombolVoidHtml}
+                    </td>
+                  </tr>`; 
+          });
+      
+          if (typeof gambarTombolPaginasi === "function") {
+              gambarTombolPaginasi(totalData);
           }
-            
-          // --- RENDERING HTML MENDUKUNG CARD VIEW HP ---
-          // (Penting: Tambahkan style="position: relative;" di tag <tr> agar posisi icon HP akurat)
-          tableBody.innerHTML += `
-            <tr style="position: relative;">
-              <td class="col-waktu">
-                <span class="lbl-mob">Tgl & Waktu: </span>${r.tanggalShort}
-              </td>
-              
-              <td class="col-struk" onclick="reprintStrukLama(${idxAsli})" style="cursor:pointer;" title="Klik untuk Cetak Struk">
-                <span class="lbl-mob">No. Struk: </span>
-                <div style="display: inline-flex; align-items: center; gap: 8px;">
-                  <code style="background:var(--bg-main); padding:4px 8px; border-radius:4px; color:var(--primary); font-family:inherit;">${r.noStruk}</code>
-                  <span class="icon-status-riwayat" title="${statusTrx}">${iconSvg}</span>
-                </div>
-              </td>
-              
-              <td class="col-pelanggan">
-                <span class="lbl-mob">Pelanggan: </span><strong>${r.pelanggan}</strong>
-              </td>
-              <td class="col-total">
-                <span class="lbl-mob">Total Belanja: </span><strong style="color:var(--text-dark);">Rp ${r.total.toLocaleString('id-ID')}</strong>
-              </td>
-              <td class="col-laba">
-                <span class="lbl-mob">Laba: </span><strong style="color:var(--success);">${labaTampil}</strong>
-              </td>
-              <td class="col-aksi" style="text-align: center;">
-                ${tombolVoidHtml}
-              </td>
-            </tr>`; 
-        });
-
-        // Render angka paginasinya setelah tabel selesai dibuat
-        gambarTombolPaginasi(totalData);
       }
 
       // Fungsi mengubah limit data dari dropdown
@@ -6451,84 +6463,131 @@
         }
       }
 
-      async function prosesVoid(rowNumber) {
-        if (typeof event !== 'undefined' && event.stopPropagation) {
-            event.stopPropagation(); 
-        }
-        
-        // 1. Munculkan Pop-up Konfirmasi (Mini & Dark Mode) menggunakan await
-        let result = await Swal.fire({
-            title: '<strong style="font-size: 16px;">Konfirmasi Void</strong>',
-            html: '<span style="font-size: 13px;">Yakin ingin membatalkan transaksi ini? Stok dan poin member akan otomatis dikurangi.</span>',
-            icon: 'warning',
-            width: '300px',
-            padding: '15px',
-            background: 'var(--surface, #ffffff)',
-            color: 'var(--text-dark, #333333)',
-            showCancelButton: true,
-            confirmButtonColor: '#d33', // Warna merah untuk tombol bahaya (Batal)
-            cancelButtonColor: '#888',  // Warna abu-abu untuk tombol kembali
-            confirmButtonText: '<span style="font-size: 13px;">Ya, Batalkan!</span>',
-            cancelButtonText: '<span style="font-size: 13px;">Kembali</span>',
-            customClass: {
-                icon: 'ikon-mini-swal'
-            }
-        });
-
-        // 2. Jika kasir menekan tombol "Ya"
-        if (result.isConfirmed) {
-            // Tampilkan Loading Screen Mungil
-            Swal.fire({
-                title: '<strong style="font-size: 16px;">Memproses...</strong>',
-                html: '<span style="font-size: 13px;">Mohon tunggu sebentar</span>',
-                width: '300px',
-                padding: '15px',
-                background: 'var(--surface, #ffffff)',
-                color: 'var(--text-dark, #333333)',
-                allowOutsideClick: false, // Kunci layar agar tidak bisa diklik
-                didOpen: () => {
-                    Swal.showLoading();
-                }
-            });
-
-            try {
-                // 3. Jalankan perintah ke backend menggunakan panggilBackend
-                let res = await panggilBackend('voidTransaksi', { 
-                    rowNumber: rowNumber, 
-                    username: currentUser, 
-                    role: currentRole 
-                });
-
-                if (res === "Berhasil") {
-                    // Ubah Pop-up Loading menjadi Centang Hijau (Sukses)
-                    Swal.fire({
-                        title: '<strong style="font-size: 16px;">Berhasil</strong>',
-                        html: '<span style="font-size: 13px;">Transaksi berhasil dibatalkan!</span>',
-                        icon: 'success',
-                        width: '300px',
-                        padding: '15px',
-                        background: 'var(--surface, #ffffff)',
-                        color: 'var(--text-dark, #333333)',
-                        confirmButtonColor: '#25D366',
-                        confirmButtonText: '<span style="font-size: 13px;">OK</span>',
-                        customClass: { icon: 'ikon-mini-swal' }
-                    });
-                    
-                    muatDashboard(); 
-                    muatDataKatalog(); 
-                    muatAnalitikBulanan();
-                } else {
-                    // Jika gagal, tampilkan pesan error dari server
-                    alert(res);
-                } 
-
-            } catch (error) {
-                console.error("Gagal melakukan void transaksi:", error);
-                alert("Terjadi kesalahan koneksi saat memproses pembatalan.");
-            }
-        }
+      async function prosesVoid(idTransaksi) {
+              if (typeof event !== 'undefined' && event.stopPropagation) {
+                  event.stopPropagation(); 
+              }
+              
+              // 1. Munculkan Pop-up Konfirmasi (Mini & Dark Mode)
+              let result = await Swal.fire({
+                  title: '<strong style="font-size: 16px;">Konfirmasi Void</strong>',
+                  html: '<span style="font-size: 13px;">Yakin ingin membatalkan transaksi ini? Stok (dan poin) akan otomatis dikembalikan.</span>',
+                  icon: 'warning',
+                  width: '300px',
+                  padding: '15px',
+                  background: 'var(--surface, #ffffff)',
+                  color: 'var(--text-dark, #333333)',
+                  showCancelButton: true,
+                  confirmButtonColor: '#d33', // Warna merah untuk tombol bahaya (Batal)
+                  cancelButtonColor: '#888',  // Warna abu-abu untuk tombol kembali
+                  confirmButtonText: '<span style="font-size: 13px;">Ya, Batalkan!</span>',
+                  cancelButtonText: '<span style="font-size: 13px;">Kembali</span>',
+                  customClass: {
+                      icon: 'ikon-mini-swal'
+                  }
+              });
+      
+              // 2. Jika kasir menekan tombol "Ya"
+              if (result.isConfirmed) {
+                  // Tampilkan Loading Screen Mungil
+                  Swal.fire({
+                      title: '<strong style="font-size: 16px;">Memproses...</strong>',
+                      html: '<span style="font-size: 13px;">Mohon tunggu sebentar</span>',
+                      width: '300px',
+                      padding: '15px',
+                      background: 'var(--surface, #ffffff)',
+                      color: 'var(--text-dark, #333333)',
+                      allowOutsideClick: false, // Kunci layar agar tidak bisa diklik
+                      didOpen: () => {
+                          Swal.showLoading();
+                      }
+                  });
+      
+                  try {
+                      // 3. Tarik data transaksi dari Supabase untuk dicek & diambil isi keranjangnya
+                      const { data: trx, error: errGet } = await window.supabaseClient
+                          .from('transaksi')
+                          .select('detail_pesanan, status_transaksi, poin_dipakai, total_akhir')
+                          .eq('id', idTransaksi)
+                          .single();
+      
+                      if (errGet) throw errGet;
+                      if (trx.status_transaksi === 'Dibatalkan' || trx.status_transaksi === 'Batal') {
+                          Swal.fire({ icon: 'info', title: 'Info', text: 'Transaksi ini sudah dibatalkan sebelumnya.' });
+                          return;
+                      }
+      
+                      // 4. Ubah status transaksi menjadi "Dibatalkan" di Supabase
+                      const { error: errUpdate } = await window.supabaseClient
+                          .from('transaksi')
+                          .update({ 
+                              status_transaksi: 'Dibatalkan',
+                              void_by: typeof currentUser !== 'undefined' ? currentUser : 'Admin'
+                          })
+                          .eq('id', idTransaksi);
+      
+                      if (errUpdate) throw errUpdate;
+      
+                      // 5. Proses Pengembalian Stok ke Tabel Produk
+                      let itemsRecon = [];
+                      if (typeof trx.detail_pesanan === 'string') {
+                          try { itemsRecon = JSON.parse(trx.detail_pesanan); } catch(e) {}
+                      } else if (Array.isArray(trx.detail_pesanan)) {
+                          itemsRecon = trx.detail_pesanan;
+                      }
+      
+                      for (let item of itemsRecon) {
+                          const { data: produkAktif, error: errProd } = await window.supabaseClient
+                              .from('produk')
+                              .select('stok')
+                              .eq('id', item.id)
+                              .single();
+      
+                          if (!errProd && produkAktif) {
+                              let stokPemulihan = produkAktif.stok + item.jumlah;
+                              await window.supabaseClient
+                                  .from('produk')
+                                  .update({ stok: stokPemulihan })
+                                  .eq('id', item.id);
+                          }
+                      }
+      
+                      // (Opsional: Jika Anda punya tabel 'pelanggan' di Supabase, Anda bisa menyisipkan 
+                      // kode di sini untuk mengembalikan `trx.poin_dipakai` kepada member terkait)
+      
+                      // 6. Ubah Pop-up Loading menjadi Centang Hijau (Sukses)
+                      Swal.fire({
+                          title: '<strong style="font-size: 16px;">Berhasil</strong>',
+                          html: '<span style="font-size: 13px;">Transaksi berhasil dibatalkan dan stok dikembalikan!</span>',
+                          icon: 'success',
+                          width: '300px',
+                          padding: '15px',
+                          background: 'var(--surface, #ffffff)',
+                          color: 'var(--text-dark, #333333)',
+                          confirmButtonColor: '#25D366',
+                          confirmButtonText: '<span style="font-size: 13px;">OK</span>',
+                          customClass: { icon: 'ikon-mini-swal' }
+                      });
+                      
+                      // 7. Muat ulang seluruh komponen dashboard
+                      if (typeof muatDashboard === 'function') muatDashboard(); 
+                      if (typeof muatDataKatalog === 'function') muatDataKatalog(); 
+                      if (typeof muatAnalitikBulanan === 'function') muatAnalitikBulanan();
+      
+                  } catch (error) {
+                      console.error("Gagal melakukan void transaksi:", error);
+                      Swal.fire({
+                          title: '<strong style="font-size: 16px;">Error</strong>',
+                          html: '<span style="font-size: 13px;">Terjadi kesalahan koneksi saat memproses pembatalan.</span>',
+                          icon: 'error', width: '300px', padding: '15px',
+                          background: 'var(--surface, #ffffff)',
+                          color: 'var(--text-dark, #333333)',
+                          confirmButtonColor: '#d33',
+                          customClass: { icon: 'ikon-mini-swal' }
+                      });
+                  }
+              }
       }
-
       function bukaLayarFormStruk(data) {
         dataStrukTerakhir = data; 
         document.getElementById('s_no').innerText = data.noStruk; 
