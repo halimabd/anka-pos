@@ -4938,6 +4938,10 @@
           let menuList = document.getElementById('kategoriMenuList'); 
           if (!menuList) return;
 
+          // 🛡️ PENGAMAN: Pastikan listKategori adalah array yang valid
+          if (!Array.isArray(listKategori)) {
+              listKategori = [];
+
           listKategori.sort((a, b) => a.localeCompare(b));
           let htmlOptions = '';
           
@@ -5032,15 +5036,11 @@
 
       function filterKategori(kategori, btnEl) { document.querySelectorAll('.kategori-btn').forEach(b => b.classList.remove('active')); btnEl.classList.add('active'); renderProdukGrid(kategori); }
       
-      function jalankanPencarianProdukKasir() { 
-          // Cari elemen tombol kategori yang sedang aktif (yang memiliki class 'active')
-          let btnAktif = document.querySelector('.kategori-btn.active');
-          // Jika tombol aktif tidak ditemukan, gunakan "Semua" sebagai default
-          let activeCategory = btnAktif ? btnAktif.innerText : "Semua";           
-          console.log("Menjalankan pencarian. Kategori aktif:", activeCategory); // ✨ Cek ini di console!          
-          renderProdukGrid(activeCategory); 
+      function jalankanPencarianProdukKasir() {  
+          let kategoriDropdown = document.getElementById('kategoriDropdown');
+          let activeCategory = kategoriDropdown ? kategoriDropdown.value : "Semua";  
+          renderProdukGrid(activeCategory);  
       }
-
       function renderProdukGrid(kategoriFilter) {
           let query = document.getElementById('searchProdukKasir').value.toLowerCase(); 
           let sortBy = document.getElementById('sortProdukKasir').value; 
