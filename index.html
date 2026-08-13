@@ -4938,10 +4938,6 @@
           let menuList = document.getElementById('kategoriMenuList'); 
           if (!menuList) return;
 
-          // 🛡️ PENGAMAN: Pastikan listKategori adalah array yang valid
-          if (!Array.isArray(listKategori)) {
-              listKategori = [];
-
           listKategori.sort((a, b) => a.localeCompare(b));
           let htmlOptions = '';
           
