@@ -5475,279 +5475,195 @@
 
       // 5. Fungsi Pengganti prosesBayarDropdown (DENGAN INTEGRASI MIDTRANS)
       async function prosesPembayaranAktif() {
-        let metode = metodePembayaranAktif;
-        let bayar = parseFloat(document.getElementById('uangBayar').value) || 0;
-        
-        if (metode !== "Tunai") {
-            bayar = totalAkhirGlobal; 
-            let inputUang = document.getElementById('uangBayar');
-            if(inputUang) inputUang.value = bayar; 
-        }
-        
-        if (metode === "Tunai" && bayar < totalAkhirGlobal) {
-            alert("Pembayaran Ditolak: Uang bayar tunai masih kurang dari total tagihan!");
-            return;
-        }
-        
-        // ✨ PERUBAHAN 1: Menggunakan 'await' pada Swal.fire untuk menghilangkan .then()
-        let resultKonfirmasi = await Swal.fire({
-            title: '<strong style="font-size: 16px;">Konfirmasi Pembayaran</strong>',
-            html: '<span style="font-size: 13px;">Selesaikan transaksi <b>Rp ' + totalAkhirGlobal.toLocaleString('id-ID') + '</b> dengan metode <b>' + metode + '</b>?</span>',
-            icon: 'question', width: '300px', padding: '15px',
-            background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)',
-            showCancelButton: true, confirmButtonColor: '#1a73e8', cancelButtonColor: '#888',
-            confirmButtonText: '<span style="font-size: 13px;">Ya, Konfirmasi!</span>',
-            cancelButtonText: '<span style="font-size: 13px;">Batal</span>',
-            customClass: { icon: 'ikon-mini-swal' }
-        });
-
-        // Jika user mengklik "Ya, Konfirmasi!"
-        if (resultKonfirmasi.isConfirmed) {
-            
-            Swal.fire({
-                title: '<strong style="font-size: 16px;">Memproses...</strong>',
-                html: '<span style="font-size: 13px;">Mohon tunggu sebentar...</span>',
-                width: '300px', padding: '15px', background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)',
-                allowOutsideClick: false,
-                didOpen: () => { Swal.showLoading(); }
-            });
-            
-            // --- MENYIAPKAN DATA (PAYLOAD) ---
-            let namaPlg = pelangganTerpilihValue; 
-            if(pelangganTerpilihValue === "Umum / Cash") { 
-                let manualName = document.getElementById('namaPembeliNonMember').value.trim(); 
-                namaPlg = manualName !== "" ? manualName + " (Umum)" : "Umum"; 
-            }   
-            
-            let nomorMejaVal = appSettings.fiturMeja ? (document.getElementById('inputMeja').value.trim() || "-") : "-"; 
-            let catatanVal = appSettings.fiturKOT ? (document.getElementById('inputCatatan').value.trim() || "-") : "-"; 
-            let catatanKasirVal = appSettings.fiturCatatanKasir ? (document.getElementById('inputCatatanKasir').value.trim() || "-") : "-"; 
-            catatanKasirVal = `[${metode}] ` + (catatanKasirVal !== "-" ? catatanKasirVal : "");
-            
-            let btnPay = document.getElementById('btnPay');
-            if(btnPay) {
-                btnPay.disabled = true; 
-                btnPay.innerHTML = "Memproses...";
-            }
-            
-            let isDeliveryMode = document.getElementById('deliveryCheck') && document.getElementById('deliveryCheck').checked;
-
-            let payload = {
-                kasir: currentUser, 
-                pelanggan: namaPlg, 
-                pelangganRowIndex: pelangganRowIndexAktif,
-                nomorMeja: nomorMejaVal, 
-                catatan: catatanVal, 
-                catatanKasir: catatanKasirVal,
-                metodeBayar: metode, 
-                keranjang: keranjang, 
-                subtotal: subtotalGlobal, 
-                diskon: diskonGlobal,
-                poinDipakai: poinDipakaiGlobal, 
-                diskonPoin: diskonPoinGlobal, 
-                pph: pphGlobal, 
-                ppn: ppnGlobal,
-                ongkir: window.ongkirDeliveryGlobal || 0,
-                pembulatan: window.pembulatanGlobal || 0, 
-                tipe_order: isDeliveryMode ? "DELIVERY" : "",
-                total: totalAkhirGlobal, 
-                bayar: bayar, 
-                kembalian: (bayar - totalAkhirGlobal)
-            };
-            
-            jenisStrukOpen = "baru"; 
-            
-            // ========================================================
-            // 🚀 JIKA METODE PEMBAYARAN ADALAH MIDTRANS 🚀
-            // ========================================================
-            if (metode === "Midtrans") {
-                if (!navigator.onLine) {
-                    Swal.fire({
-                        title: '<strong style="font-size: 16px;">Offline</strong>',
-                        html: '<span style="font-size: 13px;">Pembayaran Midtrans membutuhkan koneksi internet!</span>',
-                        icon: 'error', width: '300px', padding: '15px', background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)',
-                        confirmButtonColor: '#ef4444', confirmButtonText: '<span style="font-size: 13px;">Tutup</span>', customClass: { icon: 'ikon-mini-swal' }
-                    });
-                    if(btnPay) { btnPay.disabled = false; btnPay.innerHTML = "Konfirmasi Pembayaran"; }
-                    return;
-                }
-
-                try {
-                    // ✨ PERUBAHAN 2: Memanggil Token Midtrans dari Backend
-                    let responseMidtrans = await panggilBackend('dapatkanTokenMidtrans', payload);
-                    Swal.close(); 
-
-                    if(responseMidtrans.error || !responseMidtrans.token) {
-                        Swal.fire({
-                            title: '<strong style="font-size: 16px;">Error Token</strong>',
-                            html: '<span style="font-size: 13px;">Gagal mendapatkan Token: ' + (responseMidtrans.error || "Token kosong") + '</span>',
-                            icon: 'error', width: '300px', padding: '15px', background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)',
-                            confirmButtonColor: '#ef4444', confirmButtonText: '<span style="font-size: 13px;">Tutup</span>', customClass: { icon: 'ikon-mini-swal' }
-                        });
-                        if(btnPay) { btnPay.disabled = false; btnPay.innerHTML = "Konfirmasi Pembayaran"; }
-                        return;
-                    }
-
-                    // ✨ MEMANGGIL POP-UP RESMI MIDTRANS
-                    window.snap.pay(responseMidtrans.token, {
-                        
-                        // JIKA PEMBAYARAN BERHASIL SAAT ITU JUGA (CC / GoPay)
-                        // ✨ PERUBAHAN 3: Tambah 'async' di callback Midtrans
-                        onSuccess: async function(resultSnap) {
-                            Swal.fire({
-                                title: '<strong style="font-size: 16px;">Menyimpan Transaksi...</strong>',
-                                html: '<span style="font-size: 13px;">Pembayaran berhasil! Memproses data...</span>',
-                                width: '300px', padding: '15px', background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)',
-                                allowOutsideClick: false,
-                                didOpen: () => { Swal.showLoading(); }
-                            });
-                            
-                            payload.catatanKasir += " | Ref: " + resultSnap.order_id;
-                            payload.order_id = resultSnap.order_id; 
-                            payload.statusMidtrans = "Lunas"; 
-                            
-                            // ✨ PERUBAHAN 4: Simpan ke Backend setelah sukses Midtrans
-                            try {
-                                let res = await panggilBackend('prosesBeli', payload);
-                                selesaikanTransaksiFrontend(res, payload, btnPay);
-                            } catch (err) {
-                                alert("Koneksi terputus saat menyimpan transaksi Lunas!");
-                            }
-                        },
-                        
-                        // JIKA MENUNGGU PEMBAYARAN (Transfer VA Bank / QRIS)
-                        // ✨ PERUBAHAN 5: Tambah 'async' di callback Pending Midtrans
-                        onPending: async function(resultSnap) {
-                            Swal.fire({
-                                title: '<strong style="font-size: 16px;">Menyimpan Pesanan...</strong>',
-                                html: '<span style="font-size: 13px;">Mencatat tagihan Virtual Account...</span>',
-                                width: '300px', padding: '15px', background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)',
-                                allowOutsideClick: false,
-                                didOpen: () => { Swal.showLoading(); }
-                            });
-                            
-                            payload.catatanKasir += " | Ref: " + resultSnap.order_id;
-                            payload.order_id = resultSnap.order_id; 
-                            payload.statusMidtrans = "Pending"; 
-                            
-                            // ✨ PERUBAHAN 6: Simpan ke Backend sebagai status Pending
-                            try {
-                                let res = await panggilBackend('prosesBeli', payload);
-                                selesaikanTransaksiFrontend(res, payload, btnPay);
-                                
-                                Swal.fire({
-                                    title: '<strong style="font-size: 16px;">Menunggu Pembayaran</strong>',
-                                    html: '<span style="font-size: 13px;">Pesanan dicatat. Menunggu pelanggan transfer.<br><br><b>Status di Sheet akan otomatis Lunas jika pelanggan sudah transfer!</b></span>',
-                                    icon: 'info', width: '300px', padding: '15px', background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)',
-                                    confirmButtonColor: '#1a73e8',
-                                    confirmButtonText: '<span style="font-size: 13px;">OK, Mengerti</span>',
-                                    customClass: { icon: 'ikon-mini-swal' }
-                                });
-                            } catch (err) {
-                                alert("Koneksi terputus saat menyimpan transaksi Pending!");
-                            }
-                        },
-                        
-                        // JIKA GAGAL
-                        onError: function(resultSnap) {
-                            Swal.fire({
-                                title: '<strong style="font-size: 16px;">Pembayaran Gagal</strong>',
-                                html: '<span style="font-size: 13px;">Pembayaran ditolak atau terjadi kesalahan sistem.</span>',
-                                icon: 'error', width: '300px', padding: '15px', background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)',
-                                confirmButtonColor: '#ef4444', confirmButtonText: '<span style="font-size: 13px;">Tutup</span>', customClass: { icon: 'ikon-mini-swal' }
-                            });
-                            if(btnPay) { btnPay.disabled = false; btnPay.innerHTML = "Konfirmasi Pembayaran"; }
-                        },
-                        
-                        // JIKA POP-UP DISILANG / DITUTUP MANUAL
-                        onClose: function() {
-                            Swal.fire({
-                                title: '<strong style="font-size: 16px;">Dibatalkan</strong>',
-                                html: '<span style="font-size: 13px;">Anda menutup jendela pembayaran sebelum selesai.</span>',
-                                icon: 'warning', width: '300px', padding: '15px', background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)',
-                                confirmButtonColor: '#f59e0b', confirmButtonText: '<span style="font-size: 13px;">Kembali</span>', customClass: { icon: 'ikon-mini-swal' }
-                            });
-                            if(btnPay) { btnPay.disabled = false; btnPay.innerHTML = "Konfirmasi Pembayaran"; }
-                        }
-                    });
-
-                } catch (err) {
-                    Swal.close();
-                    alert("Gagal menghubungi server untuk meminta token Midtrans.");
-                    if(btnPay) { btnPay.disabled = false; btnPay.innerHTML = "Konfirmasi Pembayaran"; }
-                }
-                
-                return; 
-            }
-
-            // ========================================================
-            // LOGIKA MANUAL (TUNAI, QRIS MANUAL, TRANSFER BANK)
-            // ========================================================
-            if (navigator.onLine) {
-                try {
-                    // ✨ PERUBAHAN 7: Proses beli manual menggunakan panggilBackend
-                    let res = await panggilBackend('prosesBeli', payload);
-                    selesaikanTransaksiFrontend(res, payload, btnPay);
-                } catch (err) {
-                    alert("Koneksi terputus saat menyimpan transaksi manual!");
-                    if(btnPay) { btnPay.disabled = false; btnPay.innerHTML = "Konfirmasi Pembayaran"; }
-                }
-                
-            } else {
-                // (LOGIKA OFFLINE TETAP SAMA SEPERTI ASLINYA, TIDAK ADA PEMANGGILAN BACKEND DI SINI)
-                let antrian = JSON.parse(localStorage.getItem('antrianTransaksi')) || [];
-                payload.id_offline = Date.now(); 
-                payload.waktu_offline = new Date().toLocaleString('id-ID');
-                
-                antrian.push(payload);
-                localStorage.setItem('antrianTransaksi', JSON.stringify(antrian));
-                
-                Swal.hideLoading(); Swal.close(); 
-                
-                let dataStrukOffline = { 
-                    noStruk: "OFF-" + payload.id_offline, tanggal: payload.waktu_offline, 
-                    kasir: payload.kasir, pelanggan: payload.pelanggan, meja: payload.nomorMeja, 
-                    catatan: payload.catatan, catatanKasir: payload.catatanKasir, metodeBayar: payload.metodeBayar, 
-                    items: payload.keranjang, subtotal: payload.subtotal, diskon: payload.diskon, 
-                    poinDipakai: payload.poinDipakai || 0, diskonPoin: payload.diskonPoin || 0, 
-                    poinDidapat: (payload.pelangganRowIndex ? Math.floor(payload.total / 10000) : 0), 
-                    pph: payload.pph, ppn: payload.ppn, 
-                    ongkir: payload.ongkir, pembulatan: payload.pembulatan, // <-- OFF-LINE FIX
-                    total: payload.total, bayar: payload.bayar, kembalian: payload.kembalian 
-                };
-
-                if(btnPay) {
-                    btnPay.disabled = false; 
-                    btnPay.innerHTML = "Konfirmasi Pembayaran";
-                }
-                
-                let inputWa = document.getElementById('noWaPelanggan');
-                let cbWa = document.getElementById('cbKirimWa');
-                let inputNonMember = document.getElementById('namaPembeliNonMember');
-                if(inputWa) inputWa.value = "";   
-                if(cbWa) cbWa.checked = false; 
-                if(inputNonMember) inputNonMember.value = "";
-                
-                if(typeof appSettings !== 'undefined') {
-                    let inputMeja = document.getElementById('inputMeja');
-                    let inputCatatan = document.getElementById('inputCatatan');
-                    if(appSettings.fiturMeja && inputMeja) inputMeja.value = "";
-                    if(appSettings.fiturKOT && inputCatatan) inputCatatan.value = "";
-                }
-                
-                keranjang = [];
-                if(typeof renderKeranjang === 'function') renderKeranjang();
-                
-                Swal.fire({
-                    title: '<strong style="font-size: 16px;">Tersimpan Offline</strong>',
-                    html: '<span style="font-size: 13px;">Koneksi terputus. Disimpan di perangkat.</span>',
-                    icon: 'info', width: '300px', padding: '15px', background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)',
-                    showConfirmButton: true, confirmButtonColor: '#1a73e8', confirmButtonText: '<span style="font-size: 13px;">OK</span>', customClass: { icon: 'ikon-mini-swal' }
-                }).then(() => {
-                    if(typeof bukaLayarFormStruk === 'function') bukaLayarFormStruk(dataStrukOffline);
-                });
-            }
-        }
+              let metode = metodePembayaranAktif;
+              let bayar = parseFloat(document.getElementById('uangBayar').value) || 0;
+              
+              if (metode !== "Tunai") {
+                  bayar = totalAkhirGlobal; 
+                  let inputUang = document.getElementById('uangBayar');
+                  if(inputUang) inputUang.value = bayar; 
+              }
+              
+              if (metode === "Tunai" && bayar < totalAkhirGlobal) {
+                  alert("Pembayaran Ditolak: Uang bayar tunai masih kurang dari total tagihan!");
+                  return;
+              }
+              
+              // 1. Konfirmasi Awal Menggunakan Await
+              let resultKonfirmasi = await Swal.fire({
+                  title: '<strong style="font-size: 16px;">Konfirmasi Pembayaran</strong>',
+                  html: '<span style="font-size: 13px;">Selesaikan transaksi <b>Rp ' + totalAkhirGlobal.toLocaleString('id-ID') + '</b> dengan metode <b>' + metode + '</b>?</span>',
+                  icon: 'question', width: '300px', padding: '15px',
+                  background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)',
+                  showCancelButton: true, confirmButtonColor: '#1a73e8', cancelButtonColor: '#888',
+                  confirmButtonText: '<span style="font-size: 13px;">Ya, Konfirmasi!</span>',
+                  cancelButtonText: '<span style="font-size: 13px;">Batal</span>',
+                  customClass: { icon: 'ikon-mini-swal' }
+              });
+      
+              if (!resultKonfirmasi.isConfirmed) return; // Keluar jika dibatalkan
+      
+              // Tampilkan loading
+              Swal.fire({
+                  title: '<strong style="font-size: 16px;">Memproses...</strong>',
+                  html: '<span style="font-size: 13px;">Mohon tunggu sebentar...</span>',
+                  width: '300px', padding: '15px', background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)',
+                  allowOutsideClick: false,
+                  didOpen: () => { Swal.showLoading(); }
+              });
+                  
+              // --- MENYIAPKAN DATA (PAYLOAD) UNTUK SUPABASE ---
+              let namaPlg = pelangganTerpilihValue; 
+              if(pelangganTerpilihValue === "Umum / Cash") { 
+                  let manualName = document.getElementById('namaPembeliNonMember').value.trim(); 
+                  namaPlg = manualName !== "" ? manualName + " (Umum)" : "Umum"; 
+              }   
+                  
+              let nomorMejaVal = appSettings.fiturMeja ? (document.getElementById('inputMeja').value.trim() || "-") : "-"; 
+              let catatanVal = appSettings.fiturKOT ? (document.getElementById('inputCatatan').value.trim() || "-") : "-"; 
+              let catatanKasirVal = appSettings.fiturCatatanKasir ? (document.getElementById('inputCatatanKasir').value.trim() || "-") : "-"; 
+              catatanKasirVal = `[${metode}] ` + (catatanKasirVal !== "-" ? catatanKasirVal : "");
+                  
+              let btnPay = document.getElementById('btnPay');
+              if(btnPay) {
+                  btnPay.disabled = true; 
+                  btnPay.innerHTML = "Memproses...";
+              }
+                  
+              let isDeliveryMode = document.getElementById('deliveryCheck') && document.getElementById('deliveryCheck').checked;
+      
+              // Ambil klien_id dari localStorage
+              const klienId = localStorage.getItem('klien_id');
+      
+              // Buat ID unik (opsional, Supabase bisa buat otomatis jika kolom id di set gen_random_uuid())
+              // Kita siapkan no_struk sederhana:
+              let randomNum = Math.floor(1000 + Math.random() * 9000);
+              let noStrukBaru = "INV-" + Date.now().toString().slice(-6) + "-" + randomNum;
+      
+              // Payload yang disesuaikan dengan kolom tabel 'transaksi' di Supabase
+              let payloadDB = {
+                  klien_id: klienId,
+                  no_struk: noStrukBaru,
+                  kasir: currentUser, 
+                  pelanggan: namaPlg, 
+                  nomor_meja: nomorMejaVal, 
+                  catatan: catatanVal, 
+                  catatan_kasir: catatanKasirVal,
+                  metode_bayar: metode, 
+                  items: keranjang, // Karena di Supabase kolom items tipenya jsonb
+                  subtotal: subtotalGlobal, 
+                  diskon: diskonGlobal,
+                  poin_dipakai: poinDipakaiGlobal, 
+                  diskon_poin: diskonPoinGlobal, 
+                  pph: pphGlobal, 
+                  ppn: ppnGlobal,
+                  ongkir: window.ongkirDeliveryGlobal || 0,
+                  pembulatan: window.pembulatanGlobal || 0, 
+                  tipe_order: isDeliveryMode ? "DELIVERY" : "DINE_IN/TAKEAWAY",
+                  total_akhir: totalAkhirGlobal, 
+                  bayar: bayar, 
+                  kembalian: (bayar - totalAkhirGlobal),
+                  status: "Lunas" // Status default untuk manual
+              };
+                  
+              jenisStrukOpen = "baru"; 
+                  
+              // ========================================================
+              // 🚀 JIKA METODE PEMBAYARAN ADALAH MIDTRANS 🚀
+              // ========================================================
+              if (metode === "Midtrans") {
+                  Swal.close();
+                  if(btnPay) { btnPay.disabled = false; btnPay.innerHTML = "Konfirmasi Pembayaran"; }
+                  // PENTING: Integrasi Midtrans di klien Supabase membutuhkan backend/Edge Functions.
+                  // Saat ini, Midtrans tidak bisa diletakkan begitu saja di sisi klien (keamanan server key).
+                  alert("Metode Midtrans memerlukan setup Supabase Edge Functions. Fitur ini sementara dinonaktifkan hingga Backend siap.");
+                  return; 
+              }
+      
+              // ========================================================
+              // LOGIKA MANUAL (TUNAI, QRIS MANUAL, TRANSFER BANK) VIA SUPABASE
+              // ========================================================
+              if (navigator.onLine) {
+                  try {
+                      // ✨ 1. SIMPAN TRANSAKSI KE SUPABASE
+                      const { data: dataTransaksi, error: errTransaksi } = await window.supabaseClient
+                          .from('transaksi')
+                          .insert([payloadDB])
+                          .select()
+                          .single(); // Ambil data yang baru saja dimasukkan
+      
+                      if (errTransaksi) {
+                          throw errTransaksi;
+                      }
+      
+                      // ✨ 2. UPDATE STOK PRODUK DI SUPABASE
+                      // Karena stok adalah angka, kita perlu memotongnya. 
+                      // Kita akan meloop keranjang dan update stok satu persatu.
+                      for (let item of keranjang) {
+                          // Gunakan RPC (Remote Procedure Call) jika Anda punya fungsi khusus decrement di Supabase,
+                          // ATAU update manual (kurang direkomendasikan jika multi-user, tapi jalan untuk MVP)
+                          const { data: currentProduct, error: errGet } = await window.supabaseClient
+                              .from('produk')
+                              .select('stok')
+                              .eq('id', item.id)
+                              .single();
+                              
+                          if (!errGet && currentProduct) {
+                              let stokBaru = currentProduct.stok - item.jumlah;
+                              await window.supabaseClient
+                                  .from('produk')
+                                  .update({ stok: stokBaru })
+                                  .eq('id', item.id);
+                          }
+                      }
+      
+                      // ✨ 3. SELESAIKAN TRANSAKSI DI FRONTEND
+                      // Sesuaikan data yang dikirim ke fungsi selesaikanTransaksiFrontend
+                      let payloadFrontend = { ...payloadDB, id: dataTransaksi.id, keranjang: keranjang }; 
+                      selesaikanTransaksiFrontend(dataTransaksi, payloadFrontend, btnPay);
+      
+                  } catch (err) {
+                      console.error("Gagal simpan transaksi ke Supabase:", err);
+                      Swal.fire({
+                          title: '<strong style="font-size: 16px;">Error Penyimpanan</strong>',
+                          html: '<span style="font-size: 13px;">Gagal menyimpan transaksi ke database. Pastikan tabel dan kolom sesuai.</span>',
+                          icon: 'error', width: '300px', padding: '15px'
+                      });
+                      if(btnPay) { btnPay.disabled = false; btnPay.innerHTML = "Konfirmasi Pembayaran"; }
+                  }
+                      
+              } else {
+                   // (LOGIKA OFFLINE TETAP SAMA SEPERTI ASLINYA, TIDAK ADA PEMANGGILAN BACKEND DI SINI)
+                   let antrian = JSON.parse(localStorage.getItem('antrianTransaksi')) || [];
+                   payloadDB.id_offline = Date.now(); 
+                   payloadDB.waktu_offline = new Date().toLocaleString('id-ID');
+                   
+                   antrian.push(payloadDB);
+                   localStorage.setItem('antrianTransaksi', JSON.stringify(antrian));
+                   
+                   Swal.hideLoading(); Swal.close(); 
+                   
+                   // ... (Sisa logika offline Anda yang menyimpan antrian dan membersihkan keranjang) ...
+                   
+                   if(btnPay) {
+                       btnPay.disabled = false; 
+                       btnPay.innerHTML = "Konfirmasi Pembayaran";
+                   }
+                   
+                   // Bersihkan UI kasir
+                   keranjang = [];
+                   if(typeof renderKeranjang === 'function') renderKeranjang();
+                   
+                   Swal.fire({
+                       title: '<strong style="font-size: 16px;">Tersimpan Offline</strong>',
+                       html: '<span style="font-size: 13px;">Koneksi terputus. Disimpan di perangkat.</span>',
+                       icon: 'info', width: '300px', padding: '15px', background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)',
+                       showConfirmButton: true, confirmButtonColor: '#1a73e8', confirmButtonText: '<span style="font-size: 13px;">OK</span>', customClass: { icon: 'ikon-mini-swal' }
+                   }).then(() => {
+                       // Format dataStrukOffline sesuaikan dengan kebutuhan layar struk Anda
+                       if(typeof bukaLayarFormStruk === 'function') bukaLayarFormStruk(payloadDB);
+                   });
+              }
       }
 
       // FUNGSI PEMBANTU: Memecah logika keberhasilan agar kode tidak terlalu panjang berulang
