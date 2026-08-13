@@ -4848,7 +4848,7 @@
                       .from('transaksi')
                       .select('*')
                       .eq('klien_id', klienId)
-                      .order('created_at', { ascending: false }) // Urutkan riwayat dari yang terbaru
+                      .order('tanggal', { ascending: false }) // Urutkan riwayat dari yang terbaru
               ]);
       
               // Cek jika ada error dari server Supabase
