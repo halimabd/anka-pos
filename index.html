@@ -4829,28 +4829,57 @@
       }
 
       async function muatDataKatalog() { 
-        try {
-            // Mengambil kedua data dari server secara bersamaan agar loading lebih cepat
-            let [dataBarang, dataDashboard] = await Promise.all([
-                panggilBackend('getListBarang'),
-                panggilBackend('getDashboardData')
-            ]);
-
-            // 1. Eksekusi hasil dari getListBarang
-            masterDataBarang = dataBarang.barang; 
-            renderKategori(dataBarang.kategori); 
-            renderProdukGrid("Semua"); 
-            renderManajemenTabel(); 
-            segarkanDropdownPelangganKasir(); 
-
-            // 2. Eksekusi hasil dari getDashboardData
-            riwayatTransaksiGlobal = dataDashboard.riwayat; 
-            dataPenjualanGlobal = dataDashboard.penjualanFull || {}; 
-
-        } catch (error) {
-            console.error("Gagal memuat data katalog atau dashboard:", error);
-            // Boleh tambahkan alert di sini jika ingin memberitahu kasir kalau gagal memuat data
-        }
+          try {
+              const klienId = localStorage.getItem('klien_id');
+              if (!klienId) {
+                  console.error("Klien ID tidak ditemukan. Hentikan pemuatan data.");
+                  return;
+              }
+      
+              // Mengambil data Produk dan Transaksi secara bersamaan (Paralel) agar loading super cepat
+              const [resProduk, resTransaksi] = await Promise.all([
+                  window.supabaseClient
+                      .from('produk')
+                      .select('*')
+                      .eq('klien_id', klienId)
+                      .order('nama_barang', { ascending: true }), // Otomatis diurutkan sesuai abjad
+                      
+                  window.supabaseClient
+                      .from('transaksi')
+                      .select('*')
+                      .eq('klien_id', klienId)
+                      .order('created_at', { ascending: false }) // Urutkan riwayat dari yang terbaru
+              ]);
+      
+              // Cek jika ada error dari server Supabase
+              if (resProduk.error) throw resProduk.error;
+              if (resTransaksi.error) throw resTransaksi.error;
+      
+              // --- 1. EKSEKUSI HASIL DATA BARANG (KATALOG) ---
+              masterDataBarang = resProduk.data || []; 
+              
+              // Mengekstrak daftar kategori unik secara otomatis dari masterDataBarang
+              // Menggunakan Set() untuk menghilangkan nama kategori yang duplikat, dan filter(Boolean) untuk membuang yang kosong
+              const daftarKategori = [...new Set(masterDataBarang.map(item => item.kategori).filter(Boolean))];
+              
+              if (typeof renderKategori === "function") renderKategori(daftarKategori); 
+              if (typeof renderProdukGrid === "function") renderProdukGrid("Semua"); 
+              if (typeof renderManajemenTabel === "function") renderManajemenTabel(); 
+              if (typeof segarkanDropdownPelangganKasir === "function") segarkanDropdownPelangganKasir(); 
+      
+              // --- 2. EKSEKUSI HASIL DATA DASHBOARD (TRANSAKSI) ---
+              riwayatTransaksiGlobal = resTransaksi.data || []; 
+              
+              // Jika dataPenjualanGlobal sebelumnya adalah versi lengkap dari transaksi, 
+              // kita bisa langsung arahkan ke data yang sama. 
+              // Jika membutuhkan format spesifik, Anda bisa melakukan mapping/reduce di sini.
+              dataPenjualanGlobal = resTransaksi.data || {}; 
+      
+          } catch (error) {
+              console.error("Gagal memuat data katalog atau dashboard:", error.message);
+              // Alert opsional untuk kasir
+              // alert("Gagal memuat data toko. Silakan periksa koneksi internet Anda.");
+          }
       }
 
       // ==========================================
