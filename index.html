@@ -5126,25 +5126,44 @@
           });
       }
 
-      function tambahKeKeranjang(nama, harga, rowIndex, stokMax, diskonBase64) { 
-        let itemIndex = keranjang.findIndex(i => i.nama === nama); 
-        let tierData = [];
-        if(diskonBase64) { try { tierData = JSON.parse(atob(diskonBase64)); } catch(e){} }
-        
-        if(itemIndex > -1) { 
-            let qtyBaru = keranjang[itemIndex].jumlah + 1; 
-            // 🤖 TERAPKAN AUTO-BUMP
-            qtyBaru = cekAutoGratis(qtyBaru, tierData, nama, stokMax);
-            
-            if(qtyBaru <= stokMax) keranjang[itemIndex].jumlah = qtyBaru; 
-            else alert('Batas maksimal stok!'); 
-        } else { 
-            let qtyBaru = 1;
-            // 🤖 TERAPKAN AUTO-BUMP JIKA SYARAT MINIMUMNYA ADALAH 1
-            qtyBaru = cekAutoGratis(qtyBaru, tierData, nama, stokMax);
-            keranjang.push({ nama: nama, harga: harga, jumlah: qtyBaru, rowIndex: rowIndex, stokMax: stokMax, tiers: tierData }); 
-        } 
-        renderKeranjang(); 
+      function tambahKeKeranjang(nama, harga, idProduk, stokMax, diskonBase64) { 
+          // 💡 PENYESUAIAN 1: Parameter ke-3 diganti dari rowIndex menjadi idProduk.
+          // 💡 PENYESUAIAN 2: findIndex mencocokkan i.id (bukan i.nama)
+          let itemIndex = keranjang.findIndex(i => i.id === idProduk); 
+          
+          let tierData = [];
+          if(diskonBase64) { 
+              try { tierData = JSON.parse(atob(diskonBase64)); } catch(e){} 
+          }
+          
+          if(itemIndex > -1) { 
+              let qtyBaru = keranjang[itemIndex].jumlah + 1; 
+              
+              // 🤖 TERAPKAN AUTO-BUMP
+              qtyBaru = cekAutoGratis(qtyBaru, tierData, nama, stokMax);
+              
+              if(qtyBaru <= stokMax) {
+                  keranjang[itemIndex].jumlah = qtyBaru; 
+              } else {
+                  alert('Batas maksimal stok!'); 
+              }
+          } else { 
+              let qtyBaru = 1;
+              
+              // 🤖 TERAPKAN AUTO-BUMP JIKA SYARAT MINIMUMNYA ADALAH 1
+              qtyBaru = cekAutoGratis(qtyBaru, tierData, nama, stokMax);
+              
+              // 💡 PENYESUAIAN 3: Simpan `id` ke dalam keranjang, hapus properti `rowIndex`
+              keranjang.push({ 
+                  id: idProduk,     // Ini sangat penting agar Supabase tahu produk mana yang dikurangi stoknya
+                  nama: nama, 
+                  harga: harga, 
+                  jumlah: qtyBaru, 
+                  stokMax: stokMax, 
+                  tiers: tierData 
+              }); 
+          } 
+          renderKeranjang(); 
       }
 
       function renderKeranjang() {
