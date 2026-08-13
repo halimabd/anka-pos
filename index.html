@@ -6392,39 +6392,60 @@
       }
 
       // Fungsi Tarik Data Bulanan
-      async function muatAnalitikBulanan() { 
-        let bulanInput = document.getElementById('filterBulanAnalitik');
-        if (!bulanInput) {
-            console.error("Elemen 'filterBulanAnalitik' tidak ditemukan!");
-            return;
-        }
-        let bulanVal = bulanInput.value;
-        console.log("NILAI BULAN YANG DIAMBIL FRONTEND: " + bulanVal);
-        if (!bulanVal) {
-            let tglSekarang = new Date();
-            let tahun = tglSekarang.getFullYear();
-            let bulan = ("0" + (tglSekarang.getMonth() + 1)).slice(-2); // Menambahkan angka 0 di depan jika bulan < 10
-            bulanVal = `${tahun}-${bulan}`;
-            
-            // Setel juga tampilan input di layar agar singkron dengan bulan sekarang
-            bulanInput.value = bulanVal;
-        }
-        
-        // document.getElementById('dashOmsetBulanan').innerText = "⏳...";
-        // document.getElementById('dashLabaBulanan').innerText = "⏳...";
-        // document.getElementById('dashVolumeBulanan').innerText = "...";
-        
-        try {
-            // Memanggil backend dengan mengirim parameter tahunBulan ke dalam payload
-            let res = await panggilBackend('getAnalitikBulanan', { tahunBulan: bulanVal });
-            
-            document.getElementById('dashOmsetBulanan').innerText = "Rp " + res.omsetBulanan.toLocaleString('id-ID');
-            document.getElementById('dashLabaBulanan').innerText = "Rp " + res.labaBulanan.toLocaleString('id-ID');
-            document.getElementById('dashVolumeBulanan').innerText = res.totalTransaksi.toLocaleString('id-ID');
-            
-        } catch (error) {
-            console.error("Gagal memuat analitik bulanan:", error);
-        }
+      async function muatAnalitikBulanan() {
+          let bulanInput = document.getElementById('filterBulanAnalitik');
+          if (!bulanInput) {
+              console.error("Elemen 'filterBulanAnalitik' tidak ditemukan!");
+              return;
+          }
+          let bulanVal = bulanInput.value;
+          
+          if (!bulanVal) {
+              let tglSekarang = new Date();
+              let tahun = tglSekarang.getFullYear();
+              let bulan = ("0" + (tglSekarang.getMonth() + 1)).slice(-2);
+              bulanVal = `${tahun}-${bulan}`;
+              bulanInput.value = bulanVal;
+          }
+          
+          try {
+              const klienId = localStorage.getItem('klien_id');
+              if (!klienId) return;
+      
+              // Tarik data dari Supabase berdasarkan filter bulan (format YYYY-MM)
+              const { data: trxData, error } = await window.supabaseClient
+                  .from('transaksi')
+                  .select('*')
+                  .eq('klien_id', klienId)
+                  .ilike('created_at', bulanVal + '%');
+      
+              if (error) throw error;
+      
+              let omsetBulanan = 0;
+              let labaBulanan = 0;
+              let totalTransaksiValid = 0;
+      
+              trxData.forEach(trx => {
+                  if (trx.status_transaksi !== 'Dibatalkan' && trx.status_transaksi !== 'Batal') {
+                      let omset = parseFloat(trx.total_akhir) || 0;
+                      let hpp = parseFloat(trx.total_hpp_transaksi) || 0;
+                      
+                      omsetBulanan += omset;
+                      labaBulanan += (omset - hpp);
+                      totalTransaksiValid++;
+                  }
+              });
+      
+              // Tampilkan ke UI
+              document.getElementById('dashOmsetBulanan').innerText = "Rp " + omsetBulanan.toLocaleString('id-ID');
+              document.getElementById('dashLabaBulanan').innerText = "Rp " + labaBulanan.toLocaleString('id-ID');
+              if (document.getElementById('dashVolumeBulanan')) {
+                  document.getElementById('dashVolumeBulanan').innerText = totalTransaksiValid.toLocaleString('id-ID');
+              }
+              
+          } catch (error) {
+              console.error("Gagal memuat analitik bulanan:", error);
+          }
       }
 
       // Fungsi Reset Kolom Tanggal
@@ -6436,31 +6457,77 @@
 
       // ✨ FUNGSI BARU 2: Menjalankan Filter
       async function terapkanFilter() {
-        let start = document.getElementById('filterStart').value;
-        let end = document.getElementById('filterEnd').value;
-        
-        if(!start || !end) {
-            alert("Harap isi Tanggal Awal (Dari) dan Tanggal Akhir (Sampai) terlebih dahulu!");
-            return;
-        }
-        
-        document.getElementById('dashLogTable').innerHTML = `<tr><td colspan="6" style="text-align:center;">Mencari data transaksi...</td></tr>`;
-        
-        try {
-            // Memanggil backend dengan mengirim parameter startDate dan endDate ke payload
-            let riwayatFiltered = await panggilBackend('getRiwayatBerdasarkanTanggal', { 
-                startDate: start, 
-                endDate: end 
-            });
-            
-            riwayatTransaksiGlobal = riwayatFiltered; // Simpan ke global agar struk bisa dicetak
-            gambarTabelRiwayat(riwayatFiltered);
-            
-        } catch (error) {
-            console.error("Gagal memuat filter riwayat:", error);
-            alert("Terjadi kesalahan saat memfilter data dari server.");
-            document.getElementById('dashLogTable').innerHTML = `<tr><td colspan="6" style="text-align:center; color: red;">Gagal memuat data.</td></tr>`;
-        }
+          let start = document.getElementById('filterStart').value;
+          let end = document.getElementById('filterEnd').value;
+          
+          if(!start || !end) {
+              alert("Harap isi Tanggal Awal (Dari) dan Tanggal Akhir (Sampai) terlebih dahulu!");
+              return;
+          }
+          
+          document.getElementById('dashLogTable').innerHTML = `<tr><td colspan="6" style="text-align:center;">Mencari data transaksi...</td></tr>`;
+          
+          try {
+              const klienId = localStorage.getItem('klien_id');
+              if (!klienId) return;
+      
+              // Query Supabase dengan filter rentang tanggal (Start s.d. End)
+              let query = window.supabaseClient
+                  .from('transaksi')
+                  .select('*')
+                  .eq('klien_id', klienId)
+                  .gte('created_at', start + 'T00:00:00Z')
+                  .lte('created_at', end + 'T23:59:59.999Z')
+                  .order('created_at', { ascending: false });
+      
+              const { data: trxDataRaw, error } = await query;
+              if (error) throw error;
+      
+              // Penerjemah data agar kompatibel dengan tabel riwayat lama
+              let riwayatFiltered = trxDataRaw.map(trx => {
+                  let tglObj = new Date(trx.created_at);
+                  let tglRapi = tglObj.toLocaleString('id-ID');
+      
+                  let itemsArray = [];
+                  if (typeof trx.detail_pesanan === 'string') {
+                      try { itemsArray = JSON.parse(trx.detail_pesanan); } catch(e){}
+                  } else if (Array.isArray(trx.detail_pesanan)) {
+                      itemsArray = trx.detail_pesanan;
+                  }
+      
+                  return {
+                      ...trx,
+                      noStruk: trx.no_struk,
+                      tanggalFull: tglRapi, 
+                      tanggal: tglRapi,
+                      kasir: trx.kasir,
+                      pelanggan: trx.nama_pelanggan,
+                      nomorMeja: trx.nomor_meja,
+                      catatan: trx.catatan,
+                      catatanKasir: trx.catatan_kasir,
+                      metodeBayar: trx.metode_pembayaran,
+                      subtotal: parseFloat(trx.subtotal) || 0,
+                      diskon: parseFloat(trx.diskon) || 0,
+                      ppn: parseFloat(trx.nominal_ppn) || 0,
+                      pph: parseFloat(trx.nominal_pph) || 0,
+                      ongkir: parseFloat(trx.ongkir) || 0,
+                      total: parseFloat(trx.total_akhir) || 0, 
+                      bayar: parseFloat(trx.uang_bayar) || 0,
+                      kembalian: parseFloat(trx.kembalian) || 0,
+                      poinDipakai: parseFloat(trx.poin_dipakai) || 0,
+                      diskonPoin: parseFloat(trx.diskon_poin) || 0,
+                      items: itemsArray 
+                  };
+              });
+              
+              riwayatTransaksiGlobal = riwayatFiltered; // Simpan ke global agar cetak struk/reprint jalan normal
+              gambarTabelRiwayat(riwayatFiltered);
+              
+          } catch (error) {
+              console.error("Gagal memuat filter riwayat:", error);
+              alert("Terjadi kesalahan saat memfilter data dari database.");
+              document.getElementById('dashLogTable').innerHTML = `<tr><td colspan="6" style="text-align:center; color: red;">Gagal memuat data.</td></tr>`;
+          }
       }
 
       async function prosesVoid(idTransaksi) {
