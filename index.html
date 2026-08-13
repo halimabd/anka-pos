@@ -4842,7 +4842,7 @@
                       .from('produk')
                       .select('*')
                       .eq('klien_id', klienId)
-                      .order('nama_barang', { ascending: true }), // Otomatis diurutkan sesuai abjad
+                      .order('created_at', { ascending: false }), // Otomatis diurutkan terbaru
                       
                   window.supabaseClient
                       .from('transaksi')
