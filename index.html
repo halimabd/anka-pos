@@ -5544,8 +5544,15 @@
               let totalHppGlobal = 0;
               if (keranjang && keranjang.length > 0) {
                   keranjang.forEach(item => {
-                      // Pastikan item.hpp ada nilainya, jika tidak anggap 0
-                      let hppProduk = parseFloat(item.hpp) || 0; 
+                      // 💡 CARI PRODUK ASLI DI DATABASE/MEMORY BERDASARKAN ID
+                      let produkAsli = masterDataBarang.find(p => p.id === item.id);
+                      
+                      // Ambil HPP-nya. Jika kosong/tidak ada, anggap 0.
+                      let hppProduk = 0;
+                      if (produkAsli && produkAsli.hpp) {
+                          hppProduk = parseFloat(produkAsli.hpp);
+                      }
+                      
                       totalHppGlobal += (hppProduk * item.jumlah);
                   });
               }
