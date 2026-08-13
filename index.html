@@ -11020,17 +11020,16 @@
                       .select('*')
                       .eq('klien_id', klienId)
                       .eq('role', 'Owner')
-                      .maybeSingle();
-      
-                  if (staffData) {
+                      .limit(1); // 💡 PERBAIKAN: Gunakan limit(1) agar kebal dari error duplikat data
+          
+                  if (staffData && staffData.length > 0) {
                       // PENGGUNA LAMA: Langsung masuk ke aplikasi
                       console.log("Akun lama terdeteksi, masuk otomatis.");
-                      masukKeAplikasi(staffData);
+                      masukKeAplikasi(staffData[0]); // 💡 PERBAIKAN: Ambil data urutan pertama
                   } else {
                       // PENGGUNA BARU: Buat profil otomatis
                       console.log("Akun baru terdeteksi, menyiapkan profil otomatis...");
                       
-                      // Buat 4 digit angka acak untuk password (contoh: 8492)
                       const sandiAcak = Math.floor(1000 + Math.random() * 9000).toString(); 
                       
                       const { data: newStaff, error: insertError } = await window.supabaseClient
@@ -11043,8 +11042,8 @@
                               nama: namaGoogle
                           }])
                           .select()
-                          .single();
-      
+                          .maybeSingle(); // Saat insert, kita tetap bisa pakai maybeSingle
+          
                       if (!insertError && newStaff) {
                           console.log("Profil otomatis berhasil dibuat!");
                           masukKeAplikasi(newStaff);
