@@ -6750,8 +6750,8 @@
             <td class="d-view-cell"><span style="color:${warnaStokDesktop}; font-weight:700;">${b.stok}</span></td>
             <td class="d-view-cell" style="color:var(--primary); font-weight:600; white-space:nowrap;">Rp ${nilaiStok.toLocaleString('id-ID')}</td>
             <td class="d-view-cell" style="white-space:nowrap;">
-              <button class="btn-small btn-edit" onclick="isiFormEdit(${b.rowIndex}, '${escJS(b.kode)}', '${escJS(b.kategori)}', '${escJS(b.nama)}', ${b.hpp}, ${b.harga}, ${b.stok}, '${escJS(b.gambar)}', '${escJS(b.barcode)}', '${btoa(b.diskon)}'); bukaFormMobile('formProdukMgmt');">Edit</button>
-              <button class="btn-small btn-delete" onclick="aksiHapusProduk(${b.rowIndex}, '${escJS(b.nama)}')">Hapus</button>
+              <button class="btn-small btn-edit" onclick="isiFormEdit('${b.id}', '${escJS(b.kode_produk || '')}', '${escJS(b.kategori || '')}', '${escJS(b.nama_barang || '')}', ${b.hpp || 0}, ${b.harga || 0}, ${b.stok || 0}, '${escJS(b.link_gambar || '')}', '${escJS(b.barcode || '')}', '${b.diskon ? btoa(JSON.stringify(b.diskon)) : ''}'); bukaFormMobile('formProdukMgmt');">Edit</button>
+              <button class="btn-small btn-delete" onclick="aksiHapusProduk('${b.id}', '${escJS(b.nama_barang || '')}')">Hapus</button>
             </td>
           </tr>
 
@@ -6792,8 +6792,8 @@
                     </div>
 
                     <div style="display: flex; justify-content: flex-end; align-items: center;">
-                        <button class="btn-small btn-edit" style="margin-right: 6px; font-size: 11px; padding: 6px 16px;" onclick="isiFormEdit(${b.rowIndex}, '${escJS(b.kode)}', '${escJS(b.kategori)}', '${escJS(b.nama)}', ${b.hpp}, ${b.harga}, ${b.stok}, '${escJS(b.gambar)}', '${escJS(b.barcode)}', '${btoa(b.diskon)}'); bukaFormMobile('formProdukMgmt');">Edit</button>
-                        <button class="btn-small btn-delete" style="font-size: 11px; padding: 6px 16px;" onclick="aksiHapusProduk(${b.rowIndex}, '${escJS(b.nama)}')">Hapus</button>
+                        <button class="btn-small btn-edit" style="margin-right: 6px; font-size: 11px; padding: 6px 16px;" onclick="isiFormEdit('${b.id}', '${escJS(b.kode_produk || '')}', '${escJS(b.kategori || '')}', '${escJS(b.nama_barang || '')}', ${b.hpp || 0}, ${b.harga || 0}, ${b.stok || 0}, '${escJS(b.link_gambar || '')}', '${escJS(b.barcode || '')}', '${b.diskon ? btoa(JSON.stringify(b.diskon)) : ''}'); bukaFormMobile('formProdukMgmt');">Edit</button>
+                        <button class="btn-small btn-delete" style="font-size: 11px; padding: 6px 16px;" onclick="aksiHapusProduk('${b.id}', '${escJS(b.nama_barang || '')}')">Hapus</button>
                     </div>
                 </div>
             </td>
@@ -6867,7 +6867,16 @@
 
 
       async function aksiSimpanProduk() { 
-          let rIndex = document.getElementById('prodRowIndex').value; 
+          // 1. Ambil ID Toko
+          const klienId = localStorage.getItem('klien_id');
+          if (!klienId) {
+              alert("Sesi tidak valid, harap login ulang.");
+              return;
+          }
+      
+          // 2. Ambil nilai dari Form
+          // Catatan: prodRowIndex sekarang akan kita fungsikan untuk menampung 'id' (UUID) Supabase saat mode Edit.
+          let prodId = document.getElementById('prodRowIndex').value; 
           let kode = document.getElementById('prodKode').value.trim(); 
           let kat = document.getElementById('prodKategori').value.trim(); 
           let nama = document.getElementById('prodNama').value.trim(); 
@@ -6876,172 +6885,273 @@
           let stok = document.getElementById('prodStok').value; 
           let barcode = document.getElementById('prodBarcode').value.trim(); 
           
-          // Ambil JSON Tier yang sudah dirakit
           let diskonJSON = kumpulkanDataTiers();
           
-          if(!kode || !kat || !nama || !harga || !stok || !hpp) return alert('Mohon isi seluruh data form produk!'); 
+          // PENTING: Karena tipe kolom diskon di Supabase adalah JSONB, kita harus mengubah string menjadi Object
+          let diskonObject = null;
+          if (diskonJSON && diskonJSON !== "") {
+              try { diskonObject = JSON.parse(diskonJSON); } catch(e) {}
+          }
+          
+          if(!kode || !kat || !nama || !harga || !stok || !hpp) {
+              alert('Mohon isi seluruh data form produk!');
+              return;
+          } 
           
           let btn = document.getElementById('btnSimpanProduk'); 
           btn.disabled = true;
-
-          let finalUrl = "";
-
+          btn.innerText = "Menyimpan Data..."; 
+      
           try {
-              if (base64ImageToUpload) {
-                  btn.innerText = "Mengunggah... Tunggu"; 
-                  let filename = "PROD_" + new Date().getTime() + ".jpg";
-                  
-                  // Memanggil backend untuk upload gambar ke Drive
-                  let resUpload = await panggilBackend('uploadImageToDrive', { 
-                      dataURI: base64ImageToUpload, 
-                      filename: filename 
-                  });
-
-                  if (resUpload && resUpload.error) {
-                      alert("Gagal upload gambar: " + resUpload.error); 
-                      btn.disabled = false; 
-                      btn.innerText = "Simpan Data"; 
-                      return; 
-                  }
-                  finalUrl = resUpload; // Menampung URL string dari backend
-              } else { 
-                  btn.innerText = "Menyimpan Data..."; 
-                  finalUrl = document.getElementById('prodGambarUrlExisting').value; 
+              let finalUrl = document.getElementById('prodGambarUrlExisting').value; 
+              
+              // Jika kasir mengunggah gambar baru
+              if (typeof base64ImageToUpload !== 'undefined' && base64ImageToUpload) {
+                  // Kita simpan string Base64 langsung ke database (Cara Paling Cepat & Instan)
+                  finalUrl = base64ImageToUpload;
               }
-
-              // Lanjut simpan data ke sheet
-              await lanjutSimpanDataKeSheet(rIndex, kode, kat, nama, hpp, harga, stok, finalUrl, barcode, diskonJSON);
-
+      
+              // 3. Susun Payload persis sesuai dengan nama kolom di tabel 'produk'
+              let prodPayload = { 
+                  klien_id: klienId,
+                  kode_produk: kode, 
+                  kategori: kat, 
+                  nama_barang: nama, 
+                  hpp: parseInt(hpp), 
+                  harga: parseInt(harga), 
+                  stok: parseInt(stok), 
+                  link_gambar: finalUrl, 
+                  barcode: barcode, 
+                  diskon: diskonObject 
+              }; 
+      
+              let dbError;
+      
+              // 4. Tentukan apakah ini produk BARU atau EDIT produk lama
+              if (prodId && prodId !== "") {
+                  // Mode EDIT: Update baris yang ID-nya cocok
+                  const { error } = await window.supabaseClient
+                      .from('produk')
+                      .update(prodPayload)
+                      .eq('id', prodId)
+                      .eq('klien_id', klienId);
+                  dbError = error;
+              } else {
+                  // Mode BARU: Insert data baru
+                  const { error } = await window.supabaseClient
+                      .from('produk')
+                      .insert([prodPayload]);
+                  dbError = error;
+              }
+      
+              if (dbError) throw dbError;
+      
+              // 5. Eksekusi UI Jika Sukses
+              alert("Data produk berhasil disimpan!"); 
+              
+              if (typeof resetFormProduk === "function") resetFormProduk(); 
+              if (typeof tutupSemuaFormMobile === "function") tutupSemuaFormMobile(); 
+              
+              // Panggil ulang daftar katalog agar produk baru langsung muncul di layar
+              if (typeof muatDataKatalog === "function") muatDataKatalog(); 
+              
+              let searchEl = document.getElementById('searchProdukMgmt');
+              if (searchEl) searchEl.value = ""; 
+              
           } catch (error) {
               console.error("Gagal menyimpan produk:", error);
-              alert("Terjadi kesalahan koneksi saat menyimpan produk.");
+              alert("Gagal menyimpan produk: " + error.message);
+          } finally {
+              // Kembalikan tombol ke keadaan semula baik sukses maupun gagal
               btn.disabled = false; 
               btn.innerText = "Simpan Data";
           }
       }
 
-      async function lanjutSimpanDataKeSheet(rIndex, kode, kat, nama, hpp, harga, stok, finalUrl, barcode, diskonJSON) { 
-          let prodPayload = { 
-              rowIndex: rIndex ? parseInt(rIndex) : null, 
-              kode, 
-              kategori: kat, 
-              nama, 
-              hpp, 
-              harga, 
-              stok, 
-              gambar: finalUrl, 
-              barcode: barcode, 
-              diskon: diskonJSON 
-          }; 
+      // Parameter pertama kita anggap sebagai UUID (id), parameter terakhir kita anggap data JSON asli
+      function isiFormEdit(id, kode, kategori, nama, hpp, harga, stok, gambarUrl, barcode, diskonData) { 
+          document.getElementById('btnHapusFotoProduk').style.display = "block"; 
+          document.getElementById('formTitle').innerText = "Edit: " + nama; 
+          
+          // 💡 PERUBAHAN: Masukkan UUID produk ke dalam input tersembunyi
+          document.getElementById('prodRowIndex').value = id; 
+          
+          document.getElementById('prodKode').value = kode; 
+          document.getElementById('prodKategori').value = kategori; 
+          document.getElementById('prodNama').value = nama; 
+          document.getElementById('prodHpp').value = hpp; 
+          document.getElementById('prodHarga').value = harga; 
+          document.getElementById('prodStok').value = stok; 
+          
+          document.getElementById('prodBarcode').value = (barcode !== 'undefined' && barcode) ? barcode : ""; 
+          
+          // --- Render Tiers (Diskon Bertingkat) ---
+          document.getElementById('tierListWadah').innerHTML = "";
+          
+          if (diskonData) {
+              try {
+                  // Coba cek apakah diskonData berupa string JSON atau sudah berbentuk Object/Array
+                  let tiers = typeof diskonData === 'string' ? JSON.parse(diskonData) : diskonData;
+                  
+                  // Loop data diskon dan tampilkan ke layar
+                  if (Array.isArray(tiers)) {
+                      tiers.forEach(t => {
+                          if (typeof tambahTierHtml === 'function') {
+                              tambahTierHtml(t.min, t.tipe, t.val);
+                          }
+                      });
+                  }
+              } catch(e) { 
+                  // Jika datanya masih terjebak format Base64 lama, coba decode
+                  try {
+                      let decoded = atob(diskonData);
+                      let tiers = JSON.parse(decoded);
+                      if (Array.isArray(tiers)) {
+                          tiers.forEach(t => tambahTierHtml(t.min, t.tipe, t.val));
+                      }
+                  } catch(err) {
+                      console.log("Gagal memuat format tier diskon:", err); 
+                  }
+              }
+          }
+          // ----------------------------------------
+          
+          document.getElementById('prodGambarUrlExisting').value = gambarUrl; 
+          
+          if(gambarUrl && gambarUrl !== "undefined" && gambarUrl !== "") { 
+              document.getElementById('previewGambar').src = gambarUrl; 
+              document.getElementById('previewGambar').style.display = "block"; 
+          } else { 
+              document.getElementById('previewGambar').style.display = "none"; 
+          } 
+          
+          // Kosongkan variabel gambar upload agar tidak tertukar
+          if (typeof base64ImageToUpload !== 'undefined') {
+              base64ImageToUpload = null; 
+          }
+          
+          document.getElementById('prodGambarFile').value = ""; 
+          document.getElementById('btnSimpanProduk').innerText = "Simpan Perubahan"; 
+          document.getElementById('btnBatalEdit').style.display = "block"; 
+      }
 
-          try {
-              // Memanggil backend untuk menyimpan data produk
-              let msg = await panggilBackend('simpanProdukWeb', prodPayload); 
-              
-              alert(msg); 
-              resetFormProduk(); 
-              tutupSemuaFormMobile(); 
-              muatDataKatalog(); 
-              document.getElementById('searchProdukMgmt').value = ""; 
-              
-              let btn = document.getElementById('btnSimpanProduk'); 
-              btn.disabled = false; 
-              btn.innerText = "Simpan Data"; 
-
-          } catch (error) {
-              console.error("Gagal menyimpan ke Sheet:", error);
-              alert("Gagal menyimpan data produk ke server.");
-              let btn = document.getElementById('btnSimpanProduk'); 
-              btn.disabled = false; 
-              btn.innerText = "Simpan Data";
+      // Parameter pertama diubah dari rowIndex menjadi id (UUID)
+      async function aksiHapusProduk(id, nama) { 
+          // 1. Munculkan Pop-up Konfirmasi Hapus (Mini & Dark Mode) menggunakan await
+          let result = await Swal.fire({
+              title: '<strong style="font-size: 16px;">Hapus Produk</strong>',
+              html: '<span style="font-size: 13px;">Yakin ingin menghapus produk <b>"' + nama + '"</b>? Data tidak bisa dikembalikan.</span>',
+              icon: 'warning',
+              width: '300px',
+              padding: '15px',
+              background: 'var(--surface, #ffffff)', // Otomatis Dark Mode
+              color: 'var(--text-dark, #333333)',    // Otomatis Dark Mode
+              showCancelButton: true,
+              confirmButtonColor: '#d33', // Merah untuk penanda aksi berbahaya (Hapus)
+              cancelButtonColor: '#888',  // Abu-abu untuk batal
+              confirmButtonText: '<span style="font-size: 13px;">Ya, Hapus!</span>',
+              cancelButtonText: '<span style="font-size: 13px;">Batal</span>',
+              customClass: {
+                  icon: 'ikon-mini-swal'
+              }
+          });
+      
+          // 2. Jika kasir mengonfirmasi (menekan tombol "Ya, Hapus!")
+          if (result.isConfirmed) {
+              // Tampilkan Loading Screen
+              Swal.fire({
+                  title: '<strong style="font-size: 16px;">Menghapus...</strong>',
+                  html: '<span style="font-size: 13px;">Mohon tunggu sebentar</span>',
+                  width: '300px',
+                  padding: '15px',
+                  background: 'var(--surface, #ffffff)',
+                  color: 'var(--text-dark, #333333)',
+                  allowOutsideClick: false, // Layar terkunci saat proses
+                  didOpen: () => {
+                      Swal.showLoading();
+                  }
+              });
+      
+              try {
+                  const klienId = localStorage.getItem('klien_id');
+                  if (!klienId) throw new Error("Sesi tidak valid, harap login ulang.");
+      
+                  // 3. Jalankan perintah hapus ke Supabase
+                  const { error: dbError } = await window.supabaseClient
+                      .from('produk')
+                      .delete()
+                      .eq('id', id)
+                      .eq('klien_id', klienId);
+                  
+                  if (dbError) throw dbError;
+                  
+                  let msg = "Produk berhasil dihapus dari sistem.";
+                  
+                  // Setelah selesai, ubah Loading menjadi Notifikasi Sukses
+                  Swal.fire({
+                      title: '<strong style="font-size: 16px;">Selesai</strong>',
+                      html: '<span style="font-size: 13px;">' + msg + '</span>', 
+                      icon: 'success',
+                      width: '300px',
+                      padding: '15px',
+                      background: 'var(--surface, #ffffff)',
+                      color: 'var(--text-dark, #333333)',
+                      confirmButtonColor: '#25D366',
+                      confirmButtonText: '<span style="font-size: 13px;">OK</span>',
+                      customClass: { icon: 'ikon-mini-swal' }
+                  });
+                  
+                  // Segarkan tampilan katalog
+                  if (typeof muatDataKatalog === "function") {
+                      muatDataKatalog(); 
+                  }
+      
+              } catch (error) {
+                  console.error("Gagal menghapus produk:", error);
+                  
+                  // Ubah loading menjadi pop-up error
+                  Swal.fire({
+                      title: '<strong style="font-size: 16px;">Gagal!</strong>',
+                      html: '<span style="font-size: 13px;">' + (error.message || "Terjadi kesalahan koneksi saat menghapus produk.") + '</span>',
+                      icon: 'error',
+                      width: '300px',
+                      padding: '15px',
+                      background: 'var(--surface, #ffffff)',
+                      color: 'var(--text-dark, #333333)',
+                      confirmButtonColor: '#d33',
+                      customClass: { icon: 'ikon-mini-swal' }
+                  });
+              }
           }
       }
-
-      function isiFormEdit(rowIndex, kode, kategori, nama, hpp, harga, stok, gambarUrl, barcode, diskonBase64) { 
-        document.getElementById('btnHapusFotoProduk').style.display = "block"; document.getElementById('formTitle').innerText = "Edit: " + nama; document.getElementById('prodRowIndex').value = rowIndex; document.getElementById('prodKode').value = kode; document.getElementById('prodKategori').value = kategori; document.getElementById('prodNama').value = nama; document.getElementById('prodHpp').value = hpp; document.getElementById('prodHarga').value = harga; document.getElementById('prodStok').value = stok; 
-        document.getElementById('prodBarcode').value = barcode !== 'undefined' && barcode ? barcode : ""; 
-        
-        // Render Tiers
-        document.getElementById('tierListWadah').innerHTML = "";
-        if (diskonBase64) {
-            try {
-                let diskonJSON = atob(diskonBase64); // Decode Base64
-                let tiers = JSON.parse(diskonJSON);
-                tiers.forEach(t => tambahTierHtml(t.min, t.tipe, t.val));
-            } catch(e) { console.log("Gagal parse tier"); }
-        }
-        
-        document.getElementById('prodGambarUrlExisting').value = gambarUrl; if(gambarUrl && gambarUrl !== "undefined" && gambarUrl !== "") { document.getElementById('previewGambar').src = gambarUrl; document.getElementById('previewGambar').style.display = "block"; } else { document.getElementById('previewGambar').style.display = "none"; } base64ImageToUpload = null; document.getElementById('prodGambarFile').value = ""; document.getElementById('btnSimpanProduk').innerText = "Simpan Perubahan"; document.getElementById('btnBatalEdit').style.display = "block"; 
+      
+      function resetFormProduk() { 
+          document.getElementById('btnHapusFotoProduk').style.display = "none"; 
+          document.getElementById('formTitle').innerText = "Tambah Produk Baru"; 
+          
+          // prodRowIndex sekarang akan kita fungsikan untuk menampung 'id' UUID kosong saat mode Tambah Baru
+          document.getElementById('prodRowIndex').value = ""; 
+          
+          document.getElementById('prodKode').value = ""; 
+          document.getElementById('prodKategori').value = ""; 
+          document.getElementById('prodNama').value = ""; 
+          document.getElementById('prodHpp').value = ""; 
+          document.getElementById('prodHarga').value = ""; 
+          document.getElementById('prodStok').value = ""; 
+          document.getElementById('prodBarcode').value = ""; 
+          document.getElementById('tierListWadah').innerHTML = ""; 
+          document.getElementById('btnSimpanProduk').innerText = "Simpan Data"; 
+          document.getElementById('btnBatalEdit').style.display = "none"; 
+          document.getElementById('prodGambarUrlExisting').value = ""; 
+          
+          if (typeof base64ImageToUpload !== 'undefined') {
+              base64ImageToUpload = null; 
+          }
+          
+          document.getElementById('prodGambarFile').value = ""; 
+          document.getElementById('previewGambar').style.display = "none"; 
+          document.getElementById('previewGambar').src = ""; 
       }
-
-      async function aksiHapusProduk(rowIndex, nama) { 
-        // 1. Munculkan Pop-up Konfirmasi Hapus (Mini & Dark Mode) menggunakan await
-        let result = await Swal.fire({
-            title: '<strong style="font-size: 16px;">Hapus Produk</strong>',
-            html: '<span style="font-size: 13px;">Yakin ingin menghapus produk <b>"' + nama + '"</b>? Data tidak bisa dikembalikan.</span>',
-            icon: 'warning',
-            width: '300px',
-            padding: '15px',
-            background: 'var(--surface, #ffffff)', // Otomatis Dark Mode
-            color: 'var(--text-dark, #333333)',    // Otomatis Dark Mode
-            showCancelButton: true,
-            confirmButtonColor: '#d33', // Merah untuk penanda aksi berbahaya (Hapus)
-            cancelButtonColor: '#888',  // Abu-abu untuk batal
-            confirmButtonText: '<span style="font-size: 13px;">Ya, Hapus!</span>',
-            cancelButtonText: '<span style="font-size: 13px;">Batal</span>',
-            customClass: {
-                icon: 'ikon-mini-swal'
-            }
-        });
-
-        // 2. Jika kasir mengonfirmasi (menekan tombol "Ya, Hapus!")
-        if (result.isConfirmed) {
-            // Tampilkan Loading Screen
-            Swal.fire({
-                title: '<strong style="font-size: 16px;">Menghapus...</strong>',
-                html: '<span style="font-size: 13px;">Mohon tunggu sebentar</span>',
-                width: '300px',
-                padding: '15px',
-                background: 'var(--surface, #ffffff)',
-                color: 'var(--text-dark, #333333)',
-                allowOutsideClick: false, // Layar terkunci saat proses
-                didOpen: () => {
-                    Swal.showLoading();
-                }
-            });
-
-            try {
-                // 3. Jalankan perintah hapus ke backend menggunakan panggilBackend
-                let msg = await panggilBackend('hapusProdukWeb', { rowIndex: rowIndex }); 
-                
-                // Setelah selesai, ubah Loading menjadi Notifikasi Sukses
-                Swal.fire({
-                    title: '<strong style="font-size: 16px;">Selesai</strong>',
-                    html: '<span style="font-size: 13px;">' + msg + '</span>', // Pesan dari server
-                    icon: 'success',
-                    width: '300px',
-                    padding: '15px',
-                    background: 'var(--surface, #ffffff)',
-                    color: 'var(--text-dark, #333333)',
-                    confirmButtonColor: '#25D366',
-                    confirmButtonText: '<span style="font-size: 13px;">OK</span>',
-                    customClass: { icon: 'ikon-mini-swal' }
-                });
-                
-                // Segarkan tampilan katalog
-                muatDataKatalog(); 
-
-            } catch (error) {
-                console.error("Gagal menghapus produk:", error);
-                alert("Terjadi kesalahan koneksi saat menghapus produk dari server.");
-            }
-        }
-      }
-
-      function resetFormProduk() { document.getElementById('btnHapusFotoProduk').style.display = "none"; document.getElementById('formTitle').innerText = "Tambah Produk Baru"; document.getElementById('prodRowIndex').value = ""; document.getElementById('prodKode').value = ""; document.getElementById('prodKategori').value = ""; document.getElementById('prodNama').value = ""; document.getElementById('prodHpp').value = ""; document.getElementById('prodHarga').value = ""; document.getElementById('prodStok').value = ""; 
-      document.getElementById('prodBarcode').value = ""; document.getElementById('tierListWadah').innerHTML = ""; 
-      document.getElementById('btnSimpanProduk').innerText = "Simpan Data"; document.getElementById('btnBatalEdit').style.display = "none"; document.getElementById('prodGambarUrlExisting').value = ""; base64ImageToUpload = null; document.getElementById('prodGambarFile').value = ""; document.getElementById('previewGambar').style.display = "none"; document.getElementById('previewGambar').src = ""; }
-
       // --- VARIABEL PAGINASI USERS ---
       let dataUsersGlobal = [];
       let halamanUsersSaatIni = 1;
