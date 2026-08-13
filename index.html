@@ -5033,8 +5033,11 @@
       function filterKategori(kategori, btnEl) { document.querySelectorAll('.kategori-btn').forEach(b => b.classList.remove('active')); btnEl.classList.add('active'); renderProdukGrid(kategori); }
       
       function jalankanPencarianProdukKasir() { 
-          let kategoriDropdown = document.getElementById('kategoriDropdown');
-          let activeCategory = kategoriDropdown ? kategoriDropdown.value : "Semua"; 
+          // Cari elemen tombol kategori yang sedang aktif (yang memiliki class 'active')
+          let btnAktif = document.querySelector('.kategori-btn.active');
+          // Jika tombol aktif tidak ditemukan, gunakan "Semua" sebagai default
+          let activeCategory = btnAktif ? btnAktif.innerText : "Semua";           
+          console.log("Menjalankan pencarian. Kategori aktif:", activeCategory); // ✨ Cek ini di console!          
           renderProdukGrid(activeCategory); 
       }
 
