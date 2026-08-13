@@ -5039,85 +5039,92 @@
       }
 
       function renderProdukGrid(kategoriFilter) {
-        let query = document.getElementById('searchProdukKasir').value.toLowerCase(); 
-        let sortBy = document.getElementById('sortProdukKasir').value; 
-        let grid = document.getElementById('productGrid'); 
-        grid.innerHTML = "";
-        
-        let filtered = [];
-        if (kategoriFilter === "Semua") {
-            // Tampilkan semua barang
-            filtered = masterDataBarang;
-        } else if (kategoriFilter === "Promo") {
-            // Tampilkan HANYA barang yang memiliki data tier diskon
-            filtered = masterDataBarang.filter(b => {
-                try { 
-                    let tierArray = JSON.parse(b.diskon); 
-                    return tierArray.length > 0; 
-                } catch(e) { return false; }
-            });
-        } else {
-            // Tampilkan berdasarkan kategori spesifik (Makanan/Minuman/dll)
-            filtered = masterDataBarang.filter(b => b.kategori === kategoriFilter);
-        }
-        filtered = filtered.filter(b => b.nama.toLowerCase().includes(query) || b.kode.toLowerCase().includes(query) || (b.barcode && b.barcode.toLowerCase().includes(query)));
-        
-        if(sortBy === 'terbaru') {
-            // Produk terbaru memiliki rowIndex yang lebih besar (berada di bawah pada Google Sheets)
-            filtered.sort((a,b) => b.rowIndex - a.rowIndex);
-        } 
-        else if(sortBy === 'terlaris') {
-            // Membandingkan jumlah penjualan dari dataPenjualanGlobal
-            filtered.sort((a,b) => {
-                let terjualA = dataPenjualanGlobal[a.nama] || 0;
-                let terjualB = dataPenjualanGlobal[b.nama] || 0;
-                return terjualB - terjualA; // Urutan terbesar ke terkecil
-            });
-        } 
-        else if(sortBy === 'az') {
-            filtered.sort((a,b) => a.nama.localeCompare(b.nama));
-        } 
-        else if(sortBy === 'za') {
-            filtered.sort((a,b) => b.nama.localeCompare(a.nama));
-        }
-        
-        if (filtered.length === 0) { 
-          grid.innerHTML = `<p style="grid-column: 1/-1; text-align:center; color:var(--text-muted); padding:20px;">Produk tidak ditemukan</p>`; 
-          return; 
-        }
-        
-        filtered.forEach(b => {
-          let isHabis = b.stok <= 0; 
-          let imgHtml = b.gambar ? `<img src="${b.gambar}" loading="lazy">` : `<div class="no-img">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-                  <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
-                  <line x1="12" y1="22.08" x2="12" y2="12"></line>
-              </svg>
-          </div>`;
+          let query = document.getElementById('searchProdukKasir').value.toLowerCase(); 
+          let sortBy = document.getElementById('sortProdukKasir').value; 
+          let grid = document.getElementById('productGrid'); 
+          grid.innerHTML = "";
           
-          let tierArray = [];
-          try { tierArray = JSON.parse(b.diskon); } catch(e){}
-          
-          let labelDiskon = "";
-          if(tierArray.length > 0) {
-              let tierTerkecil = tierArray.sort((a,b) => a.min - b.min)[0];
-              let teksLabel = tierTerkecil.tipe === '%' ? `${tierTerkecil.val}%` : (tierTerkecil.tipe === 'Rp' ? `Rp${tierTerkecil.val/1000}k` : `Grt ${tierTerkecil.val}`);
-              
-              // ✨ PERBAIKAN TEKS: Gunakan angka 'min' asli yang di-input pengguna
-              let teksMin = tierTerkecil.min > 0 ? `(Beli ${tierTerkecil.min})` : ``;
-              
-              labelDiskon = `<div style="position:absolute; top:8px; right:8px; background:var(--danger); color:white; padding:4px 6px; border-radius:4px; font-size:10px; font-weight:700; z-index:10; box-shadow:0 2px 4px rgba(0,0,0,0.2);">Promo ${teksLabel} ${teksMin}</div>`;
+          let filtered = [];
+          if (kategoriFilter === "Semua") {
+              filtered = masterDataBarang;
+          } else if (kategoriFilter === "Promo") {
+              filtered = masterDataBarang.filter(b => {
+                  try { 
+                      let tierArray = typeof b.diskon === 'string' ? JSON.parse(b.diskon) : (b.diskon || []); 
+                      return tierArray.length > 0; 
+                  } catch(e) { return false; }
+              });
+          } else {
+              filtered = masterDataBarang.filter(b => b.kategori === kategoriFilter);
           }
-
-          let base64Diskon = btoa(b.diskon || "[]");
-
-          grid.innerHTML += `<div class="product-card ${isHabis ? 'disabled' : ''}" style="position:relative;" onclick="${isHabis ? '' : `tambahKeKeranjang('${escJS(b.nama)}', ${b.harga}, ${b.rowIndex}, ${b.stok}, '${base64Diskon}')`}">
-              ${labelDiskon}
-              <div class="product-img-wrapper">${imgHtml}</div>
-              <div><span style="font-size: 10px; color: var(--text-muted); font-weight: 600; display: block;">${b.kode || 'Tanpa SKU'}</span><h4>${b.nama}</h4><div class="stock">${isHabis ? 'Habis' : `Sisa: ${b.stok}`}</div></div>
-              <p class="price" style="line-height:1.2; margin-top:8px;">Rp ${b.harga.toLocaleString('id-ID')}</p></div>`;
-        });
+      
+          // 💡 PENYESUAIAN: Menggunakan b.nama_barang, b.kode_produk, b.barcode
+          filtered = filtered.filter(b => {
+              let nama = (b.nama_barang || "").toLowerCase();
+              let kode = (b.kode_produk || "").toLowerCase();
+              let barcode = (b.barcode || "").toLowerCase();
+              return nama.includes(query) || kode.includes(query) || barcode.includes(query);
+          });
+          
+          if(sortBy === 'terbaru') {
+              // Karena Supabase menggunakan created_at atau id, kita urutkan dari yang terbaru
+              filtered.sort((a,b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+          } 
+          else if(sortBy === 'terlaris') {
+              filtered.sort((a,b) => {
+                  let terjualA = dataPenjualanGlobal[a.nama_barang] || 0;
+                  let terjualB = dataPenjualanGlobal[b.nama_barang] || 0;
+                  return terjualB - terjualA; 
+              });
+          } 
+          else if(sortBy === 'az') {
+              filtered.sort((a,b) => (a.nama_barang || "").localeCompare(b.nama_barang || ""));
+          } 
+          else if(sortBy === 'za') {
+              filtered.sort((a,b) => (b.nama_barang || "").localeCompare(a.nama_barang || ""));
+          }
+          
+          if (filtered.length === 0) { 
+              grid.innerHTML = `<p style="grid-column: 1/-1; text-align:center; color:var(--text-muted); padding:20px;">Produk tidak ditemukan</p>`; 
+              return; 
+          }
+          
+          filtered.forEach(b => {
+              let isHabis = b.stok <= 0; 
+              
+              // 💡 PENYESUAIAN: Menggunakan link_gambar
+              let imgHtml = b.link_gambar ? `<img src="${b.link_gambar}" loading="lazy">` : `<div class="no-img">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                      <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                      <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                  </svg>
+              </div>`;
+              
+              let tierArray = [];
+              try { 
+                  tierArray = typeof b.diskon === 'string' ? JSON.parse(b.diskon) : (b.diskon || []); 
+              } catch(e){}
+              
+              let labelDiskon = "";
+              if(tierArray.length > 0) {
+                  let tierTerkecil = tierArray.sort((x,y) => x.min - y.min)[0];
+                  let teksLabel = tierTerkecil.tipe === '%' ? `${tierTerkecil.val}%` : (tierTerkecil.tipe === 'Rp' ? `Rp${tierTerkecil.val/1000}k` : `Grt ${tierTerkecil.val}`);
+                  let teksMin = tierTerkecil.min > 0 ? `(Beli ${tierTerkecil.min})` : ``;
+                  
+                  labelDiskon = `<div style="position:absolute; top:8px; right:8px; background:var(--danger); color:white; padding:4px 6px; border-radius:4px; font-size:10px; font-weight:700; z-index:10; box-shadow:0 2px 4px rgba(0,0,0,0.2);">Promo ${teksLabel} ${teksMin}</div>`;
+              }
+      
+              let diskonString = typeof b.diskon === 'object' ? JSON.stringify(b.diskon || []) : (b.diskon || "[]");
+              let base64Diskon = btoa(diskonString);
+      
+              // 💡 PENYESUAIAN: Mengirim b.id dan b.nama_barang ke fungsi keranjang
+              grid.innerHTML += `<div class="product-card ${isHabis ? 'disabled' : ''}" style="position:relative;" onclick="${isHabis ? '' : `tambahKeKeranjang('${escJS(b.nama_barang)}', ${b.harga}, '${b.id}', ${b.stok}, '${base64Diskon}')`}">
+                  ${labelDiskon}
+                  <div class="product-img-wrapper">${imgHtml}</div>
+                  <div><span style="font-size: 10px; color: var(--text-muted); font-weight: 600; display: block;">${b.kode_produk || 'Tanpa SKU'}</span><h4>${b.nama_barang}</h4><div class="stock">${isHabis ? 'Habis' : `Sisa: ${b.stok}`}</div></div>
+                  <p class="price" style="line-height:1.2; margin-top:8px;">Rp ${b.harga.toLocaleString('id-ID')}</p></div>`;
+          });
       }
 
       function tambahKeKeranjang(nama, harga, rowIndex, stokMax, diskonBase64) { 
@@ -6677,192 +6684,194 @@
       }
 
       function renderManajemenTabel() {
-        let query = document.getElementById('searchProdukMgmt').value.toLowerCase(); 
-        let sortBy = document.getElementById('sortProdukMgmt').value; 
-        let tbody = document.getElementById('mgmtProductTable'); 
-        
-        if(masterDataBarang.length === 0) { 
-          tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;">Tidak ada produk.</td></tr>`; 
-          document.getElementById('infoDataProduk').innerText = "Menampilkan 0 dari 0 data";
-          document.getElementById('nomorHalamanProduk').innerHTML = "";
-          return; 
-        } 
-        
-        let filtered = masterDataBarang.filter(b => b.nama.toLowerCase().includes(query) || b.kategori.toLowerCase().includes(query) || b.kode.toLowerCase().includes(query) || (b.barcode && b.barcode.toLowerCase().includes(query)));
-        
-        if (sortBy === 'terbaru') {
-            filtered.sort((a,b) => b.rowIndex - a.rowIndex);
-        } else if (sortBy === 'promo') {
-            filtered = filtered.filter(a => a.diskon && a.diskon.trim() !== "" && a.diskon.trim() !=="[]");
-            filtered.sort((a,b) => b.rowIndex - a.rowIndex);
-        } else if (sortBy === 'az') {
-            filtered.sort((a,b) => b.nama.localeCompare(b.nama));
-        } else if (sortBy === 'stok') {
-            filtered.sort((a,b) => a.stok - b.stok);
-        } else if (sortBy === 'harga') {
-            filtered.sort((a,b) => a.harga - b.harga);
-        }
-        
-        let totalData = filtered.length;
-        let limitPerPage = parseInt(document.getElementById('limitDataProduk').value) || 10;
-        let totalHalaman = Math.ceil(totalData / limitPerPage) || 1;
-        
-        if (halamanAktifProduk > totalHalaman) halamanAktifProduk = totalHalaman;
-        if (halamanAktifProduk < 1) halamanAktifProduk = 1;
-        
-        let startIndex = (halamanAktifProduk - 1) * limitPerPage;
-        let endIndex = startIndex + limitPerPage;
-        let dataPaginated = filtered.slice(startIndex, endIndex);
-        
-        tbody.innerHTML = "";
-        if (dataPaginated.length === 0) { 
-          tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;">Produk tidak ditemukan</td></tr>`; 
-          document.getElementById('infoDataProduk').innerText = "Menampilkan 0 dari 0 data";
-          document.getElementById('nomorHalamanProduk').innerHTML = "";
-          return;
-        }
-        
-        // Optimasi Performa: Menggunakan penampung string (Buffer)
-        let htmlBuffer = "";
-        
-        dataPaginated.forEach(b => { 
-          let miniImg = b.gambar ? `<img src="${b.gambar}" style="width:40px; height:40px; object-fit:cover; border-radius:6px; border:1px solid var(--border-color);">` : `📦`;
-          let tierArray = [];
-          try { tierArray = JSON.parse(b.diskon); } catch(e){}
-          let infoTabelDiskon = tierArray.length > 0 ? `<span style="background:var(--danger); color:white; padding:2px 6px; border-radius:4px; font-size:11px;">${tierArray.length} Tier Aktif</span>` : `<span style="color:var(--text-muted); font-size:12px;">Tidak ada</span>`;
-
-          // --- LOGIKA PEWARNAAN STOK ---
-          let warnaStokDesktop = b.stok > 10 ? '#0f9d58' : '#f57c00';
-          let nilaiStok = b.hpp * b.stok;
-
-          htmlBuffer += `
-          <tr class="desktop-row">
-            <!-- ========================================== -->
-            <!-- 💻 DESKTOP VIEW (Bentuk Tabel Normal)      -->
-            <!-- ========================================== -->
-            <td class="d-view-cell" style="text-align:center;">${miniImg}</td>
-            <td class="d-view-cell"><code style="background:var(--bg-main); padding:4px 8px; border-radius:4px;"><b>${b.kode || '-'}</b></code><br><span style="font-size:10px; color:var(--text-muted);">${b.barcode || 'No Barcode'}</span></td>
-            <td class="d-view-cell"><span style="font-size:12px; font-weight:600; background:var(--bg-main); padding:4px 10px; border-radius:100px; white-space:nowrap; color:var(--text-muted);">${b.kategori}</span></td>
-            <td class="d-view-cell"><b style="color:var(--text-dark);">${b.nama}</b></td>
-            <td class="d-view-cell" style="color:var(--text-muted); white-space:nowrap;">Rp ${b.hpp.toLocaleString('id-ID')}</td>
-            <td class="d-view-cell" style="color:var(--primary); font-weight:700; white-space:nowrap;">Rp ${b.harga.toLocaleString('id-ID')}</td>
-            <td class="d-view-cell" style="white-space:nowrap;">${infoTabelDiskon}</td>
-            <td class="d-view-cell"><span style="color:${warnaStokDesktop}; font-weight:700;">${b.stok}</span></td>
-            <td class="d-view-cell" style="color:var(--primary); font-weight:600; white-space:nowrap;">Rp ${nilaiStok.toLocaleString('id-ID')}</td>
-            <td class="d-view-cell" style="white-space:nowrap;">
-              <button class="btn-small btn-edit" onclick="isiFormEdit('${b.id}', '${escJS(b.kode_produk || '')}', '${escJS(b.kategori || '')}', '${escJS(b.nama_barang || '')}', ${b.hpp || 0}, ${b.harga || 0}, ${b.stok || 0}, '${escJS(b.link_gambar || '')}', '${escJS(b.barcode || '')}', '${b.diskon ? btoa(JSON.stringify(b.diskon)) : ''}'); bukaFormMobile('formProdukMgmt');">Edit</button>
-              <button class="btn-small btn-delete" onclick="aksiHapusProduk('${b.id}', '${escJS(b.nama_barang || '')}')">Hapus</button>
-            </td>
-          </tr>
-
-          <tr class="mobile-row">
-            <!-- ========================================== -->
-            <!-- 📱 MOBILE VIEW (Bentuk Card)               -->
-            <!-- ========================================== -->
-            <td class="m-view-card" colspan="10" style="border:none; padding: 6px 0;">
-                <div style="background: var(--surface); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
-                    
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
-                        <div style="display: flex; gap: 10px; align-items: center;">
-                            ${b.gambar ? `<img src="${b.gambar}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border-color);">` : `<div style="width: 40px; height: 40px; background: var(--bg-main); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 16px;">📦</div>`}
-                            <div>
-                                <h4 style="margin: 0 0 4px 0; font-size: 13px; font-weight: 700; color: var(--text-dark);">${b.nama}</h4>
-                                <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
-                                    <span style="font-size: 11px; color: var(--text-muted);">${b.kode || '-'}</span>
-                                    <span style="font-size: 10px; font-weight: 600; background: var(--bg-main); color: var(--text-muted); padding: 2px 6px; border-radius: 100px;">${b.kategori}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div style="border-top: 1px solid var(--border-color); margin: 0 0 10px 0;"></div>
-
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 6px;">
-                        <div style="font-size: 11px; color: var(--text-muted);">Stok: <b style="color: ${warnaStokDesktop}; font-size: 12px;">${b.stok}</b> pcs</div>
-                        <div style="font-size: 11px; color: var(--text-muted); display: flex; align-items: center;" class="text-diskon-dinamis">
-                            Diskon: <span>${infoTabelDiskon}</span>
-                        </div>
-
-                        <div style="font-size: 11px; color: var(--text-muted);">HPP: <b style="color: var(--text-muted);">Rp ${b.hpp.toLocaleString('id-ID')}</b></div>
-                        <div style="font-size: 11px; color: var(--text-muted);">Harga Jual: <b style="color: var(--primary); font-size: 12px;">Rp ${b.harga.toLocaleString('id-ID')}</b></div>
-                    </div>
-                    
-                    <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">
-                        Nilai Stok: <b style="color: var(--primary); font-size: 12px;">Rp ${nilaiStok.toLocaleString('id-ID')}</b>
-                    </div>
-
-                    <div style="display: flex; justify-content: flex-end; align-items: center;">
-                        <button class="btn-small btn-edit" style="margin-right: 6px; font-size: 11px; padding: 6px 16px;" onclick="isiFormEdit('${b.id}', '${escJS(b.kode_produk || '')}', '${escJS(b.kategori || '')}', '${escJS(b.nama_barang || '')}', ${b.hpp || 0}, ${b.harga || 0}, ${b.stok || 0}, '${escJS(b.link_gambar || '')}', '${escJS(b.barcode || '')}', '${b.diskon ? btoa(JSON.stringify(b.diskon)) : ''}'); bukaFormMobile('formProdukMgmt');">Edit</button>
-                        <button class="btn-small btn-delete" style="font-size: 11px; padding: 6px 16px;" onclick="aksiHapusProduk('${b.id}', '${escJS(b.nama_barang || '')}')">Hapus</button>
-                    </div>
-                </div>
-            </td>
-          </tr>
-          `;
-        });
-
-        // Masukkan ke DOM
-        tbody.innerHTML = htmlBuffer;
-
-        // Render Informasi Teks & Tombol Halaman (Pagination)
-        let dariData = totalData === 0 ? 0 : startIndex + 1;
-        let sampaiData = endIndex > totalData ? totalData : endIndex;
-        document.getElementById('infoDataProduk').innerText = `Menampilkan ${dariData} sampai ${sampaiData} dari ${totalData} data`;
-
-        let containerHal = document.getElementById('nomorHalamanProduk');
-        containerHal.innerHTML = "";
-        
-        for (let i = 1; i <= totalHalaman; i++) {
-          // ✨ LOGIKA BARU: Tampilkan halaman pertama, terakhir, dan yang berdekatan dengan halaman aktif
-          if (i === 1 || i === totalHalaman || (i >= halamanAktifProduk - 1 && i <= halamanAktifProduk + 1)) {
-            
-            let isAktif = i === halamanAktifProduk;
-            let bgBtn = isAktif ? 'var(--primary)' : 'var(--surface)';
-            let colorBtn = isAktif ? 'white' : 'var(--text-dark)';
-            let borderBtn = isAktif ? 'var(--primary)' : 'var(--border-color)';
-            
-            // Efek hover interaktif jika tombol tidak aktif
-            let efekHover = isAktif ? "" : `onmouseover="this.style.background='var(--bg-main)'" onmouseout="this.style.background='var(--surface)'"`;
-            
-            containerHal.innerHTML += `<button onclick="setHalamanProduk(${i})" ${efekHover} style="background: ${bgBtn}; color: ${colorBtn}; border: 1px solid ${borderBtn}; width: 36px; height: 36px; border-radius: 100px; cursor: pointer; font-weight: 600; font-size: 13px; font-family: 'Inter', sans-serif; transition: 0.2s; display: flex; align-items: center; justify-content: center;">${i}</button>`;
-            
+          let query = document.getElementById('searchProdukMgmt').value.toLowerCase(); 
+          let sortBy = document.getElementById('sortProdukMgmt').value; 
+          let tbody = document.getElementById('mgmtProductTable'); 
+          
+          if(masterDataBarang.length === 0) { 
+              tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;">Tidak ada produk.</td></tr>`; 
+              document.getElementById('infoDataProduk').innerText = "Menampilkan 0 dari 0 data";
+              document.getElementById('nomorHalamanProduk').innerHTML = "";
+              return; 
           } 
-          // ✨ LOGIKA BARU: Tampilkan titik-titik (...) sebagai pembatas
-          else if (i === halamanAktifProduk - 2 || i === halamanAktifProduk + 2) {
-            containerHal.innerHTML += `<span style="padding: 0 4px; color: var(--text-muted); display: flex; align-items: flex-end; padding-bottom: 6px;">&hellip;</span>`;
+          
+          // 💡 PENYESUAIAN: Menggunakan b.nama_barang, b.kategori, b.kode_produk, b.barcode
+          let filtered = masterDataBarang.filter(b => {
+              let nama = (b.nama_barang || "").toLowerCase();
+              let kat = (b.kategori || "").toLowerCase();
+              let kode = (b.kode_produk || "").toLowerCase();
+              let barcode = (b.barcode || "").toLowerCase();
+              return nama.includes(query) || kat.includes(query) || kode.includes(query) || barcode.includes(query);
+          });
+          
+          if (sortBy === 'terbaru') {
+              filtered.sort((a,b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+          } else if (sortBy === 'promo') {
+              filtered = filtered.filter(a => {
+                  let diskonStr = typeof a.diskon === 'object' ? JSON.stringify(a.diskon || []) : (a.diskon || "");
+                  return diskonStr && diskonStr.trim() !== "" && diskonStr.trim() !== "[]";
+              });
+              filtered.sort((a,b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+          } else if (sortBy === 'az') {
+              filtered.sort((a,b) => (a.nama_barang || "").localeCompare(b.nama_barang || ""));
+          } else if (sortBy === 'stok') {
+              filtered.sort((a,b) => a.stok - b.stok);
+          } else if (sortBy === 'harga') {
+              filtered.sort((a,b) => a.harga - b.harga);
           }
-        }
-        // ✨ FUNGSI BARU: Mematikan Tombol Prev (<) jika di Halaman 1
-        let btnPrev = document.getElementById('btnPrevProduk');
-        if (btnPrev) {
-          if (halamanAktifProduk === 1 || totalHalaman === 0) {
-            btnPrev.disabled = true;
-            btnPrev.style.opacity = "0.4"; // Bikin tombol terlihat buram
-            btnPrev.style.cursor = "not-allowed"; // Ubah kursor jadi ikon dilarang
-            btnPrev.style.pointerEvents = "none"; // Matikan efek hover
-          } else {
-            btnPrev.disabled = false;
-            btnPrev.style.opacity = "1";
-            btnPrev.style.cursor = "pointer";
-            btnPrev.style.pointerEvents = "auto";
+          
+          let totalData = filtered.length;
+          let limitPerPage = parseInt(document.getElementById('limitDataProduk').value) || 10;
+          let totalHalaman = Math.ceil(totalData / limitPerPage) || 1;
+          
+          if (halamanAktifProduk > totalHalaman) halamanAktifProduk = totalHalaman;
+          if (halamanAktifProduk < 1) halamanAktifProduk = 1;
+          
+          let startIndex = (halamanAktifProduk - 1) * limitPerPage;
+          let endIndex = startIndex + limitPerPage;
+          let dataPaginated = filtered.slice(startIndex, endIndex);
+          
+          tbody.innerHTML = "";
+          if (dataPaginated.length === 0) { 
+              tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;">Produk tidak ditemukan</td></tr>`; 
+              document.getElementById('infoDataProduk').innerText = "Menampilkan 0 dari 0 data";
+              document.getElementById('nomorHalamanProduk').innerHTML = "";
+              return;
           }
-        }
-
-        // ✨ FUNGSI BARU: Mematikan Tombol Next (>) jika di Halaman Terakhir
-        let btnNext = document.getElementById('btnNextProduk');
-        if (btnNext) {
-          if (halamanAktifProduk === totalHalaman || totalHalaman === 0) {
-            btnNext.disabled = true;
-            btnNext.style.opacity = "0.4";
-            btnNext.style.cursor = "not-allowed";
-            btnNext.style.pointerEvents = "none";
-          } else {
-            btnNext.disabled = false;
-            btnNext.style.opacity = "1";
-            btnNext.style.cursor = "pointer";
-            btnNext.style.pointerEvents = "auto";
+          
+          let htmlBuffer = "";
+          
+          dataPaginated.forEach(b => { 
+              // 💡 PENYESUAIAN: Menggunakan link_gambar
+              let miniImg = b.link_gambar ? `<img src="${b.link_gambar}" style="width:40px; height:40px; object-fit:cover; border-radius:6px; border:1px solid var(--border-color);">` : `📦`;
+              
+              let tierArray = [];
+              try { 
+                  tierArray = typeof b.diskon === 'string' ? JSON.parse(b.diskon) : (b.diskon || []); 
+              } catch(e){}
+              
+              let infoTabelDiskon = tierArray.length > 0 ? `<span style="background:var(--danger); color:white; padding:2px 6px; border-radius:4px; font-size:11px;">${tierArray.length} Tier Aktif</span>` : `<span style="color:var(--text-muted); font-size:12px;">Tidak ada</span>`;
+      
+              let warnaStokDesktop = b.stok > 10 ? '#0f9d58' : '#f57c00';
+              let nilaiStok = b.hpp * b.stok;
+      
+              let diskonString = typeof b.diskon === 'object' ? JSON.stringify(b.diskon || []) : (b.diskon || "[]");
+              let base64Diskon = btoa(diskonString);
+      
+              htmlBuffer += `
+              <tr class="desktop-row">
+                  <td class="d-view-cell" style="text-align:center;">${miniImg}</td>
+                  <td class="d-view-cell"><code style="background:var(--bg-main); padding:4px 8px; border-radius:4px;"><b>${b.kode_produk || '-'}</b></code><br><span style="font-size:10px; color:var(--text-muted);">${b.barcode || 'No Barcode'}</span></td>
+                  <td class="d-view-cell"><span style="font-size:12px; font-weight:600; background:var(--bg-main); padding:4px 10px; border-radius:100px; white-space:nowrap; color:var(--text-muted);">${b.kategori}</span></td>
+                  <td class="d-view-cell"><b style="color:var(--text-dark);">${b.nama_barang}</b></td>
+                  <td class="d-view-cell" style="color:var(--text-muted); white-space:nowrap;">Rp ${b.hpp.toLocaleString('id-ID')}</td>
+                  <td class="d-view-cell" style="color:var(--primary); font-weight:700; white-space:nowrap;">Rp ${b.harga.toLocaleString('id-ID')}</td>
+                  <td class="d-view-cell" style="white-space:nowrap;">${infoTabelDiskon}</td>
+                  <td class="d-view-cell"><span style="color:${warnaStokDesktop}; font-weight:700;">${b.stok}</span></td>
+                  <td class="d-view-cell" style="color:var(--primary); font-weight:600; white-space:nowrap;">Rp ${nilaiStok.toLocaleString('id-ID')}</td>
+                  <td class="d-view-cell" style="white-space:nowrap;">
+                    <button class="btn-small btn-edit" onclick="isiFormEdit('${b.id}', '${escJS(b.kode_produk || '')}', '${escJS(b.kategori || '')}', '${escJS(b.nama_barang || '')}', ${b.hpp || 0}, ${b.harga || 0}, ${b.stok || 0}, '${escJS(b.link_gambar || '')}', '${escJS(b.barcode || '')}', '${base64Diskon}'); bukaFormMobile('formProdukMgmt');">Edit</button>
+                    <button class="btn-small btn-delete" onclick="aksiHapusProduk('${b.id}', '${escJS(b.nama_barang || '')}')">Hapus</button>
+                  </td>
+              </tr>
+      
+              <tr class="mobile-row">
+                  <td class="m-view-card" colspan="10" style="border:none; padding: 6px 0;">
+                      <div style="background: var(--surface); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                          
+                          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                              <div style="display: flex; gap: 10px; align-items: center;">
+                                  ${b.link_gambar ? `<img src="${b.link_gambar}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border-color);">` : `<div style="width: 40px; height: 40px; background: var(--bg-main); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 16px;">📦</div>`}
+                                  <div>
+                                      <h4 style="margin: 0 0 4px 0; font-size: 13px; font-weight: 700; color: var(--text-dark);">${b.nama_barang}</h4>
+                                      <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                                          <span style="font-size: 11px; color: var(--text-muted);">${b.kode_produk || '-'}</span>
+                                          <span style="font-size: 10px; font-weight: 600; background: var(--bg-main); color: var(--text-muted); padding: 2px 6px; border-radius: 100px;">${b.kategori}</span>
+                                      </div>
+                                  </div>
+                              </div>
+                          </div>
+      
+                          <div style="border-top: 1px solid var(--border-color); margin: 0 0 10px 0;"></div>
+      
+                          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 6px;">
+                              <div style="font-size: 11px; color: var(--text-muted);">Stok: <b style="color: ${warnaStokDesktop}; font-size: 12px;">${b.stok}</b> pcs</div>
+                              <div style="font-size: 11px; color: var(--text-muted); display: flex; align-items: center;" class="text-diskon-dinamis">
+                                  Diskon: <span>${infoTabelDiskon}</span>
+                              </div>
+      
+                              <div style="font-size: 11px; color: var(--text-muted);">HPP: <b style="color: var(--text-muted);">Rp ${b.hpp.toLocaleString('id-ID')}</b></div>
+                              <div style="font-size: 11px; color: var(--text-muted);">Harga Jual: <b style="color: var(--primary); font-size: 12px;">Rp ${b.harga.toLocaleString('id-ID')}</b></div>
+                          </div>
+                          
+                          <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">
+                              Nilai Stok: <b style="color: var(--primary); font-size: 12px;">Rp ${nilaiStok.toLocaleString('id-ID')}</b>
+                          </div>
+      
+                          <div style="display: flex; justify-content: flex-end; align-items: center;">
+                              <button class="btn-small btn-edit" style="margin-right: 6px; font-size: 11px; padding: 6px 16px;" onclick="isiFormEdit('${b.id}', '${escJS(b.kode_produk || '')}', '${escJS(b.kategori || '')}', '${escJS(b.nama_barang || '')}', ${b.hpp || 0}, ${b.harga || 0}, ${b.stok || 0}, '${escJS(b.link_gambar || '')}', '${escJS(b.barcode || '')}', '${base64Diskon}'); bukaFormMobile('formProdukMgmt');">Edit</button>
+                              <button class="btn-small btn-delete" style="font-size: 11px; padding: 6px 16px;" onclick="aksiHapusProduk('${b.id}', '${escJS(b.nama_barang || '')}')">Hapus</button>
+                          </div>
+                      </div>
+                  </td>
+              </tr>
+              `;
+          });
+      
+          tbody.innerHTML = htmlBuffer;
+      
+          let dariData = totalData === 0 ? 0 : startIndex + 1;
+          let sampaiData = endIndex > totalData ? totalData : endIndex;
+          document.getElementById('infoDataProduk').innerText = `Menampilkan ${dariData} sampai ${sampaiData} dari ${totalData} data`;
+      
+          let containerHal = document.getElementById('nomorHalamanProduk');
+          containerHal.innerHTML = "";
+          
+          for (let i = 1; i <= totalHalaman; i++) {
+            if (i === 1 || i === totalHalaman || (i >= halamanAktifProduk - 1 && i <= halamanAktifProduk + 1)) {
+              let isAktif = i === halamanAktifProduk;
+              let bgBtn = isAktif ? 'var(--primary)' : 'var(--surface)';
+              let colorBtn = isAktif ? 'white' : 'var(--text-dark)';
+              let borderBtn = isAktif ? 'var(--primary)' : 'var(--border-color)';
+              
+              let efekHover = isAktif ? "" : `onmouseover="this.style.background='var(--bg-main)'" onmouseout="this.style.background='var(--surface)'"`;
+              
+              containerHal.innerHTML += `<button onclick="setHalamanProduk(${i})" ${efekHover} style="background: ${bgBtn}; color: ${colorBtn}; border: 1px solid ${borderBtn}; width: 36px; height: 36px; border-radius: 100px; cursor: pointer; font-weight: 600; font-size: 13px; font-family: 'Inter', sans-serif; transition: 0.2s; display: flex; align-items: center; justify-content: center;">${i}</button>`;
+            } 
+            else if (i === halamanAktifProduk - 2 || i === halamanAktifProduk + 2) {
+              containerHal.innerHTML += `<span style="padding: 0 4px; color: var(--text-muted); display: flex; align-items: flex-end; padding-bottom: 6px;">&hellip;</span>`;
+            }
           }
-        }
+      
+          let btnPrev = document.getElementById('btnPrevProduk');
+          if (btnPrev) {
+            if (halamanAktifProduk === 1 || totalHalaman === 0) {
+              btnPrev.disabled = true;
+              btnPrev.style.opacity = "0.4";
+              btnPrev.style.cursor = "not-allowed";
+              btnPrev.style.pointerEvents = "none";
+            } else {
+              btnPrev.disabled = false;
+              btnPrev.style.opacity = "1";
+              btnPrev.style.cursor = "pointer";
+              btnPrev.style.pointerEvents = "auto";
+            }
+          }
+      
+          let btnNext = document.getElementById('btnNextProduk');
+          if (btnNext) {
+            if (halamanAktifProduk === totalHalaman || totalHalaman === 0) {
+              btnNext.disabled = true;
+              btnNext.style.opacity = "0.4";
+              btnNext.style.cursor = "not-allowed";
+              btnNext.style.pointerEvents = "none";
+            } else {
+              btnNext.disabled = false;
+              btnNext.style.opacity = "1";
+              btnNext.style.cursor = "pointer";
+              btnNext.style.pointerEvents = "auto";
+            }
+          }
       }
 
 
