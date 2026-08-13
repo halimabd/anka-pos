@@ -5540,30 +5540,30 @@
               let randomNum = Math.floor(1000 + Math.random() * 9000);
               let noStrukBaru = "INV-" + Date.now().toString().slice(-6) + "-" + randomNum;
       
-              // Payload yang disesuaikan dengan kolom tabel 'transaksi' di Supabase
+              // Payload yang disesuaikan PERSIS dengan kolom tabel 'transaksi' di Supabase Anda
               let payloadDB = {
                   klien_id: klienId,
                   no_struk: noStrukBaru,
                   kasir: currentUser, 
-                  pelanggan: namaPlg, 
+                  nama_pelanggan: namaPlg,             
                   nomor_meja: nomorMejaVal, 
                   catatan: catatanVal, 
                   catatan_kasir: catatanKasirVal,
-                  metode_bayar: metode, 
-                  items: keranjang, // Karena di Supabase kolom items tipenya jsonb
+                  metode_pembayaran: metode,           
+                  detail_pesanan: keranjang,           // Langsung simpan array keranjang (tipe data jsonb)
                   subtotal: subtotalGlobal, 
                   diskon: diskonGlobal,
-                  poin_dipakai: poinDipakaiGlobal, 
-                  diskon_poin: diskonPoinGlobal, 
-                  pph: pphGlobal, 
-                  ppn: ppnGlobal,
+                  nominal_pph: pphGlobal,              
+                  nominal_ppn: ppnGlobal,              
                   ongkir: window.ongkirDeliveryGlobal || 0,
                   pembulatan: window.pembulatanGlobal || 0, 
+                  poin_dipakai: poinDipakaiGlobal || 0,     
+                  diskon_poin: diskonPoinGlobal || 0,       
                   tipe_order: isDeliveryMode ? "DELIVERY" : "DINE_IN/TAKEAWAY",
                   total_akhir: totalAkhirGlobal, 
-                  bayar: bayar, 
+                  uang_bayar: bayar,                   
                   kembalian: (bayar - totalAkhirGlobal),
-                  status: "Lunas" // Status default untuk manual
+                  status_transaksi: "Lunas"            
               };
                   
               jenisStrukOpen = "baru"; 
@@ -5574,8 +5574,6 @@
               if (metode === "Midtrans") {
                   Swal.close();
                   if(btnPay) { btnPay.disabled = false; btnPay.innerHTML = "Konfirmasi Pembayaran"; }
-                  // PENTING: Integrasi Midtrans di klien Supabase membutuhkan backend/Edge Functions.
-                  // Saat ini, Midtrans tidak bisa diletakkan begitu saja di sisi klien (keamanan server key).
                   alert("Metode Midtrans memerlukan setup Supabase Edge Functions. Fitur ini sementara dinonaktifkan hingga Backend siap.");
                   return; 
               }
@@ -5590,18 +5588,14 @@
                           .from('transaksi')
                           .insert([payloadDB])
                           .select()
-                          .single(); // Ambil data yang baru saja dimasukkan
+                          .single(); 
       
                       if (errTransaksi) {
                           throw errTransaksi;
                       }
       
                       // ✨ 2. UPDATE STOK PRODUK DI SUPABASE
-                      // Karena stok adalah angka, kita perlu memotongnya. 
-                      // Kita akan meloop keranjang dan update stok satu persatu.
                       for (let item of keranjang) {
-                          // Gunakan RPC (Remote Procedure Call) jika Anda punya fungsi khusus decrement di Supabase,
-                          // ATAU update manual (kurang direkomendasikan jika multi-user, tapi jalan untuk MVP)
                           const { data: currentProduct, error: errGet } = await window.supabaseClient
                               .from('produk')
                               .select('stok')
@@ -5618,15 +5612,28 @@
                       }
       
                       // ✨ 3. SELESAIKAN TRANSAKSI DI FRONTEND
-                      // Sesuaikan data yang dikirim ke fungsi selesaikanTransaksiFrontend
-                      let payloadFrontend = { ...payloadDB, id: dataTransaksi.id, keranjang: keranjang }; 
+                      // Kita gabungkan payloadDB dengan variabel lama agar fitur Cetak Struk tetap jalan normal
+                      let payloadFrontend = { 
+                          ...payloadDB, 
+                          id: dataTransaksi.id, 
+                          keranjang: keranjang,
+                          pelanggan: namaPlg,
+                          ppn: ppnGlobal,
+                          pph: pphGlobal,
+                          bayar: bayar,
+                          diskon_poin: diskonPoinGlobal,
+                          poin_dipakai: poinDipakaiGlobal,
+                          pembulatan: window.pembulatanGlobal || 0,
+                          metode_bayar: metode
+                      }; 
+                      
                       selesaikanTransaksiFrontend(dataTransaksi, payloadFrontend, btnPay);
       
                   } catch (err) {
                       console.error("Gagal simpan transaksi ke Supabase:", err);
                       Swal.fire({
                           title: '<strong style="font-size: 16px;">Error Penyimpanan</strong>',
-                          html: '<span style="font-size: 13px;">Gagal menyimpan transaksi ke database. Pastikan tabel dan kolom sesuai.</span>',
+                          html: '<span style="font-size: 13px;">Gagal menyimpan transaksi ke database. Detail error ada di console.</span>',
                           icon: 'error', width: '300px', padding: '15px'
                       });
                       if(btnPay) { btnPay.disabled = false; btnPay.innerHTML = "Konfirmasi Pembayaran"; }
