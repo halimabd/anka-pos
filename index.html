@@ -11277,6 +11277,43 @@
           if (typeof muatDataKatalog === "function") muatDataKatalog(); 
           if (typeof muatPengaturanData === "function") muatPengaturanData(); 
           if (typeof muatManajemenKas === "function") muatManajemenKas();
+          if (typeof inisialisasiRealtime === "function") inisialisasiRealtime();
+      }
+
+      function inisialisasiRealtime() {
+          const tabelPantauan = ['produk', 'transaksi', 'pelanggan', 'arus_kas', 'staff_toko', 'data_klien', 'pengaturan'];
+      
+          tabelPantauan.forEach(namaTabel => {
+              window.supabaseClient
+                  .channel('realtime-' + namaTabel)
+                  .on('postgres_changes', { event: '*', schema: 'public', table: namaTabel }, (payload) => {
+                      console.log(`Perubahan terdeteksi pada tabel ${namaTabel}:`, payload);
+      
+                      // Sinkronisasi otomatis berdasarkan tabel yang berubah
+                      if (['produk', 'transaksi'].includes(namaTabel)) {
+                          if (typeof muatDataKatalog === 'function') muatDataKatalog();
+                      }
+                      
+                      if (namaTabel === 'arus_kas') {
+                          if (typeof muatManajemenKas === 'function') muatManajemenKas();
+                      }
+                      
+                      if (namaTabel === 'pelanggan') {
+                          if (typeof segarkanDropdownPelangganKasir === 'function') segarkanDropdownPelangganKasir();
+                      }
+      
+                      if (namaTabel === 'pengaturan') {
+                          if (typeof muatPengaturanData === 'function') muatPengaturanData();
+                      }
+      
+                      if (namaTabel === 'staff_toko') {
+                          console.log("Data staff/kasir mengalami pembaruan di database.");
+                          // Anda bisa menambahkan fungsi render ulang tabel staff jika ada menu manajemen karyawan
+                      }
+                  })
+                  .subscribe();
+          });
+          console.log("Sistem Realtime aktif untuk seluruh tabel (termasuk staff_toko).");
       }
             
     </script>
