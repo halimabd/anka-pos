@@ -8726,8 +8726,10 @@
           // ✨ OPSI 1: BERSIHKAN DATA SEBELUM DIKIRIM
           // Kita membuang 'id_offline' agar Supabase tidak menolaknya (Error 400)
           let antrianBersih = antrian.map(trx => {
-              let copyTrx = { ...trx }; // Buat salinan datanya agar aman
-              delete copyTrx.id_offline; // Hapus properti yang ditolak Supabase
+              let copyTrx = { ...trx }; // Buat salinan datanya agar aman            
+              // Hapus kolom-kolom yang hanya relevan di mode offline lokal
+              delete copyTrx.id_offline; 
+              delete copyTrx.waktu_offline; // ✨ Tambahan: Hapus waktu_offline          
               return copyTrx;
           });
 
