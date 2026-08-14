@@ -8724,12 +8724,13 @@
       
       try {
           // ✨ OPSI 1: BERSIHKAN DATA SEBELUM DIKIRIM
-          // Kita membuang 'id_offline' agar Supabase tidak menolaknya (Error 400)
           let antrianBersih = antrian.map(trx => {
-              let copyTrx = { ...trx }; // Buat salinan datanya agar aman            
+              let copyTrx = { ...trx }; 
+              
               // Hapus kolom-kolom yang hanya relevan di mode offline lokal
               delete copyTrx.id_offline; 
-              delete copyTrx.waktu_offline; // ✨ Tambahan: Hapus waktu_offline          
+              delete copyTrx.waktu_offline; 
+              
               return copyTrx;
           });
 
@@ -8739,19 +8740,26 @@
               .insert(antrianBersih);
           
           if (error) {
-              throw error; // Lempar ke blok catch jika gagal
+              throw error; 
           }
           
           // Hapus data di memori HANYA jika sukses terkirim
           localStorage.removeItem('antrianTransaksi');
           console.log("Sinkronisasi Sukses!");
           
-          // Beri notifikasi visual ke Kasir
+          // ✨ Notifikasi visual ke Kasir (Custom UI SweetAlert)
           if (typeof Swal !== 'undefined') {
-              Swal.fire({ 
-                  icon: 'success', 
-                  title: 'Sinkronisasi Selesai', 
-                  text: `${antrian.length} transaksi offline berhasil dikirim ke server.` 
+              Swal.fire({
+                  title: '<strong style="font-size: 16px;">Sinkronisasi Selesai</strong>',
+                  html: '<span style="font-size: 13px;"><b>' + antrian.length + '</b> transaksi offline berhasil dikirim ke server.</span>',
+                  icon: 'success',
+                  width: '300px',
+                  padding: '15px',
+                  background: 'var(--surface, #ffffff)',
+                  color: 'var(--text-dark, #333333)',
+                  confirmButtonColor: '#25D366', // Warna hijau sukses
+                  confirmButtonText: '<span style="font-size: 13px;">OK</span>',
+                  customClass: { icon: 'ikon-mini-swal' }
               });
           } else {
               alert(`Sinkronisasi Sukses: ${antrian.length} transaksi offline telah masuk ke sistem.`);
@@ -8772,7 +8780,6 @@
           }
       }
     }
-
     // FUNGSI MENGHAPUS FOTO DARI PREVIEW FORM
       function hapusPreviewFoto() {
         document.getElementById('previewGambar').src = "";
