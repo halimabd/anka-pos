@@ -6067,7 +6067,7 @@
         
                 // 4. 🧠 PROSES KALKULASI DATA (AGREGASI)
                 let omsetHariIni = 0, labaHariIni = 0, volumeHariIni = 0;
-                let totalOmset = 0, totalLaba = 0;
+                let totalOmset = 0, totalLaba = 0, totalVolume = 0;
                 let topProdukMap = {};
                 
                 let grafikHarianMap = {};
@@ -6108,9 +6108,12 @@
                     if (tahunStr.length === 4) grafikTahunanMap[tahunStr] = (grafikTahunanMap[tahunStr] || 0) + omset;
         
                     trx.items.forEach(item => {
-                        let qty = parseInt(item.jumlah) || 0;
-                        if (tanggalTrx === hariIniStr) volumeHariIni += qty;
-        
+                        let qty = parseInt(item.jumlah) || 0;                     
+                        // Volume Hari Ini
+                        if (tanggalTrx === hariIniStr) volumeHariIni += qty;                 
+                        // Volume Total Keseluruhan
+                        totalVolume += qty; 
+                        // Top Produk
                         let namaProduk = item.nama || "Produk Tidak Diketahui";
                         if (!topProdukMap[namaProduk]) topProdukMap[namaProduk] = 0;
                         topProdukMap[namaProduk] += qty;
@@ -6142,8 +6145,8 @@
                 // --- PENGISIAN KE TAB "TOTAL KESELURUHAN" ---
                 setTeks('dashTotalOmset', strTotalOmset); 
                 setTeks('dashTotalLaba', strTotalLaba); 
-                setTeks('dashTransaksi', teksTransaksi);    
-                setTeks('dashTotalTransaksi', trxData.length); 
+                setTeks('dashTransaksi', trxData.length + " Invoice");    
+                setTeks('dashTotalTransaksi', totalVolume); 
                 
                 // --- MEMUAT TABEL RIWAYAT TRANSAKSI ---
                 if (typeof gambarTabelRiwayat === "function") {
