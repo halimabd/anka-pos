@@ -9084,17 +9084,54 @@
       }
       
       let html5QrCodeProduk = null;
+
+      // ✨ 1. FUNGSI UNTUK MEMBUKA/MENUTUP DROPDOWN KAMERA PRODUK
+      function toggleDropdownKameraProduk(event) {
+          event.stopPropagation();
+          let list = document.getElementById('listKameraCustomProduk');
+          let btn = document.getElementById('btnPilihKameraProduk');
+          if (list && btn) {
+              if (list.style.display === 'none' || list.style.display === '') {
+                  list.style.display = 'block';
+                  btn.style.borderColor = '#3b82f6'; // Border biru saat aktif
+              } else {
+                  list.style.display = 'none';
+                  btn.style.borderColor = '#444'; // Kembali abu-abu
+              }
+          }
+      }
+
+      // ✨ 2. MENUTUP DROPDOWN OTOMATIS SAAT KLIK DI LUAR AREA
+      document.addEventListener("click", function(e) {
+          let list = document.getElementById('listKameraCustomProduk');
+          let btn = document.getElementById('btnPilihKameraProduk');
+          if (list && btn && !list.contains(e.target) && !btn.contains(e.target)) {
+              list.style.display = 'none';
+              btn.style.borderColor = '#444';
+          }
+      });
+      
       // Fungsi untuk membuka pop-up SweetAlert Scanner
       function bukaScannerProdukSatuKali() {
           Swal.fire({
               title: '<strong style="font-size: 16px;">Scan Barcode Produk</strong>',
               html: `
-                  <div style="text-align: left; margin-bottom: 10px;">
+                  <!-- ✨ CUSTOM DROPDOWN KAMERA DI SINI ✨ -->
+                  <div style="text-align: left; margin-bottom: 10px; position: relative;">
                       <label style="font-size: 12px; font-weight: 600;">Pilih Kamera:</label>
-                      <select id="pilihanKameraProduk" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border-color, #ccc); font-size: 13px; margin-top: 4px; background: transparent; color: inherit;">
-                          <option value="">Mencari kamera...</option>
-                      </select>
+                      
+                      <!-- Tombol Header Dropdown -->
+                      <div id="btnPilihKameraProduk" onclick="toggleDropdownKameraProduk(event)" style="background-color: #2b2b2b; color: #f3f4f6; border: 1px solid #444; padding: 10px 14px; border-radius: 6px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-top: 4px; transition: 0.2s;">
+                          <span id="teksKameraTerpilihProduk" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Mencari kamera...</span>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #9ca3af; flex-shrink: 0;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                      </div>
+                      
+                      <!-- Daftar Opsi Kamera -->
+                      <div id="listKameraCustomProduk" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background-color: #2b2b2b; border: 1px solid #444; border-radius: 6px; margin-top: 4px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); z-index: 9999; max-height: 150px; overflow-y: auto;">
+                          <!-- Diisi otomatis oleh JavaScript -->
+                      </div>
                   </div>
+                  
                   <div id="readerProduk" style="width: 100%; min-height: 250px; background: #000; border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; color: white;">
                       Memuat kamera...
                   </div>
@@ -9126,46 +9163,67 @@
           });
       }
       
-      // Fungsi inisialisasi dropdown kamera
+      // Fungsi inisialisasi dropdown kamera kustom
       async function initScannerProduk() {
           html5QrCodeProduk = new Html5Qrcode("readerProduk");
           
           try {
               const devices = await Html5Qrcode.getCameras();
               if (devices && devices.length > 0) {
-                  let dropdown = document.getElementById('pilihanKameraProduk');
-                  dropdown.innerHTML = ''; 
+                  let containerList = document.getElementById('listKameraCustomProduk');
+                  let teksTampil = document.getElementById('teksKameraTerpilihProduk');
+                  containerList.innerHTML = ''; 
                   
-                  devices.forEach(device => {
-                      let option = document.createElement('option');
-                      option.value = device.id;
-                      option.text = device.label || `Kamera ${dropdown.length + 1}`;
-                      dropdown.appendChild(option);
+                  // ✨ Masukkan daftar kamera ke Dropdown Kustom
+                  devices.forEach((device, index) => {
+                      let namaLabel = device.label || `Kamera ${index + 1}`;
+                      let camId = device.id;
+
+                      let opt = document.createElement('div');
+                      opt.innerText = namaLabel;
+                      opt.style.cssText = "padding: 10px 14px; font-size: 13px; color: #e5e7eb; cursor: pointer; border-bottom: 1px solid #3f3f46; transition: background 0.2s; text-align: left;";
+                      
+                      opt.onmouseover = () => opt.style.backgroundColor = '#3f3f46';
+                      opt.onmouseout = () => opt.style.backgroundColor = 'transparent';
+                      
+                      opt.onclick = () => {
+                          // Ubah teks & tutup dropdown
+                          teksTampil.innerText = namaLabel;
+                          document.getElementById('listKameraCustomProduk').style.display = 'none';
+                          document.getElementById('btnPilihKameraProduk').style.borderColor = '#444';
+                          
+                          // Restart Scanner
+                          if (html5QrCodeProduk.isScanning) {
+                              html5QrCodeProduk.stop().then(() => {
+                                  mulaiStreamProduk(camId);
+                              });
+                          } else {
+                              mulaiStreamProduk(camId);
+                          }
+                      };
+
+                      containerList.appendChild(opt);
                   });
+
+                  if(containerList.lastChild) containerList.lastChild.style.borderBottom = 'none';
       
                   // Prioritaskan kamera belakang
-                  let kameraAktif = devices.length > 1 ? devices[1].id : devices[0].id;
-                  dropdown.value = kameraAktif;
+                  let indexAwal = devices.length > 1 ? 1 : 0;
+                  let kameraAktif = devices[indexAwal].id;
+                  
+                  // Set teks tampilan awal
+                  teksTampil.innerText = devices[indexAwal].label || `Kamera ${indexAwal + 1}`;
       
-                  // Event saat ganti kamera live
-                  dropdown.addEventListener('change', function() {
-                      let camId = this.value;
-                      if (html5QrCodeProduk.isScanning) {
-                          html5QrCodeProduk.stop().then(() => {
-                              mulaiStreamProduk(camId);
-                          });
-                      } else {
-                          mulaiStreamProduk(camId);
-                      }
-                  });
-      
+                  // Mulai stream video
                   mulaiStreamProduk(kameraAktif);
               } else {
                   document.getElementById('readerProduk').innerHTML = "Kamera tidak ditemukan.";
+                  document.getElementById('teksKameraTerpilihProduk').innerText = "Tidak ada kamera";
               }
           } catch (err) {
               console.error(err);
               document.getElementById('readerProduk').innerHTML = "Izin akses kamera ditolak browser.";
+              document.getElementById('teksKameraTerpilihProduk').innerText = "Izin ditolak";
           }
       }
       
