@@ -8309,14 +8309,13 @@
         // ------------------------------------------
       };
 
-      // Fungsi Upload Logo Web
+      // 1. FUNGSI UPLOAD LOGO (SUPABASE / LOCAL VERSION)
       async function prosesUploadLogo(input) {
         if (input.files && input.files[0]) {
             let file = input.files[0];
-            document.getElementById('statusUploadLogo').innerText = "⏳ Mengunggah " + file.name + "... Mohon tunggu.";
+            document.getElementById('statusUploadLogo').innerText = "⏳ Memproses " + file.name + "... Mohon tunggu.";
             
             try {
-                // 1. Membaca file gambar menjadi DataURL (Base64) menggunakan Promise
                 let base64Data = await new Promise((resolve, reject) => {
                     let reader = new FileReader();
                     reader.onload = (e) => resolve(e.target.result);
@@ -8324,45 +8323,30 @@
                     reader.readAsDataURL(file);
                 });
 
-                // 2. Tampilkan Preview gambar di UI
                 let imgPreview = document.getElementById('imgPreviewLogo');
                 imgPreview.src = base64Data;
                 imgPreview.style.display = 'block';
                 
-                let filename = "LOGO_" + new Date().getTime() + ".png";
-
-                // 3. Kirim ke backend menggunakan panggilBackend
-                let url = await panggilBackend('uploadImageToDrive', { 
-                    dataURI: base64Data, 
-                    filename: filename 
-                });
-
-                // 4. Tanggapi hasil dari server
-                if (url && url.error) {
-                    alert("Error upload: " + url.error);
-                    document.getElementById('statusUploadLogo').innerText = "❌ Gagal mengunggah.";
-                } else {
-                    document.getElementById('setLogoUrl').value = url;
-                    document.getElementById('btnHapusLogo').style.display = 'inline-block';
-                    document.getElementById('statusUploadLogo').innerText = "✅ Berhasil! Jangan lupa klik 'Simpan Pengaturan'.";
-                }
+                // Simpan Base64 langsung ke input form pengaturan
+                document.getElementById('setLogoUrl').value = base64Data;
+                document.getElementById('btnHapusLogo').style.display = 'inline-block';
+                document.getElementById('statusUploadLogo').innerText = "✅ Berhasil! Jangan lupa klik 'Simpan Pengaturan'.";
 
             } catch (error) {
-                console.error("Gagal memproses atau mengunggah logo:", error);
-                alert("Terjadi kesalahan saat membaca file atau terhubung ke server.");
+                console.error("Gagal memproses logo:", error);
+                alert("Terjadi kesalahan saat membaca file gambar.");
                 document.getElementById('statusUploadLogo').innerText = "❌ Gagal mengunggah.";
             }
         }
       }
 
-      // Fungsi Upload QRIS
+      // 2. FUNGSI UPLOAD QRIS (SUPABASE / LOCAL VERSION)
       async function prosesUploadQRIS(input) {
         if (input.files && input.files[0]) {
             let file = input.files[0];
-            document.getElementById('statusUploadQRIS').innerText = "⏳ Mengunggah " + file.name + "... Mohon tunggu.";
+            document.getElementById('statusUploadQRIS').innerText = "⏳ Memproses " + file.name + "... Mohon tunggu.";
             
             try {
-                // 1. Membaca file gambar QRIS menjadi DataURL (Base64) menggunakan Promise
                 let base64Data = await new Promise((resolve, reject) => {
                     let reader = new FileReader();
                     reader.onload = (e) => resolve(e.target.result);
@@ -8370,46 +8354,31 @@
                     reader.readAsDataURL(file);
                 });
 
-                // 2. Tampilkan Preview gambar di UI
                 let imgPreview = document.getElementById('imgPreview');
                 imgPreview.src = base64Data;
                 imgPreview.style.display = 'block';
                 
-                let filename = "QRIS_" + new Date().getTime() + ".png";
-
-                // 3. Kirim ke backend menggunakan panggilBackend
-                let url = await panggilBackend('uploadImageToDrive', { 
-                    dataURI: base64Data, 
-                    filename: filename 
-                });
-
-                // 4. Tanggapi hasil dari server
-                if (url && url.error) {
-                    alert("Error upload: " + url.error);
-                    document.getElementById('statusUploadQRIS').innerText = "❌ Gagal mengunggah.";
-                } else {
-                    document.getElementById('setLinkQRIS').value = url;
-                    document.getElementById('btnHapusQRIS').style.display = 'inline-block';
-                    document.getElementById('statusUploadQRIS').innerText = "✅ Berhasil! Jangan lupa klik 'Simpan Pengaturan'.";
-                }
+                // Simpan Base64 langsung ke input form pengaturan
+                document.getElementById('setLinkQRIS').value = base64Data;
+                document.getElementById('btnHapusQRIS').style.display = 'inline-block';
+                document.getElementById('statusUploadQRIS').innerText = "✅ Berhasil! Jangan lupa klik 'Simpan Pengaturan'.";
 
             } catch (error) {
-                console.error("Gagal memproses atau mengunggah QRIS:", error);
-                alert("Terjadi kesalahan saat membaca file atau terhubung ke server.");
+                console.error("Gagal memproses QRIS:", error);
+                alert("Terjadi kesalahan saat membaca file gambar.");
                 document.getElementById('statusUploadQRIS').innerText = "❌ Gagal mengunggah.";
             }
         }
       }
 
-      // FUNGSI MENGHAPUS LOGO WEB (MENGHAPUS DARI DRIVE)
+      // 3. FUNGSI MENGHAPUS LOGO WEB
       async function hapusLogoWeb() {
         let url = document.getElementById('setLogoUrl').value;
         if (!url) return;
         
-        // 1. Munculkan Pop-up Konfirmasi menggunakan await
         let result = await Swal.fire({
             title: '<strong style="font-size: 16px;">Hapus Logo</strong>',
-            html: '<span style="font-size: 13px;">Yakin ingin menghapus Logo? File juga akan <b>dihapus permanen</b> dari Google Drive.</span>',
+            html: '<span style="font-size: 13px;">Yakin ingin menghapus Logo?</span>',
             icon: 'warning',
             width: '300px',
             padding: '15px',
@@ -8424,64 +8393,37 @@
         });
 
         if (result.isConfirmed) {
-            // Ubah teks tombol dan tampilkan loading
-            document.getElementById('btnHapusLogo').innerText = "Menghapus...";
+            // Reset UI langsung tanpa backend Drive
+            document.getElementById('setLogoUrl').value = "";
+            document.getElementById('imgPreviewLogo').src = "";
+            document.getElementById('imgPreviewLogo').style.display = 'none';
+            document.getElementById('btnHapusLogo').style.display = 'none';
+            document.getElementById('statusUploadLogo').innerText = "";
+            document.getElementById('inputUploadLogo').value = "";        
             
             Swal.fire({
-                title: '<strong style="font-size: 16px;">Menghapus...</strong>',
-                html: '<span style="font-size: 13px;">Menghapus file dari Drive</span>',
+                title: '<strong style="font-size: 16px;">Berhasil</strong>',
+                html: '<span style="font-size: 13px;">Logo dihapus! Klik <b>Simpan Pengaturan</b> untuk menerapkan perubahan.</span>',
+                icon: 'success',
                 width: '300px',
                 padding: '15px',
                 background: 'var(--surface, #ffffff)',
                 color: 'var(--text-dark, #333333)',
-                allowOutsideClick: false,
-                didOpen: () => { Swal.showLoading(); }
+                confirmButtonColor: '#25D366',
+                confirmButtonText: '<span style="font-size: 13px;">OK</span>',
+                customClass: { icon: 'ikon-mini-swal' }
             });
-
-            try {
-                // 2. Kirim perintah hapus ke backend menggunakan panggilBackend
-                let res = await panggilBackend('deleteImageFromDrive', { fileUrl: url }); 
-                
-                // Reset UI
-                document.getElementById('setLogoUrl').value = "";
-                document.getElementById('imgPreviewLogo').src = "";
-                document.getElementById('imgPreviewLogo').style.display = 'none';
-                document.getElementById('btnHapusLogo').style.display = 'none';
-                document.getElementById('statusUploadLogo').innerText = "";
-                document.getElementById('btnHapusLogo').innerText = "Hapus Logo";
-                document.getElementById('inputUploadLogo').value = ""; // Reset input file       
-                
-                // Notifikasi Sukses
-                Swal.fire({
-                    title: '<strong style="font-size: 16px;">Berhasil</strong>',
-                    html: '<span style="font-size: 13px;">Logo dihapus! Klik <b>Simpan Pengaturan</b> untuk menerapkan perubahan.</span>',
-                    icon: 'success',
-                    width: '300px',
-                    padding: '15px',
-                    background: 'var(--surface, #ffffff)',
-                    color: 'var(--text-dark, #333333)',
-                    confirmButtonColor: '#25D366',
-                    confirmButtonText: '<span style="font-size: 13px;">OK</span>',
-                    customClass: { icon: 'ikon-mini-swal' }
-                });
-
-            } catch (error) {
-                console.error("Gagal menghapus logo:", error);
-                alert("Terjadi kesalahan koneksi saat menghapus file dari server.");
-                document.getElementById('btnHapusLogo').innerText = "Hapus Logo";
-            }
         }
       }
 
-      // FUNGSI MENGHAPUS QRIS (MENGHAPUS DARI DRIVE)
+      // 4. FUNGSI MENGHAPUS QRIS
       async function hapusQRIS() {
         let url = document.getElementById('setLinkQRIS').value;
         if (!url) return;
         
-        // 1. Munculkan Pop-up Konfirmasi menggunakan await
         let result = await Swal.fire({
             title: '<strong style="font-size: 16px;">Hapus QRIS</strong>',
-            html: '<span style="font-size: 13px;">Yakin ingin menghapus QRIS? File juga akan <b>dihapus permanen</b> dari Google Drive.</span>',
+            html: '<span style="font-size: 13px;">Yakin ingin menghapus QRIS?</span>',
             icon: 'warning',
             width: '300px',
             padding: '15px',
@@ -8496,52 +8438,26 @@
         });
 
         if (result.isConfirmed) {     
-            // Ubah teks tombol dan tampilkan loading
-            document.getElementById('btnHapusQRIS').innerText = "Menghapus...";
+            // Reset UI langsung tanpa backend Drive
+            document.getElementById('setLinkQRIS').value = "";
+            document.getElementById('imgPreview').src = "";
+            document.getElementById('imgPreview').style.display = 'none';
+            document.getElementById('btnHapusQRIS').style.display = 'none';
+            document.getElementById('statusUploadQRIS').innerText = "";
+            document.getElementById('inputUploadQRIS').value = "";        
             
             Swal.fire({
-                title: '<strong style="font-size: 16px;">Menghapus...</strong>',
-                html: '<span style="font-size: 13px;">Menghapus file dari Drive</span>',
+                title: '<strong style="font-size: 16px;">Berhasil</strong>',
+                html: '<span style="font-size: 13px;">QRIS dihapus! Klik <b>Simpan Pengaturan</b> untuk menerapkan perubahan.</span>',
+                icon: 'success',
                 width: '300px',
                 padding: '15px',
                 background: 'var(--surface, #ffffff)',
                 color: 'var(--text-dark, #333333)',
-                allowOutsideClick: false,
-                didOpen: () => { Swal.showLoading(); }
+                confirmButtonColor: '#25D366',
+                confirmButtonText: '<span style="font-size: 13px;">OK</span>',
+                customClass: { icon: 'ikon-mini-swal' }
             });
-
-            try {
-                // 2. Kirim perintah hapus ke backend menggunakan panggilBackend
-                let res = await panggilBackend('deleteImageFromDrive', { fileUrl: url }); 
-                
-                // Reset UI
-                document.getElementById('setLinkQRIS').value = "";
-                document.getElementById('imgPreview').src = "";
-                document.getElementById('imgPreview').style.display = 'none';
-                document.getElementById('btnHapusQRIS').style.display = 'none';
-                document.getElementById('statusUploadQRIS').innerText = "";
-                document.getElementById('btnHapusQRIS').innerText = "Hapus QRIS";
-                document.getElementById('inputUploadQRIS').value = ""; // Reset input file       
-                
-                // Notifikasi Sukses
-                Swal.fire({
-                    title: '<strong style="font-size: 16px;">Berhasil</strong>',
-                    html: '<span style="font-size: 13px;">QRIS dihapus! Klik <b>Simpan Pengaturan</b> untuk menerapkan perubahan.</span>',
-                    icon: 'success',
-                    width: '300px',
-                    padding: '15px',
-                    background: 'var(--surface, #ffffff)',
-                    color: 'var(--text-dark, #333333)',
-                    confirmButtonColor: '#25D366',
-                    confirmButtonText: '<span style="font-size: 13px;">OK</span>',
-                    customClass: { icon: 'ikon-mini-swal' }
-                });
-
-            } catch (error) {
-                console.error("Gagal menghapus QRIS:", error);
-                alert("Terjadi kesalahan koneksi saat menghapus file dari server.");
-                document.getElementById('btnHapusQRIS').innerText = "Hapus QRIS";
-            }
         }
       }
 
