@@ -6079,11 +6079,9 @@
                 const hariIniStr = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, '0') + "-" + String(now.getDate()).padStart(2, '0');
         
                 trxData.forEach(trx => {
-                    // ✨ Jadikan huruf kecil semua agar aman dari perbedaan penulisan (Dibatalkan, Batal, Void, dll)
+                    // Cek status void (Case Insensitive)
                     let statusTrx = (trx.status_transaksi || trx.status || "").toLowerCase();
-                    if (statusTrx.includes("batal") || statusTrx.includes("dibatalkan") || statusTrx.includes("void") || statusTrx.includes("cancel")) {
-                        return; // Lewati transaksi yang sudah di-void
-                    }
+                    if (statusTrx.includes("batal") || statusTrx.includes("void") || statusTrx.includes("cancel")) return;
         
                     let dTrx = new Date(trx.created_at);
                     let tanggalTrx = isNaN(dTrx.getTime()) ? '' : (dTrx.getFullYear() + "-" + String(dTrx.getMonth() + 1).padStart(2, '0') + "-" + String(dTrx.getDate()).padStart(2, '0'));
@@ -6094,12 +6092,15 @@
         
                     totalOmset += omset;
                     totalLaba += laba;
+                    totalVolume++; // ✨ Hitung sebagai 1 transaksi valid (Total Keseluruhan)
         
                     if (tanggalTrx === hariIniStr) {
                         omsetHariIni += omset;
                         labaHariIni += laba;
+                        volumeHariIni++; // ✨ Hitung sebagai 1 transaksi valid (Hari Ini)
                     }
         
+                    // Persiapkan Data Grafik
                     let bulanStr = tanggalTrx.substring(0, 7); 
                     let tahunStr = tanggalTrx.substring(0, 4); 
         
@@ -6107,13 +6108,9 @@
                     if (tanggalTrx) grafikHarianMap[tanggalTrx] = (grafikHarianMap[tanggalTrx] || 0) + omset;
                     if (tahunStr.length === 4) grafikTahunanMap[tahunStr] = (grafikTahunanMap[tahunStr] || 0) + omset;
         
+                    // Loop items HANYA untuk Top Produk (Produk Terlaris)
                     trx.items.forEach(item => {
-                        let qty = parseInt(item.jumlah) || 0;                     
-                        // Volume Hari Ini
-                        if (tanggalTrx === hariIniStr) volumeHariIni += qty;                 
-                        // Volume Total Keseluruhan
-                        totalVolume += qty; 
-                        // Top Produk
+                        let qty = parseInt(item.jumlah) || 0;
                         let namaProduk = item.nama || "Produk Tidak Diketahui";
                         if (!topProdukMap[namaProduk]) topProdukMap[namaProduk] = 0;
                         topProdukMap[namaProduk] += qty;
@@ -6145,7 +6142,7 @@
                 // --- PENGISIAN KE TAB "TOTAL KESELURUHAN" ---
                 setTeks('dashTotalOmset', strTotalOmset); 
                 setTeks('dashTotalLaba', strTotalLaba); 
-                setTeks('dashTransaksi', trxData.length + " Invoice");    
+                setTeks('dashTransaksi', totalVolume + " Invoice");    
                 setTeks('dashTotalTransaksi', totalVolume); 
                 
                 // --- MEMUAT TABEL RIWAYAT TRANSAKSI ---
