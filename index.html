@@ -7529,328 +7529,330 @@
           document.getElementById('previewGambar').style.display = "none"; 
           document.getElementById('previewGambar').src = ""; 
       }
+      
       // --- VARIABEL PAGINASI USERS ---
       let dataUsersGlobal = [];
       let halamanUsersSaatIni = 1;
-      let itemPerHalamanUsers = 20; // Silakan ganti jika ingin 5 atau 15 baris per halaman
+      let itemPerHalamanUsers = 20;
 
+      // 1. MEMUAT DAFTAR USER DARI TABEL 'staff_toko'
       async function muatDaftarUsers() { 
-        let sortBy = document.getElementById('sortUsersMgmt').value;
-        let searchEl = document.getElementById('searchUsersMgmt');
-        let queryUsers = searchEl ? searchEl.value.toLowerCase() : "";
+          let sortBy = document.getElementById('sortUsersMgmt').value;
+          let searchEl = document.getElementById('searchUsersMgmt');
+          let queryUsers = searchEl ? searchEl.value.toLowerCase() : "";
 
-        try {
-            // Memanggil backend menggunakan panggilBackend (menggantikan google.script.run)
-            let usersList = await panggilBackend('getListUsers'); 
-            
-            // Filter pencarian
-            let filteredUsers = usersList.filter(u => 
-                (u.username && u.username.toLowerCase().includes(queryUsers)) || 
-                (u.role && u.role.toLowerCase().includes(queryUsers)) ||
-                (u.nama && u.nama.toLowerCase().includes(queryUsers)) ||
-                (u.noTelp && u.noTelp.toLowerCase().includes(queryUsers))
-            );
+          try {
+              const klienId = localStorage.getItem('klien_id');
+              if (!klienId) return;
 
-            // Sorting
-            if(sortBy === 'az') {
-                filteredUsers.sort((a,b) => (a.nama || a.username).localeCompare(b.nama || b.username)); 
-            } else if(sortBy === 'role') {
-                filteredUsers.sort((a,b) => a.role.localeCompare(b.role));
-            }
+              // Tarik data dari tabel 'staff_toko' Supabase
+              let { data: usersList, error } = await window.supabaseClient
+                  .from('staff_toko')
+                  .select('*')
+                  .eq('klien_id', klienId);
 
-            // Simpan ke global dan mulai dari halaman 1
-            dataUsersGlobal = filteredUsers;
-            halamanUsersSaatIni = 1; 
-            renderTabelUsers(); // Panggil fungsi cetak
+              if (error) throw error;
 
-        } catch (error) {
-            console.error("Gagal memuat daftar pengguna:", error);
-            alert("Terjadi kesalahan koneksi saat memuat data pengguna dari server.");
-        }
+              // Pemetaan data untuk menyesuaikan properti no_telp dari database
+              let mappedUsers = (usersList || []).map(u => ({
+                  ...u,
+                  noTelp: u.no_telp || ''
+              }));
+              
+              // Filter pencarian
+              let filteredUsers = mappedUsers.filter(u => 
+                  (u.username && u.username.toLowerCase().includes(queryUsers)) || 
+                  (u.role && u.role.toLowerCase().includes(queryUsers)) ||
+                  (u.nama && u.nama.toLowerCase().includes(queryUsers)) ||
+                  (u.noTelp && u.noTelp.toLowerCase().includes(queryUsers))
+              );
+
+              // Sorting
+              if(sortBy === 'az') {
+                  filteredUsers.sort((a,b) => (a.nama || a.username).localeCompare(b.nama || b.username)); 
+              } else if(sortBy === 'role') {
+                  filteredUsers.sort((a,b) => a.role.localeCompare(b.role));
+              }
+
+              dataUsersGlobal = filteredUsers;
+              halamanUsersSaatIni = 1; 
+              renderTabelUsers();
+
+          } catch (error) {
+              console.error("Gagal memuat daftar staf toko:", error);
+              alert("Terjadi kesalahan koneksi saat memuat data dari server.");
+          }
       }
 
-    function renderTabelUsers() {
-      let tbody = document.getElementById('mgmtUsersTable'); 
-      tbody.innerHTML = ""; 
-      
-      if(dataUsersGlobal.length === 0) { 
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 20px;">Tidak ada akun ditemukan</td></tr>`; 
-        document.getElementById('paginasiUsers').innerHTML = ""; // Bersihkan paginasi
-        return; 
-      } 
+      function renderTabelUsers() {
+          let tbody = document.getElementById('mgmtUsersTable'); 
+          tbody.innerHTML = ""; 
+          
+          if(dataUsersGlobal.length === 0) { 
+              tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 20px;">Tidak ada akun ditemukan</td></tr>`; 
+              document.getElementById('paginasiUsers').innerHTML = ""; 
+              return; 
+          } 
 
-      // LOGIKA PAGINASI (Memotong Array)
-      let start = (halamanUsersSaatIni - 1) * itemPerHalamanUsers;
-      let end = start + itemPerHalamanUsers;
-      let dataHalamanIni = dataUsersGlobal.slice(start, end);
-      
-      dataHalamanIni.forEach(u => { 
-        let namaTampil = u.nama ? u.nama : '-';
-        let alamatTampil = u.alamat ? u.alamat : '-';
-        let noTelpTampil = u.noTelp ? u.noTelp : '-'; 
-        
-        // Susunan <td> ini WAJIB sama dengan urutan <th> di Desktop
-        tbody.innerHTML += `<tr>
-          <!-- 1. NAMA -->
-          <td class="col-usr-nama">
-            <b style="color:var(--text-dark);">${namaTampil}</b>
-          </td>
-          <!-- 2. USERNAME -->
-          <td class="col-usr-username">
-            <span class="lbl-mob" style="display:none; color:var(--text-muted); font-size:12px;">Username: </span>
-            <span style="color:var(--text-muted); font-size: 13px;">${u.username}</span>
-          </td>
-          <!-- 3. PASSWORD -->
-          <td class="col-usr-password">
-            <span class="lbl-mob" style="display:none; color:var(--text-muted); font-size:12px;">Password: </span>
-            <code style="background:var(--bg-main); padding:4px 8px; border-radius:4px; font-size: 12px;">${u.password}</code>
-          </td>
-          <!-- 4. ROLE -->
-          <td class="col-usr-role">
-            <span style="font-size:12px; font-weight:600; color:var(--primary); background:rgba(26,115,232,0.1); padding:4px 12px; border-radius:100px;">${u.role}</span>
-          </td>
-          <!-- 5. NO TELP -->
-          <td class="col-usr-telp">
-            <span class="lbl-mob" style="display:none; color:var(--text-muted); font-size:12px;">Telp: </span>
-            <span style="font-size:13px; font-weight:500; color:var(--text-dark);">${noTelpTampil}</span>
-          </td>
-          <!-- 6. ALAMAT -->
-          <td class="col-usr-alamat">
-            <span class="lbl-mob" style="display:none; color:var(--text-muted); font-size:12px;">Alamat: </span>
-            <span style="font-size:12px; color:var(--text-muted);">${alamatTampil}</span>
-          </td>
-          <!-- 7. AKSI -->
-          <td class="col-usr-aksi">
-            <div class="col-kry-aksi-desktop" style="display:flex; gap:6px;">
-              <!-- Pastikan nama fungsi Hapus di bawah ini sesuai dengan milikmu (misal: aksiHapusUser) -->
-              <button class="btn-small btn-edit" onclick="isiFormEditUser(${u.rowIndex}, '${escJS(u.nama)}', '${escJS(u.username)}', '${escJS(u.password)}', '${escJS(u.role)}', '${escJS(u.noTelp)}', '${escJS(u.alamat)}'); bukaFormMobile('formUsersMgmt');">Edit</button>
-              <button class="btn-small btn-delete" onclick="aksiHapusUser(${u.rowIndex}, '${escJS(u.username)}')">Hapus</button>
-            </div>
-          </td>
-        </tr>`; 
-      }); 
+          // LOGIKA PAGINASI (Memotong Array)
+          let start = (halamanUsersSaatIni - 1) * itemPerHalamanUsers;
+          let end = start + itemPerHalamanUsers;
+          let dataHalamanIni = dataUsersGlobal.slice(start, end);
+          
+          dataHalamanIni.forEach(u => { 
+              let namaTampil = u.nama ? u.nama : '-';
+              let alamatTampil = u.alamat ? u.alamat : '-';
+              let noTelpTampil = u.noTelp ? u.noTelp : '-'; 
+              
+              tbody.innerHTML += `<tr>
+                <td class="col-usr-nama">
+                  <b style="color:var(--text-dark);">${namaTampil}</b>
+                </td>
+                <td class="col-usr-username">
+                  <span class="lbl-mob" style="display:none; color:var(--text-muted); font-size:12px;">Username: </span>
+                  <span style="color:var(--text-muted); font-size: 13px;">${u.username}</span>
+                </td>
+                <td class="col-usr-password">
+                  <span class="lbl-mob" style="display:none; color:var(--text-muted); font-size:12px;">Password: </span>
+                  <code style="background:var(--bg-main); padding:4px 8px; border-radius:4px; font-size: 12px;">${u.password}</code>
+                </td>
+                <td class="col-usr-role">
+                  <span style="font-size:12px; font-weight:600; color:var(--primary); background:rgba(26,115,232,0.1); padding:4px 12px; border-radius:100px;">${u.role}</span>
+                </td>
+                <td class="col-usr-telp">
+                  <span class="lbl-mob" style="display:none; color:var(--text-muted); font-size:12px;">Telp: </span>
+                  <span style="font-size:13px; font-weight:500; color:var(--text-dark);">${noTelpTampil}</span>
+                </td>
+                <td class="col-usr-alamat">
+                  <span class="lbl-mob" style="display:none; color:var(--text-muted); font-size:12px;">Alamat: </span>
+                  <span style="font-size:12px; color:var(--text-muted);">${alamatTampil}</span>
+                </td>
+                <td class="col-usr-aksi">
+                  <div class="col-kry-aksi-desktop" style="display:flex; gap:6px;">
+                    <button class="btn-small btn-edit" onclick="isiFormEditUser('${u.id}', '${escJS(u.nama)}', '${escJS(u.username)}', '${escJS(u.password)}', '${escJS(u.role)}', '${escJS(u.noTelp)}', '${escJS(u.alamat)}'); bukaFormMobile('formUsersMgmt');">Edit</button>
+                    <button class="btn-small btn-delete" onclick="aksiHapusUser('${u.id}', '${escJS(u.username)}')">Hapus</button>
+                  </div>
+                </td>
+              </tr>`; 
+          }); 
 
-      // Panggil tombol paginasi di bawah tabel
-      renderTombolPaginasiUsers();
-    }
-
-    function renderTombolPaginasiUsers() {
-      let pgContainer = document.getElementById('paginasiUsers');
-      if (!pgContainer) return;
-
-      let totalData = dataUsersGlobal.length;
-      let totalPages = Math.ceil(totalData / itemPerHalamanUsers);
-
-      if (totalData === 0) {
-        pgContainer.innerHTML = "";
-        return;
+          renderTombolPaginasiUsers();
       }
 
-      // Hitung urutan data yang sedang dilihat
-      let startItem = ((halamanUsersSaatIni - 1) * itemPerHalamanUsers) + 1;
-      let endItem = startItem + itemPerHalamanUsers - 1;
-      if (endItem > totalData) endItem = totalData;
+      function renderTombolPaginasiUsers() {
+          let pgContainer = document.getElementById('paginasiUsers');
+          if (!pgContainer) return;
 
-      // Layout Flex Column (Teks di Atas, Tombol di Bawah, Rata Tengah)
-      let html = `<div style="display:flex; flex-direction:column; align-items:center; gap:12px; margin-top:16px; margin-bottom:16px;">`;
+          let totalData = dataUsersGlobal.length;
+          let totalPages = Math.ceil(totalData / itemPerHalamanUsers);
 
-      // --- BAGIAN ATAS: Teks Keterangan ---
-      html += `<div style="font-size: 14px; color: var(--text-dark);">Menampilkan ${startItem} sampai ${endItem} dari ${totalData} data</div>`;
+          if (totalData === 0) {
+              pgContainer.innerHTML = "";
+              return;
+          }
 
-      // --- BAGIAN BAWAH: Container Tombol ---
-      html += `<div style="display:flex; gap:8px; align-items:center;">`;
+          let startItem = ((halamanUsersSaatIni - 1) * itemPerHalamanUsers) + 1;
+          let endItem = startItem + itemPerHalamanUsers - 1;
+          if (endItem > totalData) endItem = totalData;
 
-      // Ikon Panah SVG
-      let svgPrev = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>`;
-      let svgNext = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>`;
+          let html = `<div style="display:flex; flex-direction:column; align-items:center; gap:12px; margin-top:16px; margin-bottom:16px;">`;
+          html += `<div style="font-size: 14px; color: var(--text-dark);">Menampilkan ${startItem} sampai ${endItem} dari ${totalData} data</div>`;
+          html += `<div style="display:flex; gap:8px; align-items:center;">`;
 
-      // Base style untuk bentuk lingkaran (border-radius: 100px)
-      let btnBase = `width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; border-radius: 100px; padding: 0; outline: none; transition: 0.2s;`;
-      
-      let btnNormal = `${btnBase} background: transparent; color: var(--text-dark); border: 1px solid var(--border-color); cursor: pointer;`;
-      let btnDisabled = `${btnBase} background: transparent; color: var(--border-color); border: 1px solid var(--border-color); cursor: not-allowed; opacity: 0.4;`;
-      let btnActive = `${btnBase} background: var(--primary, #1a73e8); color: #fff; border: none; cursor: default;`;
+          let svgPrev = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>`;
+          let svgNext = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>`;
 
-      // Tombol Kiri (<)
-      if (halamanUsersSaatIni === 1) {
-        html += `<button style="${btnDisabled}" disabled>${svgPrev}</button>`;
-      } else {
-        html += `<button style="${btnNormal}" onclick="gantiHalamanUsers(${halamanUsersSaatIni - 1})">${svgPrev}</button>`;
+          let btnBase = `width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; border-radius: 100px; padding: 0; outline: none; transition: 0.2s;`;
+          let btnNormal = `${btnBase} background: transparent; color: var(--text-dark); border: 1px solid var(--border-color); cursor: pointer;`;
+          let btnDisabled = `${btnBase} background: transparent; color: var(--border-color); border: 1px solid var(--border-color); cursor: not-allowed; opacity: 0.4;`;
+          let btnActive = `${btnBase} background: var(--primary, #1a73e8); color: #fff; border: none; cursor: default;`;
+
+          if (halamanUsersSaatIni === 1) {
+              html += `<button style="${btnDisabled}" disabled>${svgPrev}</button>`;
+          } else {
+              html += `<button style="${btnNormal}" onclick="gantiHalamanUsers(${halamanUsersSaatIni - 1})">${svgPrev}</button>`;
+          }
+
+          for (let i = 1; i <= totalPages; i++) {
+              let isAktif = (i === halamanUsersSaatIni);
+              html += `<button style="${isAktif ? btnActive : btnNormal}" onclick="${isAktif ? '' : 'gantiHalamanUsers(' + i + ')'}">${i}</button>`;
+          }
+
+          if (halamanUsersSaatIni === totalPages) {
+              html += `<button style="${btnDisabled}" disabled>${svgNext}</button>`;
+          } else {
+              html += `<button style="${btnNormal}" onclick="gantiHalamanUsers(${halamanUsersSaatIni + 1})">${svgNext}</button>`;
+          }
+
+          html += `</div></div>`;
+          pgContainer.innerHTML = html;
       }
 
-      // Tombol Angka Tengah
-      for (let i = 1; i <= totalPages; i++) {
-        let isAktif = (i === halamanUsersSaatIni);
-        html += `<button style="${isAktif ? btnActive : btnNormal}" onclick="${isAktif ? '' : 'gantiHalamanUsers(' + i + ')'}">${i}</button>`;
+      function gantiHalamanUsers(page) {
+          halamanUsersSaatIni = page;
+          renderTabelUsers();
       }
 
-      // Tombol Kanan (>)
-      if (halamanUsersSaatIni === totalPages) {
-        html += `<button style="${btnDisabled}" disabled>${svgNext}</button>`;
-      } else {
-        html += `<button style="${btnNormal}" onclick="gantiHalamanUsers(${halamanUsersSaatIni + 1})">${svgNext}</button>`;
-      }
-
-      html += `</div></div>`;
-      pgContainer.innerHTML = html;
-    }
-
-    function gantiHalamanUsers(page) {
-      halamanUsersSaatIni = page;
-      renderTabelUsers();
-    }
-
-      // --- 1. FUNGSI MENYIMPAN DATA PENGGUNA ---
+      // --- 2. FUNGSI MENYIMPAN / UPDATE STAF KE 'staff_toko' ---
       async function aksiSimpanUser() {
-        let rowIndex = document.getElementById('userRowIndex').value;
-        let nama = document.getElementById('userNamaLengkap').value;
-        let username = document.getElementById('userUsername').value;
-        let password = document.getElementById('userPassword').value;
-        let role = document.getElementById('userRole').value;
-        
-        // ✨ Ambil Nilai No. Telp dari Form HTML
-        let noTelp = document.getElementById('userNoTelp').value; 
-        let alamat = document.getElementById('userAlamat').value;
+          let userId = document.getElementById('userRowIndex').value; 
+          let nama = document.getElementById('userNamaLengkap').value;
+          let username = document.getElementById('userUsername').value;
+          let password = document.getElementById('userPassword').value;
+          let role = document.getElementById('userRole').value;
+          let noTelp = document.getElementById('userNoTelp').value; 
+          let alamat = document.getElementById('userAlamat').value;
 
-        if(!nama || !username || !password) {
-            alert("Nama, Username, dan Password wajib diisi!");
-            return;
-        }
+          if(!nama || !username || !password) {
+              alert("Nama, Username, dan Password wajib diisi!");
+              return;
+          }
 
-        // Bungkus dalam variabel 'dataUser'
-        let dataUser = {
-            rowIndex: rowIndex,
-            nama: nama,
-            username: username,
-            password: password,
-            role: role,
-            alamat: alamat,
-            noTelp: noTelp // ✨ Masukkan noTelp ke dalam bungkusan data
-        };
+          const klienId = localStorage.getItem('klien_id');
+          if (!klienId) return;
 
-        try {
-            // Kirim ke backend menggunakan panggilBackend
-            let res = await panggilBackend('simpanUserWeb', dataUser);
-            
-            alert(res); 
-            resetFormUser();
-            muatDaftarUsers(); 
-            tutupSemuaFormMobile();
+          let dataUser = {
+              klien_id: klienId,
+              nama: nama,
+              username: username,
+              password: password,
+              role: role,
+              alamat: alamat,
+              no_telp: noTelp // Sesuai dengan nama kolom di gambar
+          };
 
-        } catch (error) {
-            console.error("Gagal menyimpan pengguna:", error);
-            alert("Terjadi kesalahan koneksi saat menyimpan data pengguna ke server.");
-        }
+          try {
+              let pesanSukses = "";
+              if (userId) {
+                  // Mode Edit
+                  let { error } = await window.supabaseClient
+                      .from('staff_toko')
+                      .update(dataUser)
+                      .eq('id', userId);
+                  if (error) throw error;
+                  pesanSukses = "Data staf berhasil diperbarui!";
+              } else {
+                  // Mode Tambah Baru
+                  let { error } = await window.supabaseClient
+                      .from('staff_toko')
+                      .insert([dataUser]);
+                  if (error) throw error;
+                  pesanSukses = "Staf baru berhasil ditambahkan!";
+              }
+              
+              alert(pesanSukses); 
+              resetFormUser();
+              muatDaftarUsers(); 
+              tutupSemuaFormMobile();
+
+          } catch (error) {
+              console.error("Gagal menyimpan data staf:", error);
+              alert("Terjadi kesalahan koneksi saat menyimpan data ke server.");
+          }
       }
 
-      // --- 2. FUNGSI MENGISI FORM (SAAT TOMBOL EDIT DIKLIK) ---
-      // ✨ Pastikan parameter noTelp ditambahkan ke fungsi ini
-      function isiFormEditUser(rowIndex, nama, username, password, role, noTelp, alamat) {
-        document.getElementById('userRowIndex').value = rowIndex;
-        document.getElementById('userNamaLengkap').value = nama;
-        document.getElementById('userUsername').value = username;
-        document.getElementById('userPassword').value = password;
-        document.getElementById('userRole').value = role;
-        
-        // ✨ Isi form No Telp
-        document.getElementById('userNoTelp').value = (noTelp && noTelp !== "undefined") ? noTelp : ""; 
-        document.getElementById('userAlamat').value = (alamat && alamat !== "undefined") ? alamat : "";
-        
-        document.getElementById('userFormTitle').innerText = "Edit Pengguna";
-        document.getElementById('btnBatalEditUser').style.display = "block";
+      // --- 3. FUNGSI MENGISI FORM (SAAT TOMBOL EDIT DIKLIK) ---
+      function isiFormEditUser(id, nama, username, password, role, noTelp, alamat) {
+          document.getElementById('userRowIndex').value = id; 
+          document.getElementById('userNamaLengkap').value = nama;
+          document.getElementById('userUsername').value = username;
+          document.getElementById('userPassword').value = password;
+          document.getElementById('userRole').value = role;
+          document.getElementById('userNoTelp').value = (noTelp && noTelp !== "undefined") ? noTelp : ""; 
+          document.getElementById('userAlamat').value = (alamat && alamat !== "undefined") ? alamat : "";
+          
+          document.getElementById('userFormTitle').innerText = "Edit Staf Toko";
+          document.getElementById('btnBatalEditUser').style.display = "block";
       }
 
-      async function aksiHapusUser(rowIndex, username) { 
-        // 1. Cek jika user mencoba menghapus akunnya sendiri
-        if (username === currentUser) {
-            await Swal.fire({
-                title: '<strong style="font-size: 16px;">Ditolak</strong>',
-                html: '<span style="font-size: 13px;">Anda tidak dapat menghapus akun Anda sendiri!</span>',
-                icon: 'error', // Ikon silang merah
-                width: '300px',
-                padding: '15px',
-                background: 'var(--surface, #ffffff)',
-                color: 'var(--text-dark, #333333)',
-                confirmButtonColor: '#d33', // Tombol merah
-                confirmButtonText: '<span style="font-size: 13px;">Mengerti</span>',
-                customClass: { icon: 'ikon-mini-swal' }
-            });
-            return; // Hentikan fungsi di sini
-        }
+      // --- 4. FUNGSI HAPUS STAF DARI 'staff_toko' ---
+      async function aksiHapusUser(userId, username) { 
+          if (username === currentUser) {
+              await Swal.fire({
+                  title: '<strong style="font-size: 16px;">Ditolak</strong>',
+                  html: '<span style="font-size: 13px;">Anda tidak dapat menghapus akun Anda sendiri!</span>',
+                  icon: 'error',
+                  width: '300px',
+                  padding: '15px',
+                  background: 'var(--surface, #ffffff)',
+                  color: 'var(--text-dark, #333333)',
+                  confirmButtonColor: '#d33',
+                  confirmButtonText: '<span style="font-size: 13px;">Mengerti</span>',
+                  customClass: { icon: 'ikon-mini-swal' }
+              });
+              return; 
+          }
 
-        // 2. Jika bukan akun sendiri, munculkan Pop-up Konfirmasi menggunakan await
-        let result = await Swal.fire({
-            title: '<strong style="font-size: 16px;">Hapus Akun</strong>',
-            html: '<span style="font-size: 13px;">Hapus akun <b>"' + username + '"</b> secara permanen?</span>',
-            icon: 'warning',
-            width: '300px',
-            padding: '15px',
-            background: 'var(--surface, #ffffff)',
-            color: 'var(--text-dark, #333333)',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#888',
-            confirmButtonText: '<span style="font-size: 13px;">Ya, Hapus!</span>',
-            cancelButtonText: '<span style="font-size: 13px;">Batal</span>',
-            customClass: { icon: 'ikon-mini-swal' }
-        });
+          let result = await Swal.fire({
+              title: '<strong style="font-size: 16px;">Hapus Akun</strong>',
+              html: '<span style="font-size: 13px;">Hapus akun <b>"' + username + '"</b> secara permanen?</span>',
+              icon: 'warning',
+              width: '300px',
+              padding: '15px',
+              background: 'var(--surface, #ffffff)',
+              color: 'var(--text-dark, #333333)',
+              showCancelButton: true,
+              confirmButtonColor: '#d33',
+              cancelButtonColor: '#888',
+              confirmButtonText: '<span style="font-size: 13px;">Ya, Hapus!</span>',
+              cancelButtonText: '<span style="font-size: 13px;">Batal</span>',
+              customClass: { icon: 'ikon-mini-swal' }
+          });
 
-        // 3. Jika dikonfirmasi, jalankan Loading dan Hapus
-        if (result.isConfirmed) {
-            Swal.fire({
-                title: '<strong style="font-size: 16px;">Menghapus...</strong>',
-                html: '<span style="font-size: 13px;">Mohon tunggu sebentar</span>',
-                width: '300px',
-                padding: '15px',
-                background: 'var(--surface, #ffffff)',
-                color: 'var(--text-dark, #333333)',
-                allowOutsideClick: false,
-                didOpen: () => {
-                    Swal.showLoading();
-                }
-            });
+          if (result.isConfirmed) {
+              Swal.fire({
+                  title: '<strong style="font-size: 16px;">Menghapus...</strong>',
+                  html: '<span style="font-size: 13px;">Mohon tunggu sebentar</span>',
+                  width: '300px',
+                  padding: '15px',
+                  background: 'var(--surface, #ffffff)',
+                  color: 'var(--text-dark, #333333)',
+                  allowOutsideClick: false,
+                  didOpen: () => { Swal.showLoading(); }
+              });
 
-            try {
-                // Memanggil backend menggunakan panggilBackend
-                let msg = await panggilBackend('hapusUserWeb', { rowIndex: rowIndex }); 
-                
-                // Ubah Loading menjadi Notifikasi Sukses
-                Swal.fire({
-                    title: '<strong style="font-size: 16px;">Selesai</strong>',
-                    html: '<span style="font-size: 13px;">' + msg + '</span>',
-                    icon: 'success',
-                    width: '300px',
-                    padding: '15px',
-                    background: 'var(--surface, #ffffff)',
-                    color: 'var(--text-dark, #333333)',
-                    confirmButtonColor: '#25D366',
-                    confirmButtonText: '<span style="font-size: 13px;">OK</span>',
-                    customClass: { icon: 'ikon-mini-swal' }
-                });
-                
-                muatDaftarUsers();   
+              try {
+                  let { error } = await window.supabaseClient
+                      .from('staff_toko')
+                      .delete()
+                      .eq('id', userId);
 
-            } catch (error) {
-                console.error("Gagal menghapus user:", error);
-                alert("Terjadi kesalahan koneksi saat menghapus akun dari server.");
-            }
-        }
+                  if (error) throw error;
+                  
+                  Swal.fire({
+                      title: '<strong style="font-size: 16px;">Selesai</strong>',
+                      html: '<span style="font-size: 13px;">Akun berhasil dihapus dari database.</span>',
+                      icon: 'success',
+                      width: '300px',
+                      padding: '15px',
+                      background: 'var(--surface, #ffffff)',
+                      color: 'var(--text-dark, #333333)',
+                      confirmButtonColor: '#25D366',
+                      confirmButtonText: '<span style="font-size: 13px;">OK</span>',
+                      customClass: { icon: 'ikon-mini-swal' }
+                  });
+                  
+                  muatDaftarUsers();    
+
+              } catch (error) {
+                  console.error("Gagal menghapus user:", error);
+                  alert("Terjadi kesalahan koneksi saat menghapus akun dari server.");
+              }
+          }
       }
 
-      // --- 3. FUNGSI MEMBERSIHKAN FORM ---
+      // --- 5. FUNGSI MEMBERSIHKAN FORM ---
       function resetFormUser() {
-        document.getElementById('userRowIndex').value = "";
-        document.getElementById('userNamaLengkap').value = "";
-        document.getElementById('userUsername').value = "";
-        document.getElementById('userPassword').value = "";
-        document.getElementById('userRole').value = "Kasir";
-        
-        // ✨ Kosongkan form No Telp
-        document.getElementById('userNoTelp').value = ""; 
-        document.getElementById('userAlamat').value = "";
-        
-        document.getElementById('userFormTitle').innerText = "Daftarkan Pengguna";
-        document.getElementById('btnBatalEditUser').style.display = "none";
+          document.getElementById('userRowIndex').value = "";
+          document.getElementById('userNamaLengkap').value = "";
+          document.getElementById('userUsername').value = "";
+          document.getElementById('userPassword').value = "";
+          document.getElementById('userRole').value = "Kasir";
+          document.getElementById('userNoTelp').value = ""; 
+          document.getElementById('userAlamat').value = "";
+          
+          document.getElementById('userFormTitle').innerText = "Daftarkan Pengguna";
+          document.getElementById('btnBatalEditUser').style.display = "none";
       }
       
       function toggleDropdownMenu(event) { event.stopPropagation(); document.getElementById('dropdownMenuContainer').classList.toggle('show'); document.getElementById('searchPelangganKasir').focus(); }
