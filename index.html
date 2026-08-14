@@ -6939,7 +6939,37 @@
         pindahLayarStruk(true);
       }
 
-      function bukaKOTDariStruk() { if(!dataStrukTerakhir) return; document.getElementById('kot_meja').innerText = dataStrukTerakhir.meja; document.getElementById('kot_kasir').innerText = dataStrukTerakhir.kasir; document.getElementById('kot_tgl').innerText = dataStrukTerakhir.tanggal; document.getElementById('kot_catatan').innerText = dataStrukTerakhir.catatan; let tb = document.getElementById('tabelKOT'); tb.innerHTML = ""; dataStrukTerakhir.items.forEach(item => { tb.innerHTML += `<tr><td style="padding:6px 0; border-bottom:1px dashed #777;"><b>${item.jumlah} x</b> ${item.nama}</td></tr>`; }); document.getElementById('strukView').style.display = 'none'; document.getElementById('kotView').style.display = 'flex'; }
+      function bukaKOTDariStruk() { 
+          if(!dataStrukTerakhir) return; 
+          
+          document.getElementById('kot_meja').innerText = dataStrukTerakhir.meja || '-'; 
+          document.getElementById('kot_kasir').innerText = dataStrukTerakhir.kasir || '-'; 
+          
+          // ✨ Format Tanggal KOT agar rapi
+          let dKOT = new Date(dataStrukTerakhir.created_at || dataStrukTerakhir.tanggalFull || dataStrukTerakhir.tanggal || Date.now());
+          let tanggalRapiKOT = isNaN(dKOT.getTime()) ? (dataStrukTerakhir.tanggal || '-') : dKOT.toLocaleString('id-ID', {
+              day: '2-digit',
+              month: 'short',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+          });
+          document.getElementById('kot_tgl').innerText = tanggalRapiKOT; 
+      
+          document.getElementById('kot_catatan').innerText = dataStrukTerakhir.catatan || '-'; 
+          
+          let tb = document.getElementById('tabelKOT'); 
+          tb.innerHTML = ""; 
+          
+          if (dataStrukTerakhir.items && Array.isArray(dataStrukTerakhir.items)) {
+              dataStrukTerakhir.items.forEach(item => { 
+                  tb.innerHTML += `<tr><td style="padding:6px 0; border-bottom:1px dashed #777;"><b>${item.jumlah} x</b> ${item.nama}</td></tr>`; 
+              });
+          }
+          
+          document.getElementById('strukView').style.display = 'none'; 
+          document.getElementById('kotView').style.display = 'flex'; 
+      }
       function tutupKOT() { document.getElementById('kotView').style.display = 'none'; document.getElementById('strukView').style.display = 'flex'; }
 
       function tutupStruk() { if(jenisStrukOpen === "baru") { transaksiBaru(); } else { pindahLayarStruk(false); } }
