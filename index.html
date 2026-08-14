@@ -7855,231 +7855,235 @@
           document.getElementById('btnBatalEditUser').style.display = "none";
       }
       
-      function toggleDropdownMenu(event) { event.stopPropagation(); document.getElementById('dropdownMenuContainer').classList.toggle('show'); document.getElementById('searchPelangganKasir').focus(); }
+      function toggleDropdownMenu(event) { 
+        event.stopPropagation(); 
+        document.getElementById('dropdownMenuContainer').classList.toggle('show'); 
+        document.getElementById('searchPelangganKasir').focus(); 
+      }
+  
       async function segarkanDropdownPelangganKasir() { 
-        try {
-            // Memanggil backend menggunakan panggilBackend (menggantikan google.script.run)
-            let plgList = await panggilBackend('getListPelanggan');
-            
-            masterDataPelanggan = plgList; 
-            filterDropdownPelanggan(); 
-
-        } catch (error) {
-            console.error("Gagal menyegarkan dropdown pelanggan:", error);
-        }
+          try {
+              const klienId = localStorage.getItem('klien_id');
+              if (!klienId) return;
+  
+              // Tarik data langsung dari tabel 'pelanggan' Supabase
+              let { data: plgList, error } = await window.supabaseClient
+                  .from('pelanggan')
+                  .select('*')
+                  .eq('klien_id', klienId)
+                  .order('nama_pelanggan', { ascending: true });
+  
+              if (error) throw error;
+  
+              // Pemetaan data agar kompatibel dengan dropdown kasir
+              masterDataPelanggan = (plgList || []).map(p => ({
+                  id: p.id,
+                  nama: p.nama_pelanggan || '',
+                  telepon: p.no_telepon || '',
+                  alamat: p.alamat || '',
+                  poin: parseInt(p.total_poin) || 0
+              })); 
+  
+              filterDropdownPelanggan(); 
+  
+          } catch (error) {
+              console.error("Gagal menyegarkan dropdown pelanggan:", error);
+          }
       }
       
       function filterDropdownPelanggan() { 
-      let query = document.getElementById('searchPelangganKasir').value.toLowerCase(); 
-      let listContainer = document.getElementById('dropdownOptionsList'); 
-      
-      // PERHATIKAN: Saya menambahkan parameter '' (kosong) di akhir fungsi onclick untuk Umum/Cash
-      let htmlOptions = `<div class="dropdown-option ${pelangganTerpilihValue === 'Umum / Cash' ? 'selected' : ''}" onclick="pilihPelangganKasir('Umum / Cash', 'Umum / Cash (Walk-in)', 0, null, '')" style="padding:12px; cursor:pointer; font-weight:500; font-family:'Inter',sans-serif;">Umum / Cash (Walk-in)</div>`; 
-      
-      let pelangganDiurutkan = [...masterDataPelanggan].sort((a, b) => a.nama.localeCompare(b.nama));
-      pelangganDiurutkan.forEach(p => { 
-        if (p.nama.toLowerCase().includes(query) || p.telepon.toLowerCase().includes(query)) { 
-          let labelTampil = p.nama + " (" + p.telepon + ")"; 
-     
-          // Ikon SVG Bintang menggantikan emoji 💎
-          let ikonPoinSvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
+        let query = document.getElementById('searchPelangganKasir').value.toLowerCase(); 
+        let listContainer = document.getElementById('dropdownOptionsList'); 
+        
+        let htmlOptions = `<div class="dropdown-option ${pelangganTerpilihValue === 'Umum / Cash' ? 'selected' : ''}" onclick="pilihPelangganKasir('Umum / Cash', 'Umum / Cash (Walk-in)', 0, null, '')" style="padding:12px; cursor:pointer; font-weight:500; font-family:'Inter',sans-serif;">Umum / Cash (Walk-in)</div>`; 
+        
+        let pelangganDiurutkan = [...masterDataPelanggan].sort((a, b) => a.nama.localeCompare(b.nama));
+        pelangganDiurutkan.forEach(p => { 
+            if (p.nama.toLowerCase().includes(query) || p.telepon.toLowerCase().includes(query)) { 
+                let labelTampil = p.nama + " (" + p.telepon + ")"; 
+                let ikonPoinSvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:-1px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
 
-          htmlOptions += `<div class="dropdown-option ${pelangganTerpilihValue === p.nama ? 'selected' : ''}" onclick="pilihPelangganKasir('${escJS(p.nama)}', '${escJS(labelTampil)}', ${p.poin}, ${p.rowIndex}, '${escJS(p.telepon)}')" style="padding:12px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; font-family:'Inter',sans-serif;"><span>${labelTampil}</span><span style="background:rgba(255,152,0,0.1); color:#ff9800; padding:3px 10px; border-radius:100px; font-size:11px; font-weight:600; display:flex; align-items:center; gap:4px;">${ikonPoinSvg} ${p.poin}</span></div>`; 
+                htmlOptions += `<div class="dropdown-option ${pelangganTerpilihValue === p.nama ? 'selected' : ''}" onclick="pilihPelangganKasir('${escJS(p.nama)}', '${escJS(labelTampil)}', ${p.poin}, '${p.id}', '${escJS(p.telepon)}')" style="padding:12px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; font-family:'Inter',sans-serif;"><span>${labelTampil}</span><span style="background:rgba(255,152,0,0.1); color:#ff9800; padding:3px 10px; border-radius:100px; font-size:11px; font-weight:600; display:flex; align-items:center; gap:4px;">${ikonPoinSvg} ${p.poin}</span></div>`; 
+            } 
+        }); 
+        
+        listContainer.innerHTML = htmlOptions; 
+      }
+
+      function pilihPelangganKasir(val, labelText, poinSisa, rowIndex, telepon) { 
+        pelangganTerpilihValue = val; 
+        pelangganRowIndexAktif = rowIndex; // Menyimpan ID UUID pelanggan yang dipilih
+        pelangganPoinSisa = parseInt(poinSisa) || 0; 
+        
+        document.getElementById('dropdownSelectedLabel').innerText = labelText; 
+        document.getElementById('dropdownMenuContainer').classList.remove('show'); 
+        
+        let inputWa = document.getElementById('noWaPelanggan');
+        let cbWa = document.getElementById('cbKirimWa');
+
+        if(val !== "Umum / Cash") { 
+            document.getElementById('nonMemberInputGroup').style.display = "none"; 
+            document.getElementById('grupPoin').style.display = "block"; 
+            document.getElementById('labelPoinMember').innerText = pelangganPoinSisa.toLocaleString('id-ID'); 
+            document.getElementById('labelNilaiPoin').innerText = (pelangganPoinSisa * 100).toLocaleString('id-ID'); 
+            document.getElementById('inputPakaiPoin').value = ""; 
+            
+            if (inputWa) inputWa.value = telepon || ""; 
+            if (cbWa && telepon) cbWa.checked = true;
+        } else { 
+            document.getElementById('nonMemberInputGroup').style.display = "block"; 
+            document.getElementById('grupPoin').style.display = "none"; 
+            
+            if (inputWa) inputWa.value = ""; 
+            if (cbWa) cbWa.checked = false;
         } 
-      }); 
-      
-      listContainer.innerHTML = htmlOptions; 
-    }
-
-
-    // PERHATIKAN: Saya menambahkan penampung 'telepon' di dalam kurung parameter fungsi ini
-    function pilihPelangganKasir(val, labelText, poinSisa, rowIndex, telepon) { 
-      pelangganTerpilihValue = val; 
-      pelangganRowIndexAktif = rowIndex; 
-      pelangganPoinSisa = parseInt(poinSisa) || 0; 
-      
-      document.getElementById('dropdownSelectedLabel').innerText = labelText; 
-      document.getElementById('dropdownMenuContainer').classList.remove('show'); 
-      
-      // Ambil elemen input dan checkbox WA dari HTML
-      let inputWa = document.getElementById('noWaPelanggan');
-      let cbWa = document.getElementById('cbKirimWa');
-
-      if(val !== "Umum / Cash") { 
-        // JIKA MEMBER DIPILIH
-        document.getElementById('nonMemberInputGroup').style.display = "none"; 
-        document.getElementById('grupPoin').style.display = "block"; 
-        document.getElementById('labelPoinMember').innerText = pelangganPoinSisa.toLocaleString('id-ID'); 
-        document.getElementById('labelNilaiPoin').innerText = (pelangganPoinSisa * 100).toLocaleString('id-ID'); 
+        
         document.getElementById('inputPakaiPoin').value = ""; 
-        
-        // ✨ LOGIKA AUTO-FILL WA (Berjalan di latar belakang) ✨
-        if (inputWa) inputWa.value = telepon || ""; 
-        if (cbWa && telepon) cbWa.checked = true;
-        
-      } else { 
-        // JIKA NON-MEMBER (UMUM)
-        document.getElementById('nonMemberInputGroup').style.display = "block"; 
-        document.getElementById('grupPoin').style.display = "none"; 
-        
-        // ✨ RESET WA (Kosongkan form jika ganti ke pelanggan umum) ✨
-        if (inputWa) inputWa.value = ""; 
-        if (cbWa) cbWa.checked = false;
-      } 
-      
-      document.getElementById('inputPakaiPoin').value = ""; 
-      hitungTotalAkhir(); 
-    }
+        hitungTotalAkhir(); 
+      }
       
       // --- 1. VARIABEL GLOBAL PELANGGAN ---
       let dataPelangganPaginasi = [];
       let pelangganHalamanSaatIni = 1;
       let pelangganLimitBaris = 25;
-
+  
       async function muatDaftarPelanggan() { 
-        let queryCRM = document.getElementById('searchPelangganCRM').value.toLowerCase(); 
-        let sortBy = document.getElementById('sortPelangganCRM').value;
-        
-        // Tampilkan teks loading sebelum data masuk
-        document.getElementById('mgmtPelangganTable').innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 20px; color: var(--text-muted);">Memuat data pelanggan...</td></tr>`;
-        
-        try {
-            // Memanggil backend menggunakan panggilBackend (menggantikan google.script.run)
-            let plgList = await panggilBackend('getListPelanggan'); 
-            
-            // 1. Filter Pencarian
-            let filtered = plgList.filter(p => p.nama.toLowerCase().includes(queryCRM) || p.telepon.toLowerCase().includes(queryCRM)); 
-            
-            // 2. Sorting
-            if(sortBy === 'terbaru') {
-                filtered.sort((a,b) => b.rowIndex - a.rowIndex); // Paling terakhir daftar
-            } else if(sortBy === 'az') {
-                filtered.sort((a,b) => a.nama.localeCompare(b.nama)); 
-            } else if(sortBy === 'poin') {
-                filtered.sort((a,b) => b.poin - a.poin); // Poin tertinggi
-            }
-            
-            // 3. Lempar data yang sudah bersih ke fungsi Paginasi & Render HTML
-            gambarTabelPelanggan(filtered);
-
-        } catch (error) {
-            console.error("Gagal memuat daftar pelanggan:", error);
-            document.getElementById('mgmtPelangganTable').innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 20px; color: red;">Gagal memuat data pelanggan dari server.</td></tr>`;
-        }
+          let queryCRM = document.getElementById('searchPelangganCRM').value.toLowerCase(); 
+          let sortBy = document.getElementById('sortPelangganCRM').value;
+          
+          document.getElementById('mgmtPelangganTable').innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 20px; color: var(--text-muted);">Memuat data pelanggan...</td></tr>`;
+          
+          try {
+              const klienId = localStorage.getItem('klien_id');
+              if (!klienId) return;
+  
+              // Tarik data langsung dari Supabase
+              let { data: plgList, error } = await window.supabaseClient
+                  .from('pelanggan')
+                  .select('*')
+                  .eq('klien_id', klienId);
+  
+              if (error) throw error;
+  
+              let mapped = (plgList || []).map(p => ({
+                  id: p.id,
+                  nama: p.nama_pelanggan || '',
+                  telepon: p.no_telepon || '',
+                  alamat: p.alamat || '',
+                  poin: parseInt(p.total_poin) || 0,
+                  createdAt: p.created_at || ''
+              }));
+              
+              // 1. Filter Pencarian
+              let filtered = mapped.filter(p => p.nama.toLowerCase().includes(queryCRM) || p.telepon.toLowerCase().includes(queryCRM)); 
+              
+              // 2. Sorting
+              if(sortBy === 'terbaru') {
+                  filtered.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt)); 
+              } else if(sortBy === 'az') {
+                  filtered.sort((a,b) => a.nama.localeCompare(b.nama)); 
+              } else if(sortBy === 'poin') {
+                  filtered.sort((a,b) => b.poin - a.poin); 
+              }
+              
+              gambarTabelPelanggan(filtered);
+  
+          } catch (error) {
+              console.error("Gagal memuat daftar pelanggan:", error);
+              document.getElementById('mgmtPelangganTable').innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 20px; color: red;">Gagal memuat data pelanggan dari server.</td></tr>`;
+          }
       }
-
       // --- 2. FUNGSI RENDER TABEL & KARTU ---
       function gambarTabelPelanggan(dataBaru) {
-        // Jika ada data masuk dari filter/loading awal, reset ke halaman 1
-        if (dataBaru) {
-          dataPelangganPaginasi = dataBaru;
-          pelangganHalamanSaatIni = 1;
-        }
-
-        // PASTIKAN ID SESUAI DENGAN KODEMU: mgmtPelangganTable
-        let tableBody = document.getElementById('mgmtPelangganTable');
-        let totalData = dataPelangganPaginasi.length;
-
-        // Jika Data Kosong
-        if (totalData === 0) {
-          tableBody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:24px; color:var(--text-muted);">Data tidak ditemukan</td></tr>`;
-          document.getElementById("teksInformasiPaginasiPelanggan").innerText = "Tidak ada data.";
-          document.getElementById("tombolPaginasiPelanggan").innerHTML = "";
-          return;
-        }
-
-        // Logika Pemotongan Paginasi
-        let indexMulai = (pelangganHalamanSaatIni - 1) * pelangganLimitBaris;
-        let indexAkhir = Math.min(indexMulai + pelangganLimitBaris, totalData);
-        let dataHalamanIni = dataPelangganPaginasi.slice(indexMulai, indexAkhir);
-
-        document.getElementById("teksInformasiPaginasiPelanggan").innerText = `Menampilkan ${indexMulai + 1} sampai ${indexAkhir} dari ${totalData} data`;
-        tableBody.innerHTML = "";
-        
-        // Looping Data
-        dataHalamanIni.forEach(p => {
-          // Logika Hak Akses Hapus Pelanggan
-          let tombolHapusHtml = currentRole === 'Kasir' ? '' : `<button class="btn-small btn-delete" onclick="aksiHapusPelanggan(${p.rowIndex}, '${escJS(p.nama)}')">Hapus</button>`; 
+          if (dataBaru) {
+            dataPelangganPaginasi = dataBaru;
+            pelangganHalamanSaatIni = 1;
+          }
+  
+          let tableBody = document.getElementById('mgmtPelangganTable');
+          let totalData = dataPelangganPaginasi.length;
+  
+          if (totalData === 0) {
+            tableBody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:24px; color:var(--text-muted);">Data tidak ditemukan</td></tr>`;
+            document.getElementById("teksInformasiPaginasiPelanggan").innerText = "Tidak ada data.";
+            document.getElementById("tombolPaginasiPelanggan").innerHTML = "";
+            return;
+          }
+  
+          let indexMulai = (pelangganHalamanSaatIni - 1) * pelangganLimitBaris;
+          let indexAkhir = Math.min(indexMulai + pelangganLimitBaris, totalData);
+          let dataHalamanIni = dataPelangganPaginasi.slice(indexMulai, indexAkhir);
+  
+          document.getElementById("teksInformasiPaginasiPelanggan").innerText = `Menampilkan ${indexMulai + 1} sampai ${indexAkhir} dari ${totalData} data`;
+          tableBody.innerHTML = "";
           
-          tableBody.innerHTML += `
-            <tr>
-              <!-- NAMA PELANGGAN (Bisa diklik untuk lihat riwayat) -->
-              <td class="col-plg-nama" onclick="lihatRiwayatPelanggan('${escJS(p.nama)}')" style="cursor:pointer;" title="Lihat riwayat">
-                <span class="lbl-mob" style="color:var(--text-dark); font-weight:400;">Nama: </span><strong style="color:var(--primary); font-size:14.5px;">${p.nama}</strong>
-              </td>
-              
-              <!-- ALAMAT -->
-              <td class="col-plg-alamat">
-                <span class="lbl-mob">Alamat: </span><strong>${p.alamat || "-"}</strong>
-              </td>
-              
-              <!-- TELEPON -->
-              <td class="col-plg-telp">
-                <span class="lbl-mob">No. Telp: </span><strong>${p.telepon || "-"}</strong>
-              </td>
-              
-              <!-- POIN & BINTANG -->
-              <td class="col-plg-poin" style="vertical-align: middle; text-align: center;">
-                <div class="poin-bintang-container" style="display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%;">
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
-                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-                  </svg>
-                  <span style="color: #f59e0b !important; font-weight: 700; line-height: 1; margin: 0; padding: 0;">
-                    ${p.poin.toLocaleString('id-ID')}
-                  </span>
-                </div>
-              </td>
-              
-              <!-- AKSI (EDIT & HAPUS) -->
-              <td class="col-plg-aksi">
-                <div class="col-plg-aksi-desktop">
-                  <button class="btn-small btn-edit" onclick="isiFormEditPelanggan(${p.rowIndex}, '${escJS(p.nama)}', '${escJS(p.telepon)}', '${escJS(p.alamat)}', ${p.poin}); bukaFormMobile('formPelangganMgmt');">Edit</button>
-                  ${tombolHapusHtml}
-                </div>
-              </td>
-            </tr>`; 
-        });
-
-        // Panggil fungsi render angka paginasinya
-        gambarTombolPaginasiPelanggan(totalData);
+          dataHalamanIni.forEach(p => {
+            let tombolHapusHtml = currentRole === 'Kasir' ? '' : `<button class="btn-small btn-delete" onclick="aksiHapusPelanggan('${p.id}', '${escJS(p.nama)}')">Hapus</button>`; 
+            
+            tableBody.innerHTML += `
+              <tr>
+                <td class="col-plg-nama" onclick="lihatRiwayatPelanggan('${escJS(p.nama)}')" style="cursor:pointer;" title="Lihat riwayat">
+                  <span class="lbl-mob" style="color:var(--text-dark); font-weight:400;">Nama: </span><strong style="color:var(--primary); font-size:14.5px;">${p.nama}</strong>
+                </td>
+                <td class="col-plg-alamat">
+                  <span class="lbl-mob">Alamat: </span><strong>${p.alamat || "-"}</strong>
+                </td>
+                <td class="col-plg-telp">
+                  <span class="lbl-mob">No. Telp: </span><strong>${p.telepon || "-"}</strong>
+                </td>
+                <td class="col-plg-poin" style="vertical-align: middle; text-align: center;">
+                  <div class="poin-bintang-container" style="display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%;">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
+                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                    </svg>
+                    <span style="color: #f59e0b !important; font-weight: 700; line-height: 1; margin: 0; padding: 0;">
+                      ${p.poin.toLocaleString('id-ID')}
+                    </span>
+                  </div>
+                </td>
+                <td class="col-plg-aksi">
+                  <div class="col-plg-aksi-desktop">
+                    <button class="btn-small btn-edit" onclick="isiFormEditPelanggan('${p.id}', '${escJS(p.nama)}', '${escJS(p.telepon)}', '${escJS(p.alamat)}', ${p.poin}); bukaFormMobile('formPelangganMgmt');">Edit</button>
+                    ${tombolHapusHtml}
+                  </div>
+                </td>
+              </tr>`; 
+          });
+  
+          gambarTombolPaginasiPelanggan(totalData);
       }
 
-      // --- 3. FUNGSI DROPDOWN KUSTOM PELANGGAN ---
       function toggleLimitMenuPelanggan() {
-        const menu = document.getElementById("limitMenuListPelanggan");
-        menu.style.display = (menu.style.display === "none" || menu.style.display === "") ? "block" : "none";
+          const menu = document.getElementById("limitMenuListPelanggan");
+          menu.style.display = (menu.style.display === "none" || menu.style.display === "") ? "block" : "none";
       }
-
+  
       function pilihLimitPelanggan(nilai, teks) {
-        document.getElementById("limitPelangganVal").value = nilai;
-        document.getElementById("limitTextDisplayPelanggan").innerText = teks;
-        document.getElementById("limitMenuListPelanggan").style.display = "none";
-        pelangganLimitBaris = nilai;
-        pelangganHalamanSaatIni = 1;
-        gambarTabelPelanggan();
+          document.getElementById("limitPelangganVal").value = nilai;
+          document.getElementById("limitTextDisplayPelanggan").innerText = teks;
+          document.getElementById("limitMenuListPelanggan").style.display = "none";
+          pelangganLimitBaris = nilai;
+          pelangganHalamanSaatIni = 1;
+          gambarTabelPelanggan();
       }
-
-      // Tutup dropdown jika klik di luar
+  
       document.addEventListener("click", function(e) {
-        const wrapper = document.getElementById("limitDropdownWrapperPelanggan");
-        const menu = document.getElementById("limitMenuListPelanggan");
-        if (wrapper && menu && !wrapper.contains(e.target)) {
-          menu.style.display = "none";
-        }
+          const wrapper = document.getElementById("limitDropdownWrapperPelanggan");
+          const menu = document.getElementById("limitMenuListPelanggan");
+          if (wrapper && menu && !wrapper.contains(e.target)) {
+            menu.style.display = "none";
+          }
       });
 
-      // --- 4. FUNGSI TOMBOL PAGINASI BULAT PELANGGAN ---
       function gambarTombolPaginasiPelanggan(totalData) {
         const container = document.getElementById("tombolPaginasiPelanggan");
         container.innerHTML = "";
         
         const totalHalaman = Math.ceil(totalData / pelangganLimitBaris);
-        //if (totalHalaman <= 1) return;
 
         const btnStyle = "background: var(--surface); border: 1px solid var(--border-color); color: var(--text-dark); width: 36px; height: 36px; border-radius: 100px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; font-family: 'Inter', sans-serif; transition: 0.2s;";
         const activeStyle = "background: var(--primary, #3b82f6); border: 1px solid var(--primary, #3b82f6); color: white; width: 36px; height: 36px; border-radius: 100px; cursor: default; display: flex; align-items: center; justify-content: center; font-size: 14px; font-family: 'Inter', sans-serif; font-weight: bold;";
 
-        // Tombol Prev ( ‹ )
         const btnPrev = document.createElement("button");
         btnPrev.innerHTML = "‹";
         btnPrev.style.cssText = btnStyle + "font-size: 16px;";
@@ -8093,7 +8097,6 @@
         }
         container.appendChild(btnPrev);
 
-        // Angka Halaman
         for (let i = 1; i <= totalHalaman; i++) {
           if (i === 1 || i === totalHalaman || (i >= pelangganHalamanSaatIni - 1 && i <= pelangganHalamanSaatIni + 1)) {
             const btnAngka = document.createElement("button");
@@ -8120,7 +8123,6 @@
           }
         }
 
-        // Tombol Next ( › )
         const btnNext = document.createElement("button");
         btnNext.innerHTML = "›";
         btnNext.style.cssText = btnStyle + "font-size: 16px;";
@@ -8134,112 +8136,160 @@
         }
         container.appendChild(btnNext);
       }
-
-      function lihatRiwayatPelanggan(namaPelanggan) { document.getElementById('modalTitlePelanggan').innerText = "Riwayat: " + namaPelanggan; let tbody = document.getElementById('modalTabelRiwayatBody'); tbody.innerHTML = ""; let matchTrx = riwayatTransaksiGlobal.filter(t => t.pelanggan === namaPelanggan || t.pelanggan.startsWith(namaPelanggan + " (")); if (matchTrx.length === 0) { tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:20px; color:var(--text-muted);">Belum ada riwayat transaksi.</td></tr>`; } else { matchTrx.forEach(t => { tbody.innerHTML += `<tr><td><span style="white-space:nowrap;">${t.tanggalShort}</span></td><td><code style="background:var(--bg-main); padding:2px 6px; border-radius:4px;">${t.noStruk}</code></td><td><span style="white-space:pre-line; font-size:13px; line-height:1.4;">${t.detailItem}</span></td><td style="font-weight:700; color:var(--success);">Rp ${t.total.toLocaleString('id-ID')}</td></tr>`; }); } document.getElementById('modalRiwayat').style.display = 'flex'; }
-      function tutupModalRiwayat() { document.getElementById('modalRiwayat').style.display = 'none'; }
+      function lihatRiwayatPelanggan(namaPelanggan) { 
+          document.getElementById('modalTitlePelanggan').innerText = "Riwayat: " + namaPelanggan; 
+          let tbody = document.getElementById('modalTabelRiwayatBody'); 
+          tbody.innerHTML = ""; 
+          let matchTrx = riwayatTransaksiGlobal.filter(t => t.pelanggan === namaPelanggan || t.pelanggan.startsWith(namaPelanggan + " (")); 
+          if (matchTrx.length === 0) { 
+              tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:20px; color:var(--text-muted);">Belum ada riwayat transaksi.</td></tr>`; 
+          } else { 
+              matchTrx.forEach(t => { 
+                  tbody.innerHTML += `<tr><td><span style="white-space:nowrap;">${t.tanggalShort}</span></td><td><code style="background:var(--bg-main); padding:2px 6px; border-radius:4px;">${t.noStruk}</code></td><td><span style="white-space:pre-line; font-size:13px; line-height:1.4;">${t.detailItem}</span></td><td style="font-weight:700; color:var(--success);">Rp ${t.total.toLocaleString('id-ID')}</td></tr>`; 
+              }); 
+          } 
+          document.getElementById('modalRiwayat').style.display = 'flex'; 
+      }
+      
+      function tutupModalRiwayat() { 
+          document.getElementById('modalRiwayat').style.display = 'none'; 
+      }
+  
       async function aksiSimpanPelanggan() { 
-        let rIndex = document.getElementById('plgRowIndex').value; 
-        let poinLama = document.getElementById('plgPoinSekarang').value; 
-        let nama = document.getElementById('plgNama').value.trim(); 
-        let telp = document.getElementById('plgTelepon').value.trim(); 
-        let alamat = document.getElementById('plgAlamat').value.trim(); 
-        
-        if(!nama) return alert('Nama wajib diisi!'); 
-        
-        let btnSimpan = document.getElementById('btnSimpanPelanggan');
-        if(btnSimpan) btnSimpan.innerText = "Memproses..."; 
-        
-        let plgPayload = { 
-            rowIndex: rIndex ? parseInt(rIndex) : null, 
-            nama, 
-            telepon: telp, 
-            alamat, 
-            poin: parseInt(poinLama) || 0 
-        }; 
-
-        try {
-            // Memanggil backend menggunakan panggilBackend
-            let msg = await panggilBackend('simpanPelangganWeb', plgPayload); 
-            
-            alert(msg); 
-            resetFormPelanggan(); 
-            tutupSemuaFormMobile(); 
-            muatDaftarPelanggan(); 
-            segarkanDropdownPelangganKasir(); 
-
-        } catch (error) {
-            console.error("Gagal menyimpan pelanggan:", error);
-            alert("Terjadi kesalahan koneksi saat menyimpan data pelanggan ke server.");
-            if(btnSimpan) btnSimpan.innerText = "Simpan Pelanggan"; // Kembalikan teks tombol jika gagal
-        }
+          let pId = document.getElementById('plgRowIndex').value; // UUID Pelanggan
+          let poinLama = document.getElementById('plgPoinSekarang').value; 
+          let nama = document.getElementById('plgNama').value.trim(); 
+          let telp = document.getElementById('plgTelepon').value.trim(); 
+          let alamat = document.getElementById('plgAlamat').value.trim(); 
+          
+          if(!nama) return alert('Nama wajib diisi!'); 
+          
+          let btnSimpan = document.getElementById('btnSimpanPelanggan');
+          if(btnSimpan) btnSimpan.innerText = "Memproses..."; 
+          
+          const klienId = localStorage.getItem('klien_id');
+          if (!klienId) return;
+  
+          let plgPayload = { 
+              klien_id: klienId,
+              nama_pelanggan: nama, 
+              no_telepon: telp, 
+              alamat: alamat, 
+              total_poin: parseInt(poinLama) || 0 
+          }; 
+  
+          try {
+              if (pId) {
+                  // Update ke Supabase
+                  let { error } = await window.supabaseClient
+                      .from('pelanggan')
+                      .update(plgPayload)
+                      .eq('id', pId);
+                  if (error) throw error;
+                  alert("Data pelanggan berhasil diperbarui!");
+              } else {
+                  // Insert ke Supabase
+                  let { error } = await window.supabaseClient
+                      .from('pelanggan')
+                      .insert([plgPayload]);
+                  if (error) throw error;
+                  alert("Pelanggan baru berhasil ditambahkan!");
+              }
+              
+              resetFormPelanggan(); 
+              tutupSemuaFormMobile(); 
+              muatDaftarPelanggan(); 
+              segarkanDropdownPelangganKasir(); 
+  
+          } catch (error) {
+              console.error("Gagal menyimpan pelanggan:", error);
+              alert("Terjadi kesalahan koneksi saat menyimpan data pelanggan ke server.");
+              if(btnSimpan) btnSimpan.innerText = "Simpan Pelanggan"; 
+          }
       }
-      function isiFormEditPelanggan(rowIndex, nama, telepon, alamat, poin) { document.getElementById('plgFormTitle').innerText = "Edit Member: " + nama; document.getElementById('plgRowIndex').value = rowIndex; document.getElementById('plgPoinSekarang').value = poin; document.getElementById('plgNama').value = nama; document.getElementById('plgTelepon').value = (telepon === '-') ? '' : telepon; document.getElementById('plgAlamat').value = (alamat === '-') ? '' : alamat; document.getElementById('btnSimpanPelanggan').innerText = "Simpan Perubahan"; document.getElementById('btnBatalEditPelanggan').style.display = "block"; }
-
-      async function aksiHapusPelanggan(rowIndex, nama) { 
-        // 1. Munculkan Pop-up Konfirmasi Hapus Member menggunakan await
-        let result = await Swal.fire({
-            title: '<strong style="font-size: 16px;">Hapus Member</strong>',
-            html: '<span style="font-size: 13px;">Yakin ingin menghapus member <b>"' + nama + '"</b>?</span>',
-            icon: 'warning',
-            width: '300px',
-            padding: '15px',
-            background: 'var(--surface, #ffffff)',
-            color: 'var(--text-dark, #333333)',
-            showCancelButton: true,
-            confirmButtonColor: '#d33', // Merah untuk Hapus
-            cancelButtonColor: '#888',  // Abu-abu untuk Batal
-            confirmButtonText: '<span style="font-size: 13px;">Ya, Hapus!</span>',
-            cancelButtonText: '<span style="font-size: 13px;">Batal</span>',
-            customClass: { icon: 'ikon-mini-swal' }
-        });
-
-        // 2. Jika dikonfirmasi
-        if (result.isConfirmed) {
-            // Tampilkan animasi Loading
-            Swal.fire({
-                title: '<strong style="font-size: 16px;">Menghapus...</strong>',
-                html: '<span style="font-size: 13px;">Mohon tunggu sebentar</span>',
-                width: '300px',
-                padding: '15px',
-                background: 'var(--surface, #ffffff)',
-                color: 'var(--text-dark, #333333)',
-                allowOutsideClick: false,
-                didOpen: () => {
-                    Swal.showLoading();
-                }
-            });
-
-            try {
-                // 3. Eksekusi ke backend menggunakan panggilBackend
-                let msg = await panggilBackend('hapusPelangganWeb', { rowIndex: rowIndex }); 
-                
-                // Setelah berhasil, ubah menjadi Notifikasi Sukses
-                Swal.fire({
-                    title: '<strong style="font-size: 16px;">Selesai</strong>',
-                    html: '<span style="font-size: 13px;">' + msg + '</span>',
-                    icon: 'success',
-                    width: '300px',
-                    padding: '15px',
-                    background: 'var(--surface, #ffffff)',
-                    color: 'var(--text-dark, #333333)',
-                    confirmButtonColor: '#25D366', // Hijau
-                    confirmButtonText: '<span style="font-size: 13px;">OK</span>',
-                    customClass: { icon: 'ikon-mini-swal' }
-                });
-                
-                // Segarkan data di layar
-                muatDaftarPelanggan(); 
-                segarkanDropdownPelangganKasir(); 
-
-            } catch (error) {
-                console.error("Gagal menghapus pelanggan:", error);
-                alert("Terjadi kesalahan koneksi saat menghapus data pelanggan dari server.");
-            }
-        }
+      function isiFormEditPelanggan(id, nama, telepon, alamat, poin) { 
+          document.getElementById('plgFormTitle').innerText = "Edit Member: " + nama; 
+          document.getElementById('plgRowIndex').value = id; 
+          document.getElementById('plgPoinSekarang').value = poin; 
+          document.getElementById('plgNama').value = nama; 
+          document.getElementById('plgTelepon').value = (telepon === '-') ? '' : telepon; 
+          document.getElementById('plgAlamat').value = (alamat === '-') ? '' : alamat; 
+          document.getElementById('btnSimpanPelanggan').innerText = "Simpan Perubahan"; 
+          document.getElementById('btnBatalEditPelanggan').style.display = "block"; 
       }
-
-      function resetFormPelanggan() { document.getElementById('plgFormTitle').innerText = "Registrasi Pelanggan"; document.getElementById('plgRowIndex').value = ""; document.getElementById('plgPoinSekarang').value = ""; document.getElementById('plgNama').value = ""; document.getElementById('plgTelepon').value = ""; document.getElementById('plgAlamat').value = ""; document.getElementById('btnSimpanPelanggan').innerText = "Simpan Pelanggan"; document.getElementById('btnBatalEditPelanggan').style.display = "none"; }
-
+  
+      async function aksiHapusPelanggan(id, nama) { 
+          let result = await Swal.fire({
+              title: '<strong style="font-size: 16px;">Hapus Member</strong>',
+              html: '<span style="font-size: 13px;">Yakin ingin menghapus member <b>"' + nama + '"</b>?</span>',
+              icon: 'warning',
+              width: '300px',
+              padding: '15px',
+              background: 'var(--surface, #ffffff)',
+              color: 'var(--text-dark, #333333)',
+              showCancelButton: true,
+              confirmButtonColor: '#d33', 
+              cancelButtonColor: '#888', 
+              confirmButtonText: '<span style="font-size: 13px;">Ya, Hapus!</span>',
+              cancelButtonText: '<span style="font-size: 13px;">Batal</span>',
+              customClass: { icon: 'ikon-mini-swal' }
+          });
+  
+          if (result.isConfirmed) {
+              Swal.fire({
+                  title: '<strong style="font-size: 16px;">Menghapus...</strong>',
+                  html: '<span style="font-size: 13px;">Mohon tunggu sebentar</span>',
+                  width: '300px',
+                  padding: '15px',
+                  background: 'var(--surface, #ffffff)',
+                  color: 'var(--text-dark, #333333)',
+                  allowOutsideClick: false,
+                  didOpen: () => { Swal.showLoading(); }
+              });
+  
+              try {
+                  // Hapus langsung dari tabel 'pelanggan' berdasarkan UUID id
+                  let { error } = await window.supabaseClient
+                      .from('pelanggan')
+                      .delete()
+                      .eq('id', id);
+  
+                  if (error) throw error;
+                  
+                  Swal.fire({
+                      title: '<strong style="font-size: 16px;">Selesai</strong>',
+                      html: '<span style="font-size: 13px;">Pelanggan berhasil dihapus.</span>',
+                      icon: 'success',
+                      width: '300px',
+                      padding: '15px',
+                      background: 'var(--surface, #ffffff)',
+                      color: 'var(--text-dark, #333333)',
+                      confirmButtonColor: '#25D366', 
+                      confirmButtonText: '<span style="font-size: 13px;">OK</span>',
+                      customClass: { icon: 'ikon-mini-swal' }
+                  });
+                  
+                  muatDaftarPelanggan(); 
+                  segarkanDropdownPelangganKasir(); 
+  
+              } catch (error) {
+                  console.error("Gagal menghapus pelanggan:", error);
+                  alert("Terjadi kesalahan koneksi saat menghapus data pelanggan dari server.");
+              }
+          }
+      }
+  
+      function resetFormPelanggan() { 
+          document.getElementById('plgFormTitle').innerText = "Registrasi Pelanggan"; 
+          document.getElementById('plgRowIndex').value = ""; 
+          document.getElementById('plgPoinSekarang').value = ""; 
+          document.getElementById('plgNama').value = ""; 
+          document.getElementById('plgTelepon').value = ""; 
+          document.getElementById('plgAlamat').value = ""; 
+          document.getElementById('btnSimpanPelanggan').innerText = "Simpan Pelanggan"; 
+          document.getElementById('btnBatalEditPelanggan').style.display = "none"; 
+      }
+      
       function ubahJumlah(index, delta) { 
         if(!keranjang[index]) return;
         let qtyBaru = keranjang[index].jumlah + delta; 
