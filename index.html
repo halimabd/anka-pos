@@ -5566,25 +5566,29 @@
                   nomor_meja: nomorMejaVal, 
                   catatan: catatanVal, 
                   catatan_kasir: catatanKasirVal,
-                  metode_pembayaran: metode,           
-                  detail_pesanan: keranjang,           // Langsung simpan array keranjang (tipe data jsonb)
-                  subtotal: subtotalGlobal, 
-                  diskon: diskonGlobal,
-                  nominal_pph: pphGlobal,              
-                  nominal_ppn: ppnGlobal,              
-                  ongkir: window.ongkirDeliveryGlobal || 0,
-                  pembulatan: window.pembulatanGlobal || 0, 
-                  poin_dipakai: poinDipakaiGlobal || 0,     
-                  diskon_poin: diskonPoinGlobal || 0,       
+                  metode_pembayaran: metode,            
+                  detail_pesanan: keranjang,            // Langsung simpan array keranjang (tipe data jsonb)              
+                  // ✨ PERBAIKAN: Semua angka dibungkus parseFloat() agar terjamin aman saat masuk ke Supabase!
+                  subtotal: parseFloat(subtotalGlobal) || 0, 
+                  diskon: parseFloat(diskonGlobal) || 0, // Ini yang sebelumnya membuat gagal saat ada promo
+                  nominal_pph: parseFloat(pphGlobal) || 0,              
+                  nominal_ppn: parseFloat(ppnGlobal) || 0,              
+                  ongkir: parseFloat(window.ongkirDeliveryGlobal) || 0,
+                  pembulatan: parseFloat(window.pembulatanGlobal) || 0, 
+                  poin_dipakai: parseFloat(poinDipakaiGlobal) || 0,     
+                  diskon_poin: parseFloat(diskonPoinGlobal) || 0,        
                   tipe_order: isDeliveryMode ? "DELIVERY" : "-",
-                  total_akhir: totalAkhirGlobal, 
-                  uang_bayar: bayar,                   
-                  kembalian: (bayar - totalAkhirGlobal),
+                  total_akhir: parseFloat(totalAkhirGlobal) || 0, 
+                  uang_bayar: parseFloat(bayar) || 0,                    
+                  kembalian: (parseFloat(bayar) || 0) - (parseFloat(totalAkhirGlobal) || 0),
                   status_transaksi: "Lunas",
-                  total_hpp_transaksi: totalHppGlobal
+                  total_hpp_transaksi: parseFloat(totalHppGlobal) || 0
               };
+              
+              // 💡 Bantuan Debug: Memastikan tidak ada nilai 'NaN' yang masuk
+              console.log("Payload yang akan dikirim ke Supabase:", payloadDB);
                   
-              jenisStrukOpen = "baru"; 
+              jenisStrukOpen = "baru";
                   
               // ========================================================
               // 🚀 JIKA METODE PEMBAYARAN ADALAH MIDTRANS 🚀
