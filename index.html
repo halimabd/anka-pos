@@ -6920,7 +6920,9 @@
             document.getElementById('s_row_diskonpoin').style.display = 'none'; 
         } 
         
-        if(data.poinDidapat > 0) { 
+        let namaPlgStruk = (data.pelanggan || "").toLowerCase();
+        let isPelangganUmum = namaPlgStruk.includes("umum") || namaPlgStruk.includes("cash") || namaPlgStruk === "-";
+        if(data.poinDidapat > 0 && !isPelangganUmum) { 
             document.getElementById('s_info_poin').style.display = 'block'; 
             document.getElementById('s_poin_didapat').innerText = data.poinDidapat; 
         } else { 
