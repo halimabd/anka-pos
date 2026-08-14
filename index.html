@@ -5576,7 +5576,7 @@
                   pembulatan: window.pembulatanGlobal || 0, 
                   poin_dipakai: poinDipakaiGlobal || 0,     
                   diskon_poin: diskonPoinGlobal || 0,       
-                  tipe_order: isDeliveryMode ? "DELIVERY" : "DINE_IN/TAKEAWAY",
+                  tipe_order: isDeliveryMode ? "DELIVERY" : "-",
                   total_akhir: totalAkhirGlobal, 
                   uang_bayar: bayar,                   
                   kembalian: (bayar - totalAkhirGlobal),
@@ -6422,17 +6422,12 @@
       // Fungsi Tarik Data Bulanan
       async function muatAnalitikBulanan() {
           let bulanInput = document.getElementById('filterBulanAnalitik');
-          if (!bulanInput) {
-              console.error("Elemen 'filterBulanAnalitik' tidak ditemukan!");
-              return;
-          }
+          if (!bulanInput) return;
           let bulanVal = bulanInput.value;
           
           if (!bulanVal) {
               let tglSekarang = new Date();
-              let tahun = tglSekarang.getFullYear();
-              let bulan = ("0" + (tglSekarang.getMonth() + 1)).slice(-2);
-              bulanVal = `${tahun}-${bulan}`;
+              bulanVal = `${tglSekarang.getFullYear()}-${String(tglSekarang.getMonth() + 1).padStart(2, '0')}`;
               bulanInput.value = bulanVal;
           }
           
@@ -6440,12 +6435,21 @@
               const klienId = localStorage.getItem('klien_id');
               if (!klienId) return;
       
-              // Tarik data dari Supabase berdasarkan filter bulan (format YYYY-MM)
+              let tahun = parseInt(bulanVal.split('-')[0]);
+              let bulan = parseInt(bulanVal.split('-')[1]);
+              
+              let tglAwal = `${bulanVal}-01T00:00:00Z`;
+              let tglBulanBerikutnya = new Date(tahun, bulan, 1);
+              let tahunDepan = tglBulanBerikutnya.getFullYear();
+              let bulanDepanStr = String(tglBulanBerikutnya.getMonth() + 1).padStart(2, '0');
+              let tglAkhir = `${tahunDepan}-${bulanDepanStr}-01T00:00:00Z`;
+      
               const { data: trxData, error } = await window.supabaseClient
                   .from('transaksi')
                   .select('*')
                   .eq('klien_id', klienId)
-                  .ilike('created_at', bulanVal + '%');
+                  .gte('created_at', tglAwal)
+                  .lt('created_at', tglAkhir);
       
               if (error) throw error;
       
@@ -6464,9 +6468,12 @@
                   }
               });
       
-              // Tampilkan ke UI
-              document.getElementById('dashOmsetBulanan').innerText = "Rp " + omsetBulanan.toLocaleString('id-ID');
-              document.getElementById('dashLabaBulanan').innerText = "Rp " + labaBulanan.toLocaleString('id-ID');
+              if (document.getElementById('dashOmsetBulanan')) {
+                  document.getElementById('dashOmsetBulanan').innerText = "Rp " + omsetBulanan.toLocaleString('id-ID');
+              }
+              if (document.getElementById('dashLabaBulanan')) {
+                  document.getElementById('dashLabaBulanan').innerText = "Rp " + labaBulanan.toLocaleString('id-ID');
+              }
               if (document.getElementById('dashVolumeBulanan')) {
                   document.getElementById('dashVolumeBulanan').innerText = totalTransaksiValid.toLocaleString('id-ID');
               }
