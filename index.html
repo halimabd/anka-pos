@@ -8693,39 +8693,43 @@
       }
     }
 
-    // 2. Fungsi untuk mengirim data ke Google Sheets
+    // 2. Fungsi untuk mengirim data tertunda (Offline) ke Supabase
     async function sinkronisasiDataOffline() {
       // Tarik antrean transaksi dari memori browser
       let antrian = JSON.parse(localStorage.getItem('antrianTransaksi')) || [];
       
       if (antrian.length === 0) return; // Berhenti jika tidak ada data tertunda
       
-      console.log(`Mengirim ${antrian.length} transaksi offline ke server...`);
+      console.log(`Mengirim ${antrian.length} transaksi offline ke Supabase...`);
       
       try {
-          // Memanggil backend menggunakan panggilBackend
-          // Mengirim arrayTransaksi sesuai dengan parameter yang diharapkan di Code.gs
-          let res = await panggilBackend('terimaDataSinkronisasi', { arrayTransaksi: antrian });
+          if (!window.supabaseClient) {
+              console.warn("Koneksi Supabase belum siap.");
+              return;
+          }
+
+          // ✨ BULK INSERT KE SUPABASE
+          // Supabase otomatis mengenali array dan memasukkan semua baris sekaligus
+          const { error } = await window.supabaseClient
+              .from('transaksi')
+              .insert(antrian);
           
-          if (res.success) {
-              // Hapus data di memori jika semua sukses masuk ke server
-              localStorage.removeItem('antrianTransaksi');
-              alert(`Sinkronisasi Sukses: ${res.count} transaksi offline telah masuk ke sistem.`);
-              
-              // Opsional: Muat ulang analitik agar angka omset langsung ter-update
-              if (typeof muatAnalitikBulanan === "function") muatAnalitikBulanan();
-              
-          } else {
-              // Hapus data agar tidak terjadi pengiriman ganda terus-menerus, 
-              // tapi beri tahu kasir ada yang gagal
-              localStorage.removeItem('antrianTransaksi');
-              alert(`Sinkronisasi Selesai dengan catatan:\n${res.count} berhasil.\nAda kegagalan pada:\n${res.errors.join('\n')}`);
+          if (error) {
+              throw error; // Lempar ke blok catch jika ada error dari Supabase
           }
           
+          // Hapus data di memori jika semua sukses masuk ke database server
+          localStorage.removeItem('antrianTransaksi');
+          alert(`Sinkronisasi Sukses: ${antrian.length} transaksi offline telah masuk ke sistem.`);
+          
+          // Muat ulang analitik agar angka omset langsung ter-update
+          if (typeof muatAnalitikBulanan === "function") muatAnalitikBulanan();
+          
       } catch (error) {
-          // Blok ini berjalan jika koneksi internet terputus atau server down
+          // Blok ini berjalan jika internet putus di tengah jalan atau database menolak data
           console.error("Gagal terhubung ke server untuk sinkronisasi:", error);
-          // Data TIDAK dihapus dari localStorage agar bisa dicoba lagi nanti (Retry Logic)
+          
+          // 💡 Data TIDAK dihapus dari localStorage agar bisa dicoba lagi nanti otomatis (Retry Logic)
       }
     }
 
