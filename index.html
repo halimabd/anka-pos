@@ -8678,9 +8678,12 @@
     // === SISTEM SINKRONISASI OFFLINE ===
 
     // 1. Deteksi perubahan koneksi secara real-time
-    window.addEventListener('online', updateStatusKoneksi);
+    window.addEventListener('online', () => {
+        console.log("Status: Online terdeteksi!");
+        updateStatusKoneksi();
+    });
     window.addEventListener('offline', updateStatusKoneksi);
-    window.addEventListener('load', updateStatusKoneksi); // Cek saat pertama dibuka
+    window.addEventListener('load', updateStatusKoneksi);
 
     function updateStatusKoneksi() {
       let offlineBanner = document.getElementById('offlineBanner');
@@ -8689,47 +8692,82 @@
         if (offlineBanner) offlineBanner.style.display = 'none';
         sinkronisasiDataOffline(); // Jalankan sinkronisasi saat internet kembali
       } else {
-        if (offlineBanner) offlineBanner.style.display = 'block';
+        if (offlineBanner) {
+            offlineBanner.innerText = "Koneksi terputus. Mode Offline aktif.";
+            offlineBanner.style.background = "#ff9800"; // Warna oranye peringatan
+            offlineBanner.style.display = 'block';
+        }
       }
     }
 
     // 2. Fungsi untuk mengirim data tertunda (Offline) ke Supabase
-    async function sinkronisasiDataOffline() {
+    async function sinkronisasiDataOffline(retryCount = 0) {
       // Tarik antrean transaksi dari memori browser
       let antrian = JSON.parse(localStorage.getItem('antrianTransaksi')) || [];
       
-      if (antrian.length === 0) return; // Berhenti jika tidak ada data tertunda
+      if (antrian.length === 0) {
+          return; // Berhenti jika tidak ada data tertunda
+      }
+      
+      // ✨ CEK SUPABASE SIAP (Retry logic maksimal 5x)
+      if (!window.supabaseClient) {
+          if (retryCount < 5) { 
+              console.log("Supabase belum siap, mencoba lagi dalam 1 detik...");
+              setTimeout(() => sinkronisasiDataOffline(retryCount + 1), 1000);
+          } else {
+              console.error("Gagal sinkronisasi: Supabase tidak ditemukan setelah beberapa kali mencoba.");
+          }
+          return;
+      }
       
       console.log(`Mengirim ${antrian.length} transaksi offline ke Supabase...`);
       
       try {
-          if (!window.supabaseClient) {
-              console.warn("Koneksi Supabase belum siap.");
-              return;
-          }
+          // ✨ OPSI 1: BERSIHKAN DATA SEBELUM DIKIRIM
+          // Kita membuang 'id_offline' agar Supabase tidak menolaknya (Error 400)
+          let antrianBersih = antrian.map(trx => {
+              let copyTrx = { ...trx }; // Buat salinan datanya agar aman
+              delete copyTrx.id_offline; // Hapus properti yang ditolak Supabase
+              return copyTrx;
+          });
 
-          // ✨ BULK INSERT KE SUPABASE
-          // Supabase otomatis mengenali array dan memasukkan semua baris sekaligus
+          // ✨ BULK INSERT MENGGUNAKAN DATA YANG SUDAH DIBERSIHKAN
           const { error } = await window.supabaseClient
               .from('transaksi')
-              .insert(antrian);
+              .insert(antrianBersih);
           
           if (error) {
-              throw error; // Lempar ke blok catch jika ada error dari Supabase
+              throw error; // Lempar ke blok catch jika gagal
           }
           
-          // Hapus data di memori jika semua sukses masuk ke database server
+          // Hapus data di memori HANYA jika sukses terkirim
           localStorage.removeItem('antrianTransaksi');
-          alert(`Sinkronisasi Sukses: ${antrian.length} transaksi offline telah masuk ke sistem.`);
+          console.log("Sinkronisasi Sukses!");
           
-          // Muat ulang analitik agar angka omset langsung ter-update
+          // Beri notifikasi visual ke Kasir
+          if (typeof Swal !== 'undefined') {
+              Swal.fire({ 
+                  icon: 'success', 
+                  title: 'Sinkronisasi Selesai', 
+                  text: `${antrian.length} transaksi offline berhasil dikirim ke server.` 
+              });
+          } else {
+              alert(`Sinkronisasi Sukses: ${antrian.length} transaksi offline telah masuk ke sistem.`);
+          }
+          
+          // Muat ulang analitik agar angka omset di dashboard langsung ter-update
           if (typeof muatAnalitikBulanan === "function") muatAnalitikBulanan();
           
       } catch (error) {
-          // Blok ini berjalan jika internet putus di tengah jalan atau database menolak data
           console.error("Gagal terhubung ke server untuk sinkronisasi:", error);
           
-          // 💡 Data TIDAK dihapus dari localStorage agar bisa dicoba lagi nanti otomatis (Retry Logic)
+          // Beri notifikasi di banner jika gagal, biarkan data tetap di localStorage
+          let banner = document.getElementById('offlineBanner');
+          if (banner) {
+              banner.innerText = "Sinkronisasi gagal, akan dicoba kembali otomatis saat koneksi stabil.";
+              banner.style.background = "#dc3545"; // Merah error
+              banner.style.display = 'block';
+          }
       }
     }
 
