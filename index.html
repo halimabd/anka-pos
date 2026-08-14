@@ -5556,7 +5556,7 @@
                       totalHppGlobal += (hppProduk * item.jumlah);
                   });
               }
-      
+              console.log("NILAI DISKON GLOBAL SAAT INI:", diskonGlobal);
               // Payload yang disesuaikan PERSIS dengan kolom tabel 'transaksi' di Supabase Anda
               let payloadDB = {
                   klien_id: klienId,
@@ -5569,20 +5569,20 @@
                   metode_pembayaran: metode,            
                   detail_pesanan: keranjang,            // Langsung simpan array keranjang (tipe data jsonb)              
                   // ✨ PERBAIKAN: Semua angka dibungkus parseFloat() agar terjamin aman saat masuk ke Supabase!
-                  subtotal: parseFloat(subtotalGlobal) || 0, 
-                  diskon: parseFloat(diskonGlobal) || 0, // Ini yang sebelumnya membuat gagal saat ada promo
-                  nominal_pph: parseFloat(pphGlobal) || 0,              
-                  nominal_ppn: parseFloat(ppnGlobal) || 0,              
-                  ongkir: parseFloat(window.ongkirDeliveryGlobal) || 0,
-                  pembulatan: parseFloat(window.pembulatanGlobal) || 0, 
-                  poin_dipakai: parseFloat(poinDipakaiGlobal) || 0,     
-                  diskon_poin: parseFloat(diskonPoinGlobal) || 0,        
+                  subtotal: parseInt(subtotalGlobal) || 0, 
+                  diskon: parseInt(diskonGlobal) || 0, // Ini yang sebelumnya membuat gagal saat ada promo
+                  nominal_pph: parseInt(pphGlobal) || 0,              
+                  nominal_ppn: parseInt(ppnGlobal) || 0,              
+                  ongkir: parseInt(window.ongkirDeliveryGlobal) || 0,
+                  pembulatan: parseInt(window.pembulatanGlobal) || 0, 
+                  poin_dipakai: parseInt(poinDipakaiGlobal) || 0,     
+                  diskon_poin: parseInt(diskonPoinGlobal) || 0,        
                   tipe_order: isDeliveryMode ? "DELIVERY" : "-",
-                  total_akhir: parseFloat(totalAkhirGlobal) || 0, 
-                  uang_bayar: parseFloat(bayar) || 0,                    
-                  kembalian: (parseFloat(bayar) || 0) - (parseFloat(totalAkhirGlobal) || 0),
+                  total_akhir: parseInt(totalAkhirGlobal) || 0, 
+                  uang_bayar: parseInt(bayar) || 0,                    
+                  kembalian: (parseInt(bayar) || 0) - (parseInt(totalAkhirGlobal) || 0),
                   status_transaksi: "Lunas",
-                  total_hpp_transaksi: parseFloat(totalHppGlobal) || 0
+                  total_hpp_transaksi: parseInt(totalHppGlobal) || 0
               };
               
               // 💡 Bantuan Debug: Memastikan tidak ada nilai 'NaN' yang masuk
