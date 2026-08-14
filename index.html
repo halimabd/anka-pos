@@ -6079,9 +6079,9 @@
                 const hariIniStr = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, '0') + "-" + String(now.getDate()).padStart(2, '0');
         
                 trxData.forEach(trx => {
-                    // Cek status void (Case Insensitive)
+                    // ✨ 1. CEK STATUS VOID TERLEBIH DAHULU (Case Insensitive)
                     let statusTrx = (trx.status_transaksi || trx.status || "").toLowerCase();
-                    if (statusTrx.includes("batal") || statusTrx.includes("void") || statusTrx.includes("cancel")) return;
+                    let isBatal = statusTrx.includes("batal") || statusTrx.includes("dibatalkan") || statusTrx.includes("void") || statusTrx.includes("cancel");
         
                     let dTrx = new Date(trx.created_at);
                     let tanggalTrx = isNaN(dTrx.getTime()) ? '' : (dTrx.getFullYear() + "-" + String(dTrx.getMonth() + 1).padStart(2, '0') + "-" + String(dTrx.getDate()).padStart(2, '0'));
@@ -6090,31 +6090,36 @@
                     let hpp = parseFloat(trx.total_hpp_transaksi) || 0;
                     let laba = omset - hpp; 
         
-                    totalOmset += omset;
-                    totalLaba += laba;
-                    totalVolume++; // ✨ Hitung sebagai 1 transaksi valid (Total Keseluruhan)
+                    // ✨ 2. JIKA BATAL, JANGAN TAMBAHKAN KE OMSET, LABA, ATAU VOLUME
+                    if (!isBatal) {
+                        totalOmset += omset;
+                        totalLaba += laba;
+                        totalVolume++; // Volume Total bertambah 1 hanya jika transaksi valid
         
-                    if (tanggalTrx === hariIniStr) {
-                        omsetHariIni += omset;
-                        labaHariIni += laba;
-                        volumeHariIni++; // ✨ Hitung sebagai 1 transaksi valid (Hari Ini)
+                        if (tanggalTrx === hariIniStr) {
+                            omsetHariIni += omset;
+                            labaHariIni += laba;
+                            volumeHariIni++; // Volume Hari Ini bertambah 1 hanya jika transaksi valid
+                        }
+        
+                        // Persiapkan Data Grafik (Hanya untuk transaksi valid)
+                        let bulanStr = tanggalTrx.substring(0, 7); 
+                        let tahunStr = tanggalTrx.substring(0, 4); 
+        
+                        if (bulanStr.length === 7) grafikBulananMap[bulanStr] = (grafikBulananMap[bulanStr] || 0) + omset;
+                        if (tanggalTrx) grafikHarianMap[tanggalTrx] = (grafikHarianMap[tanggalTrx] || 0) + omset;
+                        if (tahunStr.length === 4) grafikTahunanMap[tahunStr] = (grafikTahunanMap[tahunStr] || 0) + omset;
                     }
         
-                    // Persiapkan Data Grafik
-                    let bulanStr = tanggalTrx.substring(0, 7); 
-                    let tahunStr = tanggalTrx.substring(0, 4); 
-        
-                    if (bulanStr.length === 7) grafikBulananMap[bulanStr] = (grafikBulananMap[bulanStr] || 0) + omset;
-                    if (tanggalTrx) grafikHarianMap[tanggalTrx] = (grafikHarianMap[tanggalTrx] || 0) + omset;
-                    if (tahunStr.length === 4) grafikTahunanMap[tahunStr] = (grafikTahunanMap[tahunStr] || 0) + omset;
-        
-                    // Loop items HANYA untuk Top Produk (Produk Terlaris)
-                    trx.items.forEach(item => {
-                        let qty = parseInt(item.jumlah) || 0;
-                        let namaProduk = item.nama || "Produk Tidak Diketahui";
-                        if (!topProdukMap[namaProduk]) topProdukMap[namaProduk] = 0;
-                        topProdukMap[namaProduk] += qty;
-                    });
+                    // Loop items HANYA untuk Top Produk (Produk Terlaris juga mengabaikan transaksi batal)
+                    if (!isBatal) {
+                        trx.items.forEach(item => {
+                            let qty = parseInt(item.jumlah) || 0;
+                            let namaProduk = item.nama || "Produk Tidak Diketahui";
+                            if (!topProdukMap[namaProduk]) topProdukMap[namaProduk] = 0;
+                            topProdukMap[namaProduk] += qty;
+                        });
+                    }
                 });
         
                 // Urutkan Produk dari yang paling laku (descending)
