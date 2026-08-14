@@ -6501,6 +6501,10 @@
 
       // Fungsi Tarik Data Bulanan
       async function muatAnalitikBulanan() {
+          if (!window.supabaseClient) {
+              console.warn("Koneksi Supabase belum siap, menunda pemuatan analitik bulanan...");
+              return; 
+          }
           let bulanInput = document.getElementById('filterBulanAnalitik');
           if (!bulanInput) return;
           let bulanVal = bulanInput.value;
