@@ -6000,182 +6000,219 @@
       }
 
       async function muatDashboard() { 
-            // 1. Ambil nilai filter tanggal jika ada
-            let tglStart = document.getElementById('filterStart') ? document.getElementById('filterStart').value : '';
-            let tglEnd = document.getElementById('filterEnd') ? document.getElementById('filterEnd').value : '';
-        
-            const setTeks = (id, teks) => { 
-                if(document.getElementById(id)) document.getElementById(id).innerText = teks; 
-            };
-        
-            try {
-                const klienId = localStorage.getItem('klien_id');
-                if (!klienId) return;
-        
-                // 2. 🚀 TARIK DATA DARI SUPABASE 
-                let query = window.supabaseClient
-                    .from('transaksi')
-                    .select('*')
-                    .eq('klien_id', klienId)
-                    .order('created_at', { ascending: false });
-        
-                // Terapkan filter tanggal jika ada isinya
-                if (tglStart) query = query.gte('created_at', tglStart + 'T00:00:00Z');
-                if (tglEnd) query = query.lte('created_at', tglEnd + 'T23:59:59.999Z');
-        
-                const { data: trxDataRaw, error } = await query;
-                if (error) throw error;
-        
-                // ✨ 3. PENERJEMAH DATA (MAPPER) UNTUK MENCEGAH 'UNDEFINED' DAN 'RP 0'
-                let trxData = trxDataRaw.map(trx => {
-                    let tglObj = new Date(trx.created_at || Date.now());
-                    let tglRapi = isNaN(tglObj.getTime()) ? '-' : tglObj.toLocaleString('id-ID');
-        
-                    let itemsArray = [];
-                    if (trx.detail_pesanan) {
-                        if (typeof trx.detail_pesanan === 'string') {
-                            try { itemsArray = JSON.parse(trx.detail_pesanan); } catch(e){}
-                        } else if (Array.isArray(trx.detail_pesanan)) {
-                            itemsArray = trx.detail_pesanan;
-                        }
-                    }
-        
-                    return {
-                        ...trx,
-                        noStruk: trx.no_struk || trx.noStruk || 'STR-KOSONG',
-                        tanggalFull: tglRapi, 
-                        tanggal: tglRapi,
-                        kasir: trx.kasir || 'Admin',
-                        pelanggan: trx.nama_pelanggan || trx.pelanggan || 'Umum', 
-                        nomorMeja: trx.nomor_meja || trx.nomorMeja || '-',
-                        catatan: trx.catatan || '',
-                        catatanKasir: trx.catatan_kasir || trx.catatanKasir || '',
-                        metodeBayar: trx.metode_pembayaran || trx.metodeBayar || 'Tunai',
-                        subtotal: parseFloat(trx.subtotal) || 0,
-                        diskon: parseFloat(trx.diskon) || 0,
-                        ppn: parseFloat(trx.nominal_ppn) || parseFloat(trx.ppn) || 0,
-                        pph: parseFloat(trx.nominal_pph) || parseFloat(trx.pph) || 0,
-                        ongkir: parseFloat(trx.ongkir) || 0,
-                        total: parseFloat(trx.total_akhir) || parseFloat(trx.total) || 0, 
-                        bayar: parseFloat(trx.uang_bayar) || parseFloat(trx.bayar) || 0,
-                        kembalian: parseFloat(trx.kembalian) || 0,
-                        poinDipakai: parseFloat(trx.poin_dipakai) || 0,
-                        diskonPoin: parseFloat(trx.diskon_poin) || 0,
-                        items: itemsArray 
-                    };
-                });
-        
-                // 4. 🧠 PROSES KALKULASI DATA (AGREGASI)
-                let omsetHariIni = 0, labaHariIni = 0, volumeHariIni = 0;
-                let totalOmset = 0, totalLaba = 0, totalVolume = 0;
-                let topProdukMap = {};
-                
-                let grafikHarianMap = {};
-                let grafikBulananMap = {};
-                let grafikTahunanMap = {};
-        
-                // Dapatkan string tanggal hari ini format YYYY-MM-DD sesuai zona waktu lokal
-                const now = new Date();
-                const hariIniStr = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, '0') + "-" + String(now.getDate()).padStart(2, '0');
-        
-                trxData.forEach(trx => {
-                    // ✨ 1. CEK STATUS VOID TERLEBIH DAHULU (Case Insensitive)
-                    let statusTrx = (trx.status_transaksi || trx.status || "").toLowerCase();
-                    let isBatal = statusTrx.includes("batal") || statusTrx.includes("dibatalkan") || statusTrx.includes("void") || statusTrx.includes("cancel");
-        
-                    let dTrx = new Date(trx.created_at);
-                    let tanggalTrx = isNaN(dTrx.getTime()) ? '' : (dTrx.getFullYear() + "-" + String(dTrx.getMonth() + 1).padStart(2, '0') + "-" + String(dTrx.getDate()).padStart(2, '0'));
-        
-                    let omset = trx.total;
-                    let hpp = parseFloat(trx.total_hpp_transaksi) || 0;
-                    let laba = omset - hpp; 
-        
-                    // ✨ 2. JIKA BATAL, JANGAN TAMBAHKAN KE OMSET, LABA, ATAU VOLUME
-                    if (!isBatal) {
-                        totalOmset += omset;
-                        totalLaba += laba;
-                        totalVolume++; // Volume Total bertambah 1 hanya jika transaksi valid
-        
-                        if (tanggalTrx === hariIniStr) {
-                            omsetHariIni += omset;
-                            labaHariIni += laba;
-                            volumeHariIni++; // Volume Hari Ini bertambah 1 hanya jika transaksi valid
-                        }
-        
-                        // Persiapkan Data Grafik (Hanya untuk transaksi valid)
-                        let bulanStr = tanggalTrx.substring(0, 7); 
-                        let tahunStr = tanggalTrx.substring(0, 4); 
-        
-                        if (bulanStr.length === 7) grafikBulananMap[bulanStr] = (grafikBulananMap[bulanStr] || 0) + omset;
-                        if (tanggalTrx) grafikHarianMap[tanggalTrx] = (grafikHarianMap[tanggalTrx] || 0) + omset;
-                        if (tahunStr.length === 4) grafikTahunanMap[tahunStr] = (grafikTahunanMap[tahunStr] || 0) + omset;
-                    }
-        
-                    // Loop items HANYA untuk Top Produk (Produk Terlaris juga mengabaikan transaksi batal)
-                    if (!isBatal) {
-                        trx.items.forEach(item => {
-                            let qty = parseInt(item.jumlah) || 0;
-                            let namaProduk = item.nama || "Produk Tidak Diketahui";
-                            if (!topProdukMap[namaProduk]) topProdukMap[namaProduk] = 0;
-                            topProdukMap[namaProduk] += qty;
-                        });
-                    }
-                });
-        
-                // Urutkan Produk dari yang paling laku (descending)
-                let topProdukArray = Object.keys(topProdukMap).map(nama => {
-                    return { nama: nama, qty: topProdukMap[nama] };
-                });
-                topProdukArray.sort((a, b) => b.qty - a.qty);
-                let topProdukFinal = topProdukArray.slice(0, 5); // Ambil 5 Teratas
-        
-                // 5. 🎨 UPDATE UI DASHBOARD KASIR
-                riwayatTransaksiGlobal = trxData; 
-                
-                let strOmsetHariIni = "Rp " + omsetHariIni.toLocaleString('id-ID');
-                let strLabaHariIni = "Rp " + labaHariIni.toLocaleString('id-ID');
-                let strTotalOmset = "Rp " + totalOmset.toLocaleString('id-ID');
-                let strTotalLaba = "Rp " + totalLaba.toLocaleString('id-ID');
-                let teksTransaksi = trxData.length + " Invoice";
-                
-                // --- PENGISIAN KE TAB "HARI INI" ---
-                setTeks('dashHariIni', strOmsetHariIni);        
-                setTeks('dashOmsetHariIni', strOmsetHariIni);  
-                setTeks('dashLabaHariIni', strLabaHariIni);
-                setTeks('dashVolumeHariIni', volumeHariIni);
-                
-                // --- PENGISIAN KE TAB "TOTAL KESELURUHAN" ---
-                setTeks('dashTotalOmset', strTotalOmset); 
-                setTeks('dashTotalLaba', strTotalLaba); 
-                setTeks('dashTransaksi', totalVolume + " Invoice");    
-                setTeks('dashTotalTransaksi', totalVolume); 
-                
-                // --- MEMUAT TABEL RIWAYAT TRANSAKSI ---
-                if (typeof gambarTabelRiwayat === "function") {
-                    gambarTabelRiwayat(trxData);
-                }
-                
-                // --- MEMUAT TABEL PRODUK TERLARIS ---
-                let topBody = document.getElementById('dashTopProdukTable') || document.getElementById('dashTopProductsTable'); 
-                if(topBody) {
-                    if(topProdukFinal.length === 0) { 
-                        topBody.innerHTML = `<tr><td colspan="2" style="text-align:center; color:var(--text-muted);">Belum ada data penjualan</td></tr>`; 
-                    } else { 
-                        topBody.innerHTML = ""; 
-                        topProdukFinal.forEach(p => { 
-                            topBody.innerHTML += `<tr><td style="padding: 12px 16px;"><b>${p.nama}</b></td><td style="text-align: right; font-weight: bold; color: var(--primary); white-space:nowrap; padding: 12px 16px;">${p.qty} item</td></tr>`; 
-                        }); 
-                    }
-                }
-        
-                // 🚀 --- RENDER GRAFIK ---
-                if (typeof renderGrafikHarian === "function") renderGrafikHarian(grafikHarianMap);
-                if (typeof renderGrafikBulanan === "function") renderGrafikBulanan(grafikBulananMap);
-                if (typeof renderGrafikTahunan === "function") renderGrafikTahunan(grafikTahunanMap);
-        
-            } catch (error) {
-                console.error("Gagal memuat data dashboard:", error);
-            }
+          // 1. Ambil nilai filter tanggal jika ada
+          let tglStart = document.getElementById('filterStart') ? document.getElementById('filterStart').value : '';
+          let tglEnd = document.getElementById('filterEnd') ? document.getElementById('filterEnd').value : '';
+      
+          const setTeks = (id, teks) => { 
+              if(document.getElementById(id)) document.getElementById(id).innerText = teks; 
+          };
+      
+          try {
+              const klienId = localStorage.getItem('klien_id');
+              if (!klienId) return;
+      
+              // 2. 🚀 TARIK DATA DARI SUPABASE 
+              let query = window.supabaseClient
+                  .from('transaksi')
+                  .select('*')
+                  .eq('klien_id', klienId)
+                  .order('created_at', { ascending: false });
+      
+              // Terapkan filter tanggal jika ada isinya
+              if (tglStart) query = query.gte('created_at', tglStart + 'T00:00:00Z');
+              if (tglEnd) query = query.lte('created_at', tglEnd + 'T23:59:59.999Z');
+      
+              const { data: trxDataRaw, error } = await query;
+              if (error) throw error;
+      
+              // ✨ 3. PENERJEMAH DATA (MAPPER) UNTUK MENCEGAH 'UNDEFINED' DAN 'RP 0'
+              let trxData = trxDataRaw.map(trx => {
+                  let tglObj = new Date(trx.created_at || Date.now());
+                  let tglRapi = isNaN(tglObj.getTime()) ? '-' : tglObj.toLocaleString('id-ID');
+      
+                  let itemsArray = [];
+                  if (trx.detail_pesanan) {
+                      if (typeof trx.detail_pesanan === 'string') {
+                          try { itemsArray = JSON.parse(trx.detail_pesanan); } catch(e){}
+                      } else if (Array.isArray(trx.detail_pesanan)) {
+                          itemsArray = trx.detail_pesanan;
+                      }
+                  }
+      
+                  return {
+                      ...trx,
+                      noStruk: trx.no_struk || trx.noStruk || 'STR-KOSONG',
+                      tanggalFull: tglRapi, 
+                      tanggal: tglRapi,
+                      kasir: trx.kasir || 'Admin',
+                      pelanggan: trx.nama_pelanggan || trx.pelanggan || 'Umum', 
+                      nomorMeja: trx.nomor_meja || trx.nomorMeja || '-',
+                      catatan: trx.catatan || '',
+                      catatanKasir: trx.catatan_kasir || trx.catatanKasir || '',
+                      metodeBayar: trx.metode_pembayaran || trx.metodeBayar || 'Tunai',
+                      subtotal: parseFloat(trx.subtotal) || 0,
+                      diskon: parseFloat(trx.diskon) || 0,
+                      ppn: parseFloat(trx.nominal_ppn) || parseFloat(trx.ppn) || 0,
+                      pph: parseFloat(trx.nominal_pph) || parseFloat(trx.pph) || 0,
+                      ongkir: parseFloat(trx.ongkir) || 0,
+                      total: parseFloat(trx.total_akhir) || parseFloat(trx.total) || 0, 
+                      bayar: parseFloat(trx.uang_bayar) || parseFloat(trx.bayar) || 0,
+                      kembalian: parseFloat(trx.kembalian) || 0,
+                      poinDipakai: parseFloat(trx.poin_dipakai) || 0,
+                      diskonPoin: parseFloat(trx.diskon_poin) || 0,
+                      items: itemsArray 
+                  };
+              });
+      
+              // 4. 🧠 PROSES KALKULASI DATA (AGREGASI)
+              let omsetHariIni = 0, labaHariIni = 0, volumeHariIni = 0;
+              let totalOmset = 0, totalLaba = 0, totalVolume = 0;
+              let topProdukMap = {};
+              
+              // ✨ PENAMPUNG GRAFIK DENGAN STRUKTUR LENGKAP
+              let grafikHarianMap = {};
+              let grafikBulananMap = {};
+              let grafikTahunanMap = {};
+      
+              const now = new Date();
+              const hariIniStr = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, '0') + "-" + String(now.getDate()).padStart(2, '0');
+      
+              trxData.forEach(trx => {
+                  let statusTrx = (trx.status_transaksi || trx.status || "").toLowerCase();
+                  let isBatal = statusTrx.includes("batal") || statusTrx.includes("dibatalkan") || statusTrx.includes("void") || statusTrx.includes("cancel");
+      
+                  let dTrx = new Date(trx.created_at);
+                  let tanggalTrx = isNaN(dTrx.getTime()) ? '' : (dTrx.getFullYear() + "-" + String(dTrx.getMonth() + 1).padStart(2, '0') + "-" + String(dTrx.getDate()).padStart(2, '0'));
+      
+                  let omset = trx.total;
+                  let hpp = parseFloat(trx.total_hpp_transaksi) || 0;
+                  let laba = omset - hpp; 
+      
+                  if (!isBatal) {
+                      totalOmset += omset;
+                      totalLaba += laba;
+                      totalVolume++;
+      
+                      if (tanggalTrx === hariIniStr) {
+                          omsetHariIni += omset;
+                          labaHariIni += laba;
+                          volumeHariIni++;
+                      }
+      
+                      // ✨ SUSUN DATA GRAFIK
+                      let bulanStr = tanggalTrx.substring(0, 7); 
+                      let tahunStr = tanggalTrx.substring(0, 4); 
+      
+                      // Grafik Harian
+                      if (tanggalTrx) {
+                          if (!grafikHarianMap[tanggalTrx]) grafikHarianMap[tanggalTrx] = { omset: 0, laba: 0 };
+                          grafikHarianMap[tanggalTrx].omset += omset;
+                          grafikHarianMap[tanggalTrx].laba += laba;
+                      }
+                      
+                      // Grafik Bulanan
+                      if (bulanStr.length === 7) {
+                          if (!grafikBulananMap[bulanStr]) grafikBulananMap[bulanStr] = { omset: 0, laba: 0 };
+                          grafikBulananMap[bulanStr].omset += omset;
+                          grafikBulananMap[bulanStr].laba += laba;
+                      }
+                      
+                      // Grafik Tahunan
+                      if (tahunStr.length === 4) {
+                          if (!grafikTahunanMap[tahunStr]) grafikTahunanMap[tahunStr] = { omset: 0, laba: 0 };
+                          grafikTahunanMap[tahunStr].omset += omset;
+                          grafikTahunanMap[tahunStr].laba += laba;
+                      }
+                  }
+      
+                  // Loop items untuk Top Produk
+                  if (!isBatal) {
+                      trx.items.forEach(item => {
+                          let qty = parseInt(item.jumlah) || 0;
+                          let namaProduk = item.nama || "Produk Tidak Diketahui";
+                          if (!topProdukMap[namaProduk]) topProdukMap[namaProduk] = 0;
+                          topProdukMap[namaProduk] += qty;
+                      });
+                  }
+              });
+      
+              // Urutkan Produk dari yang paling laku (descending)
+              let topProdukArray = Object.keys(topProdukMap).map(nama => {
+                  return { nama: nama, qty: topProdukMap[nama] };
+              });
+              topProdukArray.sort((a, b) => b.qty - a.qty);
+              let topProdukFinal = topProdukArray.slice(0, 5); // Ambil 5 Teratas
+      
+              // 5. 🎨 UPDATE UI DASHBOARD KASIR
+              riwayatTransaksiGlobal = trxData; 
+              
+              let strOmsetHariIni = "Rp " + omsetHariIni.toLocaleString('id-ID');
+              let strLabaHariIni = "Rp " + labaHariIni.toLocaleString('id-ID');
+              let strTotalOmset = "Rp " + totalOmset.toLocaleString('id-ID');
+              let strTotalLaba = "Rp " + totalLaba.toLocaleString('id-ID');
+              
+              // --- PENGISIAN KE TAB "HARI INI" ---
+              setTeks('dashHariIni', strOmsetHariIni);       
+              setTeks('dashOmsetHariIni', strOmsetHariIni);  
+              setTeks('dashLabaHariIni', strLabaHariIni);
+              setTeks('dashVolumeHariIni', volumeHariIni);
+              
+              // --- PENGISIAN KE TAB "TOTAL KESELURUHAN" ---
+              setTeks('dashTotalOmset', strTotalOmset); 
+              setTeks('dashTotalLaba', strTotalLaba); 
+              setTeks('dashTransaksi', totalVolume + " Invoice");    
+              setTeks('dashTotalTransaksi', totalVolume); 
+              
+              // --- MEMUAT TABEL RIWAYAT TRANSAKSI ---
+              if (typeof gambarTabelRiwayat === "function") {
+                  gambarTabelRiwayat(trxData);
+              }
+              
+              // --- MEMUAT TABEL PRODUK TERLARIS ---
+              let topBody = document.getElementById('dashTopProdukTable') || document.getElementById('dashTopProductsTable'); 
+              if(topBody) {
+                  if(topProdukFinal.length === 0) { 
+                      topBody.innerHTML = `<tr><td colspan="2" style="text-align:center; color:var(--text-muted);">Belum ada data penjualan</td></tr>`; 
+                  } else { 
+                      topBody.innerHTML = ""; 
+                      topProdukFinal.forEach(p => { 
+                          topBody.innerHTML += `<tr><td style="padding: 12px 16px;"><b>${p.nama}</b></td><td style="text-align: right; font-weight: bold; color: var(--primary); white-space:nowrap; padding: 12px 16px;">${p.qty} item</td></tr>`; 
+                      }); 
+                  }
+              }
+      
+              // ✨ FUNGSI PEMBANTU MENGUBAH OBJEK MAP MENJADI FORMAT CHART.JS
+              function ubahKeFormatChart(mapData, limit) {
+                  let keys = Object.keys(mapData).sort(); // Urutkan dari terlama ke terbaru
+                  if (limit && keys.length > limit) keys = keys.slice(-limit); // Ambil data terakhir sesuai limit
+      
+                  let result = { labels: [], omset: [], laba: [] };
+                  keys.forEach(k => {
+                      let labelBersih = k;
+                      // Jika formatnya YYYY-MM-DD, ubah jadi DD/MM
+                      if (k.length === 10) labelBersih = k.substring(8,10) + '/' + k.substring(5,7); 
+                      
+                      result.labels.push(labelBersih);
+                      result.omset.push(mapData[k].omset);
+                      result.laba.push(mapData[k].laba);
+                  });
+                  return result;
+              }
+      
+              // Siapkan 3 Paket Data Grafik
+              let dataChartHarian = ubahKeFormatChart(grafikHarianMap, 7); // Maks 7 Hari Terakhir
+              let dataChartBulanan = ubahKeFormatChart(grafikBulananMap, 12); // Maks 12 Bulan Terakhir
+              let dataChartTahunan = ubahKeFormatChart(grafikTahunanMap, 5); // Maks 5 Tahun Terakhir
+      
+              // 🚀 --- RENDER GRAFIK ---
+              if (typeof renderGrafikHarian === "function") renderGrafikHarian(dataChartHarian);
+              if (typeof renderGrafikBulanan === "function") renderGrafikBulanan(dataChartBulanan);
+              if (typeof renderGrafikTahunan === "function") renderGrafikTahunan(dataChartTahunan);
+      
+          } catch (error) {
+              console.error("Gagal memuat data dashboard:", error);
+          }
       }
 
       // FUNGSI UNTUK MERESET FILTER TANGGAL
