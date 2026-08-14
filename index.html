@@ -5633,10 +5633,14 @@
                           }
                       }
               
-                      // ✨ 3. UPDATE POIN PELANGGAN DI SUPABASE (JIKA MEMBER DIPILIH)
+                      // ✨ 3. UPDATE POIN PELANGGAN DI SUPABASE (Meniru Logika GAS Lama Anda)
                       if (typeof pelangganRowIndexAktif !== 'undefined' && pelangganRowIndexAktif && pelangganTerpilihValue !== "Umum / Cash") {
                           try {
-                              // Ambil data poin pelanggan terbaru dari database
+                              // Hitung poin yang didapat persis seperti kode GAS lama: Math.floor(total / 10000)
+                              let totalTrx = parseFloat(totalAkhirGlobal) || 0;
+                              let poinDidapat = Math.floor(totalTrx / 10000); 
+              
+                              // Ambil data poin pelanggan terbaru dari database berdasarkan ID (UUID)
                               const { data: currentPlg, error: errPlgGet } = await window.supabaseClient
                                   .from('pelanggan')
                                   .select('total_poin')
@@ -5644,20 +5648,22 @@
                                   .single();
               
                               if (!errPlgGet && currentPlg) {
-                                  let poinLama = parseInt(currentPlg.total_poin) || 0;
-                                  
-                                  let poinDidapatBaru = typeof poinDidapatGlobal !== 'undefined' ? (parseInt(poinDidapatGlobal) || 0) : 0;
-                                  let poinDipakai = typeof poinDipakaiGlobal !== 'undefined' ? (parseInt(poinDipakaiGlobal) || 0) : 0;
+                                  let poinSekarang = parseInt(currentPlg.total_poin) || 0;
+                                  let poinDipakai = typeof poinDipakaiGlobal !== 'undefined' ? (parseInt(poinDipakaiGlobal) || 0) : (parseInt(document.getElementById('inputPakaiPoin')?.value) || 0);
               
-                                  // Hitung total poin akhir (poin lama dikurangi poin dipakai ditambah poin baru)
-                                  let poinBaruTotal = (poinLama - poinDipakai) + poinDidapatBaru;
-                                  if (poinBaruTotal < 0) poinBaruTotal = 0;
+                                  // Rumus persis seperti GAS lama: poinSekarang - poinDipakai + poinDidapat
+                                  let poinBaru = poinSekarang - poinDipakai + poinDidapat;
+                                  if (poinBaru < 0) poinBaru = 0;
               
-                                  // Simpan pembaruan poin ke tabel pelanggan
-                                  await window.supabaseClient
+                                  // Update ke tabel pelanggan Supabase
+                                  const { error: errPlgUpdate } = await window.supabaseClient
                                       .from('pelanggan')
-                                      .update({ total_poin: poinBaruTotal })
+                                      .update({ total_poin: poinBaru })
                                       .eq('id', pelangganRowIndexAktif);
+              
+                                  if (errPlgUpdate) throw errPlgUpdate;
+                                  
+                                  console.log(`Poin berhasil diperbarui: Poin Lama(${poinSekarang}) - Dipakai(${poinDipakai}) + Didapat(${poinDidapat}) = Total (${poinBaru})`);
                               }
                           } catch (errPoin) {
                               console.error("Gagal memperbarui poin pelanggan:", errPoin);
