@@ -6182,28 +6182,63 @@
                   }
               }
       
-              // ✨ FUNGSI PEMBANTU MENGUBAH OBJEK MAP MENJADI FORMAT CHART.JS
-              function ubahKeFormatChart(mapData, limit) {
-                  let keys = Object.keys(mapData).sort(); // Urutkan dari terlama ke terbaru
-                  if (limit && keys.length > limit) keys = keys.slice(-limit); // Ambil data terakhir sesuai limit
-      
-                  let result = { labels: [], omset: [], laba: [] };
-                  keys.forEach(k => {
-                      let labelBersih = k;
-                      // Jika formatnya YYYY-MM-DD, ubah jadi DD/MM
-                      if (k.length === 10) labelBersih = k.substring(8,10) + '/' + k.substring(5,7); 
-                      
-                      result.labels.push(labelBersih);
-                      result.omset.push(mapData[k].omset);
-                      result.laba.push(mapData[k].laba);
-                  });
-                  return result;
+              // ✨ FUNGSI UNTUK MENGHASILKAN DERETAN WAKTU PASTI (Mencegah tanggal bolong/di-skip jika tidak ada sales)
+              function getPastDays(days) {
+                  let res = [];
+                  for (let i = days - 1; i >= 0; i--) {
+                      let d = new Date(); d.setDate(d.getDate() - i);
+                      res.push(d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, '0') + "-" + String(d.getDate()).padStart(2, '0'));
+                  }
+                  return res;
+              }
+              
+              function getPastMonths(months) {
+                  let res = [];
+                  let d = new Date();
+                  for (let i = months - 1; i >= 0; i--) {
+                      let temp = new Date(d.getFullYear(), d.getMonth() - i, 1);
+                      res.push(temp.getFullYear() + "-" + String(temp.getMonth() + 1).padStart(2, '0'));
+                  }
+                  return res;
               }
       
-              // Siapkan 3 Paket Data Grafik
-              let dataChartHarian = ubahKeFormatChart(grafikHarianMap, 7); // Maks 7 Hari Terakhir
-              let dataChartBulanan = ubahKeFormatChart(grafikBulananMap, 12); // Maks 12 Bulan Terakhir
-              let dataChartTahunan = ubahKeFormatChart(grafikTahunanMap, 5); // Maks 5 Tahun Terakhir
+              function getPastYears(years) {
+                  let res = [];
+                  let y = new Date().getFullYear();
+                  for (let i = years - 1; i >= 0; i--) {
+                      res.push(String(y - i));
+                  }
+                  return res;
+              }
+      
+              // 1. Siapkan Paket Data Harian (Pasti 7 Hari Terakhir)
+              let dataChartHarian = { labels: [], omset: [], laba: [] };
+              getPastDays(7).forEach(tgl => {
+                  dataChartHarian.labels.push(tgl.substring(8, 10) + '/' + tgl.substring(5, 7)); // Format: DD/MM (misal 13/08)
+                  let data = grafikHarianMap[tgl] || { omset: 0, laba: 0 }; // Jika kosong, set Rp 0
+                  dataChartHarian.omset.push(data.omset);
+                  dataChartHarian.laba.push(data.laba);
+              });
+      
+              // 2. Siapkan Paket Data Bulanan (Pasti 12 Bulan Terakhir)
+              let dataChartBulanan = { labels: [], omset: [], laba: [] };
+              const namaBulan = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+              getPastMonths(12).forEach(bln => {
+                  let bIdx = parseInt(bln.substring(5, 7)) - 1;
+                  dataChartBulanan.labels.push(namaBulan[bIdx] + ' ' + bln.substring(2, 4)); // Format: Jan 26
+                  let data = grafikBulananMap[bln] || { omset: 0, laba: 0 };
+                  dataChartBulanan.omset.push(data.omset);
+                  dataChartBulanan.laba.push(data.laba);
+              });
+      
+              // 3. Siapkan Paket Data Tahunan (Pasti 5 Tahun Terakhir)
+              let dataChartTahunan = { labels: [], omset: [], laba: [] };
+              getPastYears(5).forEach(thn => {
+                  dataChartTahunan.labels.push(thn); // Format: 2026
+                  let data = grafikTahunanMap[thn] || { omset: 0, laba: 0 };
+                  dataChartTahunan.omset.push(data.omset);
+                  dataChartTahunan.laba.push(data.laba);
+              });
       
               // 🚀 --- RENDER GRAFIK ---
               if (typeof renderGrafikHarian === "function") renderGrafikHarian(dataChartHarian);
