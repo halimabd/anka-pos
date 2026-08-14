@@ -6773,7 +6773,15 @@
       function bukaLayarFormStruk(data) {
         dataStrukTerakhir = data; 
         document.getElementById('s_no').innerText = data.noStruk; 
-        document.getElementById('s_tgl').innerText = data.tanggal; 
+        document.getElementById('s_tgl').innerText = data.tanggal; let d = new Date(data.created_at || data.tanggalFull || data.tanggal || Date.now());
+        let tanggalRapiStruk = isNaN(d.getTime()) ? (data.tanggal || '-') : d.toLocaleString('id-ID', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        document.getElementById('s_tgl').innerText = tanggalRapiStruk;
         document.getElementById('s_kasir').innerText = data.kasir; 
         document.getElementById('s_pelanggan').innerText = data.pelanggan; 
         
