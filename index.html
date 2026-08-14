@@ -8886,18 +8886,54 @@
       let html5QrCodeLive = null;
       let lastScanTime = 0; // Untuk mengatur jeda antar scan agar tidak ter-scan dobel beruntun
       
+      // ✨ 1. FUNGSI UNTUK MEMBUKA/MENUTUP DROPDOWN KAMERA KUSTOM
+      function toggleDropdownKameraLive(event) {
+          event.stopPropagation();
+          let list = document.getElementById('listKameraCustom');
+          let btn = document.getElementById('btnPilihKamera');
+          if (list && btn) {
+              if (list.style.display === 'none' || list.style.display === '') {
+                  list.style.display = 'block';
+                  btn.style.borderColor = '#3b82f6'; // Border biru saat aktif
+              } else {
+                  list.style.display = 'none';
+                  btn.style.borderColor = '#444'; // Kembali abu-abu
+              }
+          }
+      }
+
+      // ✨ 2. MENUTUP DROPDOWN OTOMATIS SAAT KLIK DI LUAR AREA
+      document.addEventListener("click", function(e) {
+          let list = document.getElementById('listKameraCustom');
+          let btn = document.getElementById('btnPilihKamera');
+          if (list && btn && !list.contains(e.target) && !btn.contains(e.target)) {
+              list.style.display = 'none';
+              btn.style.borderColor = '#444';
+          }
+      });
+
       function bukaLiveScannerContinuous() {
           // Buka Pop-up SweetAlert
           Swal.fire({
               title: '<strong style="font-size: 16px;">Live Scanner Kasir</strong>',
               html: `
-                  <div style="text-align: left; margin-bottom: 10px;">
+                  <!-- ✨ CUSTOM DROPDOWN KAMERA DI SINI ✨ -->
+                  <div style="text-align: left; margin-bottom: 10px; position: relative;">
                       <label style="font-size: 12px; font-weight: 600;">Pilih Kamera:</label>
-                      <select id="pilihanKameraLive" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border-color, #ccc); font-size: 13px; margin-top: 4px; background: transparent; color: inherit;">
-                          <option value="">Mencari kamera...</option>
-                      </select>
+                      
+                      <!-- Tombol Header Dropdown -->
+                      <div id="btnPilihKamera" onclick="toggleDropdownKameraLive(event)" style="background-color: #2b2b2b; color: #f3f4f6; border: 1px solid #444; padding: 10px 14px; border-radius: 6px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-top: 4px; transition: 0.2s;">
+                          <span id="teksKameraTerpilih" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Mencari kamera...</span>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #9ca3af; flex-shrink: 0;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                      </div>
+                      
+                      <!-- Daftar Opsi Kamera -->
+                      <div id="listKameraCustom" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background-color: #2b2b2b; border: 1px solid #444; border-radius: 6px; margin-top: 4px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); z-index: 9999; max-height: 150px; overflow-y: auto;">
+                          <!-- Diisi otomatis oleh JavaScript -->
+                      </div>
                   </div>
                   
+                  <!-- Area Video Scanner -->
                   <div id="readerLive" style="width: 100%; min-height: 250px; background: #000; border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; color: white;">
                       Memuat kamera...
                   </div>
@@ -8912,12 +8948,9 @@
               color: 'var(--text-dark, #333333)',
               width: '350px',
               didOpen: () => {
-                  // ✨ Styling tombol Batal agar menjadi Pill Button
                   const cancelBtn = Swal.getCancelButton();
                   if(cancelBtn) {
                       cancelBtn.style.cssText = "background-color: #ef4444; color: #ffffff; border: none; padding: 10px 24px; border-radius: 50px; font-weight: 600; font-size: 13px; cursor: pointer; box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.3); transition: 0.2s; width: 100%; margin: 0;";
-                      
-                      // Efek hover sederhana
                       cancelBtn.onmouseover = () => { cancelBtn.style.transform = 'scale(1.02)'; };
                       cancelBtn.onmouseout = () => { cancelBtn.style.transform = 'scale(1)'; };
                   }
@@ -8925,7 +8958,6 @@
                   initLiveScanner();
               },
               willClose: () => {
-                  // Pastikan kamera dimatikan HANYA saat pop-up ditutup (klik tombol Tutup)
                   if (html5QrCodeLive && html5QrCodeLive.isScanning) {
                       html5QrCodeLive.stop().catch(err => console.error("Gagal stop kamera:", err));
                   }
@@ -8939,40 +8971,60 @@
           try {
               const devices = await Html5Qrcode.getCameras();
               if (devices && devices.length > 0) {
-                  let dropdown = document.getElementById('pilihanKameraLive');
-                  dropdown.innerHTML = ''; 
+                  let containerList = document.getElementById('listKameraCustom');
+                  let teksTampil = document.getElementById('teksKameraTerpilih');
+                  containerList.innerHTML = ''; 
                   
-                  // Masukkan daftar kamera ke dropdown
-                  devices.forEach(device => {
-                      let option = document.createElement('option');
-                      option.value = device.id;
-                      option.text = device.label || `Kamera ${dropdown.length + 1}`;
-                      dropdown.appendChild(option);
+                  // ✨ Masukkan daftar kamera ke Dropdown Kustom
+                  devices.forEach((device, index) => {
+                      let namaLabel = device.label || `Kamera ${index + 1}`;
+                      let camId = device.id;
+
+                      let opt = document.createElement('div');
+                      opt.innerText = namaLabel;
+                      opt.style.cssText = "padding: 10px 14px; font-size: 13px; color: #e5e7eb; cursor: pointer; border-bottom: 1px solid #3f3f46; transition: background 0.2s; text-align: left;";
+                      
+                      opt.onmouseover = () => opt.style.backgroundColor = '#3f3f46';
+                      opt.onmouseout = () => opt.style.backgroundColor = 'transparent';
+                      
+                      opt.onclick = () => {
+                          // Ubah teks & tutup dropdown
+                          teksTampil.innerText = namaLabel;
+                          document.getElementById('listKameraCustom').style.display = 'none';
+                          document.getElementById('btnPilihKamera').style.borderColor = '#444';
+                          
+                          // Restart Scanner
+                          if (html5QrCodeLive.isScanning) {
+                              html5QrCodeLive.stop().then(() => {
+                                  mulaiStreamContinuous(camId);
+                              });
+                          } else {
+                              mulaiStreamContinuous(camId);
+                          }
+                      };
+
+                      containerList.appendChild(opt);
                   });
+
+                  if(containerList.lastChild) containerList.lastChild.style.borderBottom = 'none';
       
                   // Prioritaskan kamera belakang (biasanya index ke-1 di HP)
-                  let kameraAktif = devices.length > 1 ? devices[1].id : devices[0].id;
-                  dropdown.value = kameraAktif;
+                  let indexAwal = devices.length > 1 ? 1 : 0;
+                  let kameraAktif = devices[indexAwal].id;
+                  
+                  // Set teks tampilan awal
+                  teksTampil.innerText = devices[indexAwal].label || `Kamera ${indexAwal + 1}`;
       
-                  // Event saat ganti kamera di dropdown
-                  dropdown.addEventListener('change', function() {
-                      let camId = this.value;
-                      if (html5QrCodeLive.isScanning) {
-                          html5QrCodeLive.stop().then(() => {
-                              mulaiStreamContinuous(camId);
-                          });
-                      } else {
-                          mulaiStreamContinuous(camId);
-                      }
-                  });
-      
+                  // Mulai stream video
                   mulaiStreamContinuous(kameraAktif);
               } else {
                   document.getElementById('readerLive').innerHTML = "Kamera tidak ditemukan.";
+                  document.getElementById('teksKameraTerpilih').innerText = "Tidak ada kamera";
               }
           } catch (err) {
               console.error(err);
               document.getElementById('readerLive').innerHTML = "Izin akses kamera ditolak browser.";
+              document.getElementById('teksKameraTerpilih').innerText = "Izin ditolak";
           }
       }
       
@@ -8990,9 +9042,9 @@
                   
                   let currentTime = new Date().getTime();
                   
-                  // JEDA 2 DETIK ANTAR SCAN (Agar 1 barcode tidak masuk ke keranjang 10x dalam 1 detik)
+                  // JEDA 2 DETIK ANTAR SCAN
                   if (currentTime - lastScanTime < 2000) {
-                      return; // Abaikan bacaan beruntun dalam rentang 2 detik
+                      return; 
                   }
                   lastScanTime = currentTime;
       
@@ -9003,7 +9055,7 @@
                   let statusText = document.getElementById('statusScanText');
                   if (statusText) {
                       statusText.innerHTML = `✅ Ditemukan: ${decodedText}`;
-                      setTimeout(() => { statusText.innerHTML = ''; }, 1500); // Hilangkan teks setelah 1.5 detik
+                      setTimeout(() => { statusText.innerHTML = ''; }, 1500);
                   }
       
                   // 3. Masukkan hasil ke kolom pencarian
@@ -9016,14 +9068,12 @@
                       setTimeout(() => {
                           let produkTampil = document.querySelectorAll('#productGrid .product-card:not(.disabled)');
                           if (produkTampil.length === 1) {
-                              produkTampil[0].click(); // Klik otomatis
-                              searchInput.value = '';  // Bersihkan input
-                              jalankanPencarianProdukKasir(); // Reset tampilan
+                              produkTampil[0].click(); 
+                              searchInput.value = '';  
+                              jalankanPencarianProdukKasir(); 
                           }
                       }, 200);
                   }
-                  
-                  // Perhatikan: html5QrCodeLive.stop() DIHAPUS dari sini agar kamera jalan terus!
               },
               (errorMessage) => {
                   // Abaikan error saat proses mencari fokus barcode
