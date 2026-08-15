@@ -8757,14 +8757,28 @@
 
     // Fungsi untuk menampilkan nama user saat halaman dimuat
     function tampilkanNamaUser() {
-      let displayElement = document.getElementById('userDisplay');
-      if (displayElement) {
-          let namaTampil = currentNama || currentUser || 'User';
-          let roleTampil = currentRole || 'Staff';
-          
-          // Tanda kutip sudah dihapus dari format string di bawah ini
-          displayElement.innerHTML = `<svg class="icon-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> Hi, <b>${namaTampil}</b> (${roleTampil})`;
-      }
+        let namaTampil = currentNama || currentUser || 'User';
+        let roleTampil = currentRole || 'Staff';
+        
+        // 1. Update elemen Nama User
+        let elNama = document.getElementById('sidebarUserName');
+        if (elNama) {
+            elNama.innerHTML = `Hi, <b>${namaTampil}</b>`;
+        }
+    
+        // 2. Update elemen Role/Jabatan
+        let elRole = document.getElementById('sidebarUserRole');
+        if (elRole) {
+            elRole.innerText = `(${roleTampil})`;
+        }
+    
+        // 3. Update Foto Avatar (Berdasarkan 2 huruf pertama dari nama)
+        let elAvatar = document.getElementById('sidebarUserAvatar');
+        if (elAvatar) {
+            // Mengambil maksimal 2 huruf pertama untuk inisial foto profil
+            let inisial = namaTampil.substring(0, 2).toUpperCase();
+            elAvatar.src = `https://ui-avatars.com/api/?name=${inisial}&background=3b82f6&color=fff`;
+        }
     }
 
     // Fungsi untuk menyembunyikan/menampilkan detail form di keranjang
@@ -12302,31 +12316,6 @@
               }
           }
       });
-
-      // Fungsi ini dipanggil saat aplikasi mendeteksi pengguna yang berhasil login
-      function setInfoPengguna(nama, role, email, photoUrl) {
-          // 1. Update teks Sidebar
-          document.getElementById('sidebarUserName').innerText = `Hi, ${nama}`;
-          document.getElementById('sidebarUserRole').innerText = `(${role})`;
-      
-          // 2. Update halaman pengaturan (Tab Profil)
-          document.getElementById('mainProfileName').innerText = nama;
-          document.getElementById('mainProfileEmail').innerText = email;
-          document.getElementById('inputProfileName').value = nama;
-          document.getElementById('inputProfileEmail').value = email;
-      
-          // 3. Update Foto Profil Jika Tersedia (Login via Google)
-          if (photoUrl && photoUrl !== "") {
-              document.getElementById('sidebarUserAvatar').src = photoUrl;
-              document.getElementById('mainProfileAvatar').src = photoUrl;
-          } else {
-              // Fallback jika login biasa / tidak ada foto
-              let initial = nama.charAt(0).toUpperCase();
-              let fallbackUrl = `https://ui-avatars.com/api/?name=${initial}&background=22c55e&color=fff`;
-              document.getElementById('sidebarUserAvatar').src = fallbackUrl;
-              document.getElementById('mainProfileAvatar').src = fallbackUrl;
-          }
-      }
                         
     </script>
   </body>
