@@ -10449,7 +10449,15 @@
               let jamVal = document.getElementById('modalJamVal').value || "00";
               let menitVal = document.getElementById('modalMenitVal').value || "00";
               
-              if (!tglVal || !blnVal || !thnVal) return Swal.fire('Peringatan', 'Pilih tanggal!', 'warning');
+              if (!tglVal || !blnVal || !thnVal) {
+                  return Swal.fire({
+                      title: '<strong style="font-size: 15px;">Peringatan</strong>',
+                      html: '<span style="font-size: 13px;">Silakan pilih tanggal transaksi terlebih dahulu!</span>',
+                      icon: 'warning',
+                      background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)',
+                      width: '280px', padding: '15px', confirmButtonColor: '#3b82f6'
+                  });
+              }
               // Format ISO 8601 Local
               tanggalFinal = new Date(`${thnVal}-${blnVal}-${tglVal}T${jamVal}:${menitVal}:00`).toISOString();
           }
@@ -10461,17 +10469,36 @@
           let keterangan = document.getElementById('modalKeterangan').value.trim();
           let namaKasir = typeof currentUser !== 'undefined' ? currentUser : 'Owner';
           
-          if (nominal <= 0) return Swal.fire('Peringatan', 'Nominal harus lebih dari 0!', 'warning');
-          if (tipe === 'Mutasi' && akunAsal === akunTujuan) return Swal.fire('Peringatan', 'Akun asal dan tujuan sama!', 'warning');
+          if (nominal <= 0) {
+              return Swal.fire({
+                  title: '<strong style="font-size: 15px;">Peringatan</strong>',
+                  html: '<span style="font-size: 13px;">Nominal harus lebih besar dari 0!</span>',
+                  icon: 'warning',
+                  background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)',
+                  width: '280px', padding: '15px', confirmButtonColor: '#3b82f6'
+              });
+          }
+
+          if (tipe === 'Mutasi' && akunAsal === akunTujuan) {
+              return Swal.fire({
+                  title: '<strong style="font-size: 15px;">Peringatan</strong>',
+                  html: '<span style="font-size: 13px;">Akun asal dan tujuan tidak boleh sama!</span>',
+                  icon: 'warning',
+                  background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)',
+                  width: '280px', padding: '15px', confirmButtonColor: '#3b82f6'
+              });
+          }
           
           // ✨ Validasi Saldo Minus
           if (tipe === 'Keluar' || tipe === 'Mutasi') {
               let saldoTersedia = window.saldosGlobal ? (window.saldosGlobal[akunAsal] || 0) : 0;
               if (window.saldosGlobal && nominal > saldoTersedia) {
                   return Swal.fire({
-                      title: 'Saldo Tidak Cukup!',
-                      html: `Saldo di <b>${akunAsal}</b> tidak mencukupi.<br><br>Sisa saldo: <b style="color: #ef4444;">Rp ${saldoTersedia.toLocaleString('id-ID')}</b>`,
-                      icon: 'error'
+                      title: '<strong style="font-size: 15px;">Saldo Tidak Cukup!</strong>',
+                      html: `<span style="font-size: 13px;">Saldo di <b>${akunAsal}</b> tidak mencukupi untuk transaksi ini.<br><br>Sisa saldo: <b style="color: #ef4444;">Rp ${saldoTersedia.toLocaleString('id-ID')}</b></span>`,
+                      icon: 'error',
+                      background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)',
+                      width: '300px', padding: '15px', confirmButtonColor: '#ef4444'
                   });
               }
           }
@@ -10492,18 +10519,45 @@
           };
           
           tutupModalArusKas();
-          Swal.fire({ title: 'Menyimpan...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+          
+          // 🔄 Loading State
+          Swal.fire({
+              title: '<span style="font-size: 15px; font-weight: 600;">Menyimpan...</span>',
+              html: '<span style="font-size: 12px; color: var(--text-muted, #64748b);">Mohon tunggu sebentar</span>',
+              allowOutsideClick: false,
+              background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)',
+              width: '260px', padding: '20px',
+              didOpen: () => { Swal.showLoading(); }
+          });
           
           try {
               let { error } = await window.supabaseClient.from('arus_kas').insert([payload]);
               if (error) throw error;
               
-              await Swal.fire({ title: 'Berhasil!', text: 'Catatan arus kas disimpan.', icon: 'success', timer: 1200, showConfirmButton: false });
+              // ✅ Sukses State
+              await Swal.fire({
+                  title: '<span style="font-size: 16px; font-weight: 600;">Berhasil!</span>',
+                  html: '<span style="font-size: 13px;">Catatan arus kas berhasil disimpan.</span>',
+                  icon: 'success',
+                  timer: 1200,
+                  showConfirmButton: false,
+                  background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)',
+                  width: '260px', padding: '20px'
+              });
+              
               muatManajemenKas(); 
 
           } catch (error) {
               console.error("Gagal mencatat arus kas:", error);
-              Swal.fire('Gagal', 'Terjadi kesalahan koneksi ke server.', 'error');
+              
+              // ❌ Gagal State
+              Swal.fire({
+                  title: '<span style="font-size: 15px; font-weight: 600;">Gagal</span>',
+                  html: '<span style="font-size: 13px;">Terjadi kesalahan koneksi ke server.</span>',
+                  icon: 'error',
+                  background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)',
+                  width: '260px', padding: '20px', confirmButtonColor: '#ef4444'
+              });
           }
       }
 
