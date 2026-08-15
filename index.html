@@ -3181,35 +3181,39 @@
             </div>
 
             <!-- Kotak Ringkasan Utama (Pendapatan Bersih & Total Saldo) -->
-            <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;">
-      
-              <!-- Card Pendapatan Bersih -->
-              <div class="kas-summary-card" style="background: var(--surface, #ffffff); border: 1px solid var(--border-color, #e2e8f0); border-radius: 8px; padding: 16px; flex: 1; min-width: 200px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                  <div style="font-size: 12px; color: var(--text-muted, #666); font-weight: 600; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #10b981;"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                      Pendapatan Bersih
-                  </div>
-                  <div id="cardPendapatanBersih" style="font-size: 20px; font-weight: 700; color: #10b981;">Rp 0</div>
-              </div>
-
-              <!-- Card Pengeluaran -->
-              <div class="kas-summary-card" style="background: var(--surface, #ffffff); border: 1px solid var(--border-color, #e2e8f0); border-radius: 8px; padding: 16px; flex: 1; min-width: 200px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                  <div style="font-size: 12px; color: var(--text-muted, #666); font-weight: 600; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #ef4444;"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"></polyline><polyline points="17 18 23 18 23 12"></polyline></svg>
-                      Pengeluaran
-                  </div>
-                  <div id="cardPengeluaran" style="font-size: 20px; font-weight: 700; color: #ef4444;">Rp 0</div>
-              </div>
-
-              <!-- Card Total Saldo Semua Akun -->
-              <div class="kas-summary-card" style="background: var(--surface, #ffffff); border: 1px solid var(--border-color, #e2e8f0); border-radius: 8px; padding: 16px; flex: 1; min-width: 200px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                  <div style="font-size: 12px; color: var(--text-muted, #666); font-weight: 600; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #3b82f6;"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-                      Total Saldo Semua Akun
-                  </div>
-                  <div id="cardTotalSaldo" style="font-size: 20px; font-weight: 700; color: #3b82f6;">Rp 0</div>
-              </div>
-
+            <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;">                
+                <!-- Card Pendapatan Bersih -->
+                <div class="kas-summary-card" style="background: var(--surface, #ffffff); border: 1px solid var(--border-color, #e2e8f0); border-radius: 8px; padding: 16px; flex: 1; min-width: 200px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                    <div style="font-size: 12px; color: var(--text-muted, #666); font-weight: 600; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #10b981;"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                        Pendapatan Bersih
+                    </div>
+                    <div id="cardPendapatanBersih" style="font-size: 20px; font-weight: 700; color: #10b981;">Rp 0</div>
+                </div>          
+                <!-- Card Pemasukan (Baru) -->
+                <div class="kas-summary-card" style="background: var(--surface, #ffffff); border: 1px solid var(--border-color, #e2e8f0); border-radius: 8px; padding: 16px; flex: 1; min-width: 200px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                    <div style="font-size: 12px; color: var(--text-muted, #666); font-weight: 600; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #10b981;"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+                        Pemasukan
+                    </div>
+                    <div id="cardPemasukan" style="font-size: 20px; font-weight: 700; color: #10b981;">Rp 0</div>
+                </div>          
+                <!-- Card Pengeluaran -->
+                <div class="kas-summary-card" style="background: var(--surface, #ffffff); border: 1px solid var(--border-color, #e2e8f0); border-radius: 8px; padding: 16px; flex: 1; min-width: 200px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                    <div style="font-size: 12px; color: var(--text-muted, #666); font-weight: 600; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #ef4444;"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"></polyline><polyline points="17 18 23 18 23 12"></polyline></svg>
+                        Pengeluaran
+                    </div>
+                    <div id="cardPengeluaran" style="font-size: 20px; font-weight: 700; color: #ef4444;">Rp 0</div>
+                </div>          
+                <!-- Card Total Saldo Semua Akun -->
+                <div class="kas-summary-card" style="background: var(--surface, #ffffff); border: 1px solid var(--border-color, #e2e8f0); border-radius: 8px; padding: 16px; flex: 1; min-width: 200px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                    <div style="font-size: 12px; color: var(--text-muted, #666); font-weight: 600; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #3b82f6;"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                        Total Saldo Semua Akun
+                    </div>
+                    <div id="cardTotalSaldo" style="font-size: 20px; font-weight: 700; color: #3b82f6;">Rp 0</div>
+                </div>          
             </div>
             <!-- Kotak Ringkasan Saldo Akun -->
             <div class="wallet-section-title" style="font-size: 14px; font-weight: 600; margin-bottom: 10px; border-radius: 14px; color: var(--text-dark);">Saldo Dompet & Rekening Saat Ini:</div>
@@ -10067,7 +10071,6 @@
           let totalOmzetPenjualan = 0;
           let totalHppPenjualan = 0;
 
-          // Fungsi Aman Pembaca Waktu
           function parseDateLocal(dateStr) {
               if (!dateStr) return { tglStr: "", tglBln: "" };
               let d = new Date(dateStr);
@@ -10157,7 +10160,6 @@
                       else if (tipe === "Pengeluaran" && !ketLower.includes("penyesuaian minus")) totalPengeluaran += nominal;
                   }
 
-                  // ✨ PERBAIKAN FORMAT TANGGAL KHUSUS TABEL (DD/MM/YYYY HH:MM)
                   let day = String(tglObj.getDate()).padStart(2, '0');
                   let month = String(tglObj.getMonth() + 1).padStart(2, '0');
                   let year = tglObj.getFullYear();
@@ -10180,9 +10182,11 @@
           });
 
           for (let ak in saldos) totalSaldo += saldos[ak];
-          let pendapatanBersih = (totalOmzetPenjualan + totalPemasukanLain) - (totalPengeluaran + totalHppPenjualan);
+          
+          let totalPemasukan = totalOmzetPenjualan + totalPemasukanLain;
+          let pendapatanBersih = totalPemasukan - (totalPengeluaran + totalHppPenjualan);
 
-          return { saldos, riwayat, totalSaldo, pendapatanBersih, totalPengeluaran };
+          return { saldos, riwayat, totalSaldo, pendapatanBersih, totalPemasukan, totalPengeluaran };
       }
       // --- 1. Fungsi untuk memuat data tersinkron dari Server ---
       async function muatManajemenKas() {
@@ -10219,21 +10223,27 @@
       function renderTampilanManajemenKas(saldos, totalSaldo) {
           let roleAktif = typeof currentRole !== 'undefined' ? currentRole : 'Kasir';
 
-          // 1. UPDATE KARTU TOTAL SALDO
+          // KONTROL AKSES TOTAL SALDO (Hanya Owner)
+          let cardTotalSaldoWrapper = document.getElementById('wrapperCardTotalSaldo') || document.getElementById('cardTotalSaldo')?.parentElement;
           let elTotal = document.getElementById('cardTotalSaldo');
-          if (elTotal) {
-              elTotal.innerText = 'Rp ' + (totalSaldo || 0).toLocaleString('id-ID');
-              elTotal.style.color = totalSaldo < 0 ? '#ef4444' : '#3b82f6';
+          
+          if (roleAktif === 'Owner') {
+              if (elTotal) {
+                  elTotal.innerText = 'Rp ' + (totalSaldo || 0).toLocaleString('id-ID');
+                  elTotal.style.color = totalSaldo < 0 ? '#ef4444' : '#3b82f6';
+              }
+          } else {
+              if (elTotal) elTotal.innerText = '🔒 Khusus Owner';
           }
 
-          // 2. KONTROL TOMBOL FAB UNTUK OWNER
+          // KONTROL TOMBOL FAB & OPSI UNTUK OWNER
           let fabMutasi = document.getElementById('fabBtnMutasi');
           if (fabMutasi) fabMutasi.style.display = (roleAktif === 'Owner') ? 'flex' : 'none';
 
           let dropdownOpsiMutasi = document.getElementById('dropdownOpsiMutasi');
           if (dropdownOpsiMutasi) dropdownOpsiMutasi.style.display = (roleAktif === 'Owner') ? 'flex' : 'none';
 
-          // 3. RENDER KARTU SALDO DOMPET
+          // RENDER KARTU SALDO DOMPET
           let containerSaldo = document.getElementById('containerSaldoAkun');
           if (containerSaldo) {
               let htmlAkunCards = '';
@@ -10242,9 +10252,9 @@
               
               let listSemuaAkun = [...DOMPET_DEFAULT, ...customWallets, ...Object.keys(saldos)];
               
-              // Sembunyikan 'Brankas Utama' jika bukan Owner
+              // Sembunyikan 'Brankas Utama' dan akun sensitif jika bukan Owner
               if (roleAktif !== 'Owner') {
-                  listSemuaAkun = listSemuaAkun.filter(akun => akun !== 'Brankas Utama');
+                  listSemuaAkun = listSemuaAkun.filter(akun => akun !== 'Brankas Utama' && akun !== 'Selisih Kas');
               }
 
               let semuaAkun = new Set(listSemuaAkun);
@@ -10253,7 +10263,7 @@
                   let nominal = saldos[akun] || 0; 
                   if (DOMPET_DEFAULT.includes(akun) || customWallets.includes(akun) || nominal !== 0) {
                       let warnaCard = nominal < 0 ? '#ef4444' : '#10b981';
-                      let tombolHapus = customWallets.includes(akun) 
+                      let tombolHapus = (roleAktif === 'Owner' && customWallets.includes(akun)) 
                           ? `<button onclick="hapusAkunDariKartu('${akun}', ${nominal})" style="position: absolute; top: 4px; right: 6px; background: none; border: none; font-size: 18px; color: #ef4444; cursor: pointer; line-height: 1; padding: 4px; z-index: 10;" title="Hapus Dompet">&times;</button>`
                           : '';
 
@@ -10277,16 +10287,6 @@
               }
               containerSaldo.innerHTML = htmlAkunCards;
           }
-
-          /*// ✨ 4. TERAPKAN FILTER OTOMATIS
-          // Memanggil fungsi filter ini akan otomatis menghitung Pengeluaran dan merender Tabel 
-          // berdasarkan Tab (Hari Ini / Bulanan) yang sedang aktif!
-          if (typeof terapkanFilterKas === 'function') {
-              terapkanFilterKas();
-          } else {
-              // Fallback cadangan jika script filter belum termuat
-              renderTabelKas();
-          }*/
       }
 
       // Menutup Modal HTML Biasa
@@ -10927,39 +10927,59 @@
           if (typeof currentPageKas !== 'undefined') currentPageKas = 1; 
 
           let mode = typeof modeFilterKasAktif !== 'undefined' ? modeFilterKasAktif : 'Hari Ini';
-          let filterBulan = document.getElementById('filterBulanKas') ? document.getElementById('filterBulanKas').value : '';
-
-          let elPengeluaran = document.getElementById('cardPengeluaran');
-          if (elPengeluaran) { elPengeluaran.innerText = 'Menghitung...'; elPengeluaran.style.color = 'var(--text-muted)'; }
-
-          let elPendapatan = document.getElementById('cardPendapatanBersih');
+          let filterBulan = document.getElementById('filterBulanKas') ? document.getElementById('filterBulanKas'].value : '';
           let roleAktif = typeof currentRole !== 'undefined' ? currentRole : 'Kasir';
-          if (elPendapatan && roleAktif === 'Owner') { elPendapatan.innerText = 'Menghitung...'; elPendapatan.style.color = 'var(--text-muted)'; }
+
+          let elPemasukan = document.getElementById('cardPemasukan');
+          let elPengeluaran = document.getElementById('cardPengeluaran');
+          let elPendapatan = document.getElementById('cardPendapatanBersih');
+          let elTotalSaldo = document.getElementById('cardTotalSaldo');
+
+          if (elPemasukan) { elPemasukan.innerText = 'Menghitung...'; }
+          if (elPengeluaran) { elPengeluaran.innerText = 'Menghitung...'; elPengeluaran.style.color = 'var(--text-muted)'; }
+          
+          if (roleAktif === 'Owner') {
+              if (elPendapatan) { elPendapatan.innerText = 'Menghitung...'; elPendapatan.style.color = 'var(--text-muted)'; }
+              if (elTotalSaldo) { elTotalSaldo.innerText = 'Menghitung...'; elTotalSaldo.style.color = 'var(--text-muted)'; }
+          } else {
+              // Jika Kasir, sembunyikan atau beri keterangan khusus
+              if (elPendapatan) elPendapatan.innerText = 'Khusus Owner';
+              if (elTotalSaldo) elTotalSaldo.innerText = 'Khusus Owner';
+          }
 
           try {
               let data = await hitungArusKasSupabase(mode, filterBulan);
               
-              // ✨ PENTING: ISI VARIABEL GLOBAL AGAR TABEL BISA MEMBACA DATANYA!
               window.saldosGlobal = data.saldos;
               window.riwayatKasAsli = [...data.riwayat];
               riwayatKasGlobal = [...data.riwayat]; 
 
-              // Update Nilai Pendapatan dan Pengeluaran
+              // Update Kartu Pemasukan & Pengeluaran (Bisa dilihat Kasir maupun Owner)
+              if (elPemasukan) {
+                  elPemasukan.innerText = 'Rp ' + (data.totalPemasukan || 0).toLocaleString('id-ID');
+                  elPemasukan.style.color = '#10b981';
+              }
               if (elPengeluaran) {
                   elPengeluaran.innerText = 'Rp ' + (data.totalPengeluaran || 0).toLocaleString('id-ID');
                   elPengeluaran.style.color = '#ef4444'; 
               }
-              if (elPendapatan && roleAktif === 'Owner') {
-                  elPendapatan.innerText = 'Rp ' + (data.pendapatanBersih || 0).toLocaleString('id-ID');
-                  elPendapatan.style.color = data.pendapatanBersih < 0 ? '#ef4444' : '#10b981'; 
+
+              // Update Kartu Pendapatan Bersih & Total Saldo (KHUSUS OWNER)
+              if (roleAktif === 'Owner') {
+                  if (elPendapatan) {
+                      elPendapatan.innerText = 'Rp ' + (data.pendapatanBersih || 0).toLocaleString('id-ID');
+                      elPendapatan.style.color = data.pendapatanBersih < 0 ? '#ef4444' : '#10b981'; 
+                  }
+                  if (elTotalSaldo) {
+                      elTotalSaldo.innerText = 'Rp ' + (data.totalSaldo || 0).toLocaleString('id-ID');
+                      elTotalSaldo.style.color = data.totalSaldo < 0 ? '#ef4444' : '#3b82f6';
+                  }
               }
 
-              // Update Kartu Dompet
               if (typeof renderTampilanManajemenKas === "function") {
                   renderTampilanManajemenKas(data.saldos, data.totalSaldo);
               }
               
-              // Render Tabel
               if (typeof renderTabelKas === "function") {
                   renderTabelKas();
               }
