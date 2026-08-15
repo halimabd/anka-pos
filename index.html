@@ -10043,20 +10043,20 @@
       });
 
       // =========================================================================
-      // FUNGSI UTAMA: MENGHITUNG ARUS KAS & SALDO DARI SUPABASE (MENGGANTIKAN BACKEND)
+      // FUNGSI UTAMA: MENGHITUNG ARUS KAS & SALDO DARI SUPABASE 
       // =========================================================================
       async function hitungArusKasSupabase(mode, filterBulan) {
           const klienId = localStorage.getItem('klien_id');
           if (!klienId) throw new Error("Klien ID tidak ditemukan");
 
-          // 1. Tarik Data Transaksi (Untuk Saldo Omzet & Pendapatan Bersih)
+          // 1. Tarik Data Transaksi (Pastikan nama kolom metode bayar sesuai database Anda, misal: metode_pembayaran)
           const { data: trxData, error: errTrx } = await window.supabaseClient
               .from('transaksi')
               .select('no_struk, status_transaksi, metode_pembayaran, total_akhir, total_hpp_transaksi, created_at')
               .eq('klien_id', klienId);
           if (errTrx) throw errTrx;
 
-          // 2. Tarik Data Arus Kas (Untuk Saldo Kas & Riwayat Layar)
+          // 2. Tarik Data Arus Kas
           const { data: kasData, error: errKas } = await window.supabaseClient
               .from('arus_kas')
               .select('*')
@@ -10069,20 +10069,30 @@
           let totalOmzetPenjualan = 0;
           let totalHppPenjualan = 0;
 
-          let targetBlnTahun = filterBulan ? filterBulan : ""; // Format "YYYY-MM"
-          let todayStr = new Date().toLocaleDateString('en-CA'); // Format "YYYY-MM-DD"
+          // Fungsi Bantuan untuk Format Tanggal Lokal (Bebas Bug Timezone)
+          function parseDateLocal(dateStr) {
+              if (!dateStr) return { tglStr: "", tglBln: "" };
+              let d = new Date(dateStr);
+              if (isNaN(d)) return { tglStr: "", tglBln: "" };
+              let y = d.getFullYear();
+              let m = String(d.getMonth() + 1).padStart(2, '0');
+              let day = String(d.getDate()).padStart(2, '0');
+              return { tglStr: `${y}-${m}-${day}`, tglBln: `${y}-${m}` };
+          }
+
+          let safeMode = (mode || "Total").toLowerCase();
+          let targetBlnTahun = filterBulan ? filterBulan : ""; 
+          let todayStr = parseDateLocal(new Date()).tglStr; 
 
           // --- PROSES TRANSAKSI ---
           (trxData || []).forEach(row => {
               let status = (row.status_transaksi || "").toLowerCase();
               let noStruk = row.no_struk || "";
-              let metode = (row.metode_pembayaran || "").toLowerCase();
+              let metode = (row.metode_pembayaran || "").toLowerCase(); // Sesuaikan nama kolom
               let omzet = parseFloat(row.total_akhir) || 0;
               let hpp = parseFloat(row.total_hpp_transaksi) || 0;
               
-              let tglObj = new Date(row.created_at);
-              let tglStr = tglObj.toLocaleDateString('en-CA'); // "YYYY-MM-DD"
-              let tglBln = tglStr.substring(0, 7); // "YYYY-MM"
+              let { tglStr, tglBln } = parseDateLocal(row.created_at);
 
               if (status === "dibatalkan" || status === "void" || status === "pending") {
                   if (noStruk) setVoid[noStruk] = true;
@@ -10094,10 +10104,10 @@
                   else if (metode.includes("bank") || metode.includes("transfer")) saldos["BANK"] += omzet;
                   else saldos["Laci Kasir"] += omzet;
 
-                  // Cek Filter Waktu Untuk Pendapatan Bersih
-                  let masukWaktuTrx = (!mode || mode === "Total") ||
-                                      (mode === "Hari Ini" && tglStr === todayStr) ||
-                                      (mode === "Bulanan" && tglBln === targetBlnTahun);
+                  // Cek Filter Waktu 
+                  let masukWaktuTrx = (safeMode === "total") ||
+                                      (safeMode === "hari ini" && tglStr === todayStr) ||
+                                      (safeMode === "bulanan" && tglBln === targetBlnTahun);
 
                   if (masukWaktuTrx) {
                       totalOmzetPenjualan += omzet;
@@ -10120,11 +10130,10 @@
               let keterangan = row.keterangan || "";
               let statusManual = (row.status || "").toLowerCase();
               
+              let { tglStr, tglBln } = parseDateLocal(row.tanggal);
               let tglObj = new Date(row.tanggal);
-              let tglStr = tglObj.toLocaleDateString('en-CA');
-              let tglBln = tglStr.substring(0, 7);
 
-              // Inisialisasi akun kustom jika belum ada di object
+              // Inisialisasi akun kustom
               if (akunAsal && !saldos[akunAsal]) saldos[akunAsal] = 0;
               if (akunTujuan && akunTujuan !== "-" && !saldos[akunTujuan]) saldos[akunTujuan] = 0;
 
@@ -10135,7 +10144,7 @@
                   }
               }
 
-              // Hitung Mutasi Saldo
+              // Mutasi Saldo Total
               if (!isVoid) {
                   if (tipe === "Pemasukan") {
                       if (akunAsal) saldos[akunAsal] += nominal;
@@ -10147,10 +10156,10 @@
                   }
               }
 
-              // Cek Filter Waktu untuk Riwayat dan Pengeluaran
-              let masukWaktuKas = (!mode || mode === "Total") ||
-                                  (mode === "Hari Ini" && tglStr === todayStr) ||
-                                  (mode === "Bulanan" && tglBln === targetBlnTahun);
+              // Cek Filter Waktu
+              let masukWaktuKas = (safeMode === "total") ||
+                                  (safeMode === "hari ini" && tglStr === todayStr) ||
+                                  (safeMode === "bulanan" && tglBln === targetBlnTahun);
 
               if (masukWaktuKas) {
                   if (!isVoid) {
@@ -10162,13 +10171,12 @@
                       else if (tipe === "Pengeluaran" && !isPenyesuaianMinus) totalPengeluaran += nominal;
                   }
 
-                  // Format tanggal untuk UI (dd/MM/yyyy HH:mm)
-                  let tglFormat = tglObj.toLocaleString('id-ID', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' }).replace(/\./g, ':');
+                  let tglFormat = !isNaN(tglObj) ? tglObj.toLocaleString('id-ID', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' }).replace(/\./g, ':') : tglStr;
 
                   riwayat.push({
                       id: row.id,
                       tanggal: tglFormat,
-                      tanggalAsli: tglStr, // Disimpan untuk fungsi filter UI
+                      tanggalAsli: tglStr, 
                       tipe: tipe,
                       akunAsal: akunAsal,
                       akunTujuan: akunTujuan,
@@ -10180,14 +10188,12 @@
               }
           });
 
-          // Hitung Total Seluruh Saldo
-          for (let ak in saldos) {
-              totalSaldo += saldos[ak];
-          }
-
+          for (let ak in saldos) totalSaldo += saldos[ak];
+          
           let pendapatanBersih = (totalOmzetPenjualan + totalPemasukanLain) - (totalPengeluaran + totalHppPenjualan);
 
-          return { saldos, riwayat, totalSaldo, pendapatanBersih };
+          // ✨ PASTIKAN totalPengeluaran DI-RETURN
+          return { saldos, riwayat, totalSaldo, pendapatanBersih, totalPengeluaran };
       }
       // --- 1. Fungsi untuk memuat data tersinkron dari Server ---
       async function muatManajemenKas() {
@@ -10815,6 +10821,9 @@
           }
       });
 
+      // =========================================================================
+      // FUNGSI RENDER KE LAYAR
+      // =========================================================================
       async function terapkanFilterKas() {
           if (typeof currentPageKas !== 'undefined') currentPageKas = 1; 
 
@@ -10829,11 +10838,30 @@
           if (elPendapatan && roleAktif === 'Owner') { elPendapatan.innerText = 'Menghitung...'; elPendapatan.style.color = 'var(--text-muted)'; }
 
           try {
-              // ✨ Hitung dan Tarik Data secara Lokal (Javascript) menggunakan Supabase
               let data = await hitungArusKasSupabase(mode, filterBulan);
               
-              // Perbarui UI
-              renderTampilanManajemenKas(data.saldos, data.riwayat, data.totalSaldo, data.pendapatanBersih);
+              // 1. UPDATE CARD SECARA MANUAL SEBAGAI KEAMANAN GANDA
+              if (elPengeluaran) {
+                  elPengeluaran.innerText = 'Rp ' + (data.totalPengeluaran || 0).toLocaleString('id-ID');
+                  elPengeluaran.style.color = ''; // kembalikan warna awal
+              }
+              if (elPendapatan && roleAktif === 'Owner') {
+                  elPendapatan.innerText = 'Rp ' + (data.pendapatanBersih || 0).toLocaleString('id-ID');
+                  elPendapatan.style.color = ''; 
+              }
+
+              // 2. JALANKAN FUNGSI RENDER (Sekarang memasukkan parameter data.totalPengeluaran)
+              try {
+                  if (typeof renderTampilanManajemenKas === "function") {
+                      renderTampilanManajemenKas(data.saldos, data.riwayat, data.totalSaldo, data.pendapatanBersih, data.totalPengeluaran);
+                  }
+              } catch (renderError) {
+                  console.warn("Peringatan UI Render:", renderError);
+                  // 3. JIKA RENDER TAMPILAN CRASH, PAKSA MUAT TABELNYA SAJA
+                  if (typeof renderTabelKas === "function") {
+                      renderTabelKas(data.riwayat);
+                  }
+              }
 
           } catch (error) {
               console.error("Gagal memuat data arus kas:", error);
