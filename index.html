@@ -2072,28 +2072,12 @@
           overflow: hidden;
           text-overflow: ellipsis;
         }
-        /* Kartu Pendapatan Bersih & Pengeluaran menjadi 50% (2 kolom) */
-        .kas-summary-card {
-          flex: 0 0 calc(50% - 6px) !important;
-          min-width: unset !important;
-          box-sizing: border-box;
-        }
-
-        /* Kartu ke-3 (Total Saldo Semua Akun) otomatis mengambil lebar penuh 100% di bawahnya */
-        .kas-summary-card:nth-child(3) {
-          flex: 0 0 100% !important;
-        }
         /* 1. Atur card Pendapatan Bersih & Pengeluaran menjadi 50:50 */
         .kas-summary-card {
           flex: 0 0 calc(50% - 6px) !important;
           min-width: unset !important;
           box-sizing: border-box;
           padding: 12px !important;
-        }
-
-        /* 2. Card ke-3 (Total Saldo) melebar penuh 100% di bawahnya */
-        .kas-summary-card:nth-child(3) {
-          flex: 0 0 100% !important;
         }
 
         /* 3. Kecilkan ukuran teks nominal khusus di HP agar muat satu baris */
