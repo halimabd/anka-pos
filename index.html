@@ -10049,14 +10049,12 @@
           const klienId = localStorage.getItem('klien_id');
           if (!klienId) throw new Error("Klien ID tidak ditemukan");
 
-          // 1. Tarik Data Transaksi (Pastikan nama kolom metode bayar sesuai database Anda, misal: metode_pembayaran)
           const { data: trxData, error: errTrx } = await window.supabaseClient
               .from('transaksi')
               .select('no_struk, status_transaksi, metode_pembayaran, total_akhir, total_hpp_transaksi, created_at')
               .eq('klien_id', klienId);
           if (errTrx) throw errTrx;
 
-          // 2. Tarik Data Arus Kas
           const { data: kasData, error: errKas } = await window.supabaseClient
               .from('arus_kas')
               .select('*')
@@ -10069,7 +10067,7 @@
           let totalOmzetPenjualan = 0;
           let totalHppPenjualan = 0;
 
-          // Fungsi Bantuan untuk Format Tanggal Lokal (Bebas Bug Timezone)
+          // Fungsi Aman Pembaca Waktu
           function parseDateLocal(dateStr) {
               if (!dateStr) return { tglStr: "", tglBln: "" };
               let d = new Date(dateStr);
@@ -10080,15 +10078,14 @@
               return { tglStr: `${y}-${m}-${day}`, tglBln: `${y}-${m}` };
           }
 
-          let safeMode = (mode || "Total").toLowerCase();
+          let safeMode = (mode || "Hari Ini").toLowerCase();
           let targetBlnTahun = filterBulan ? filterBulan : ""; 
           let todayStr = parseDateLocal(new Date()).tglStr; 
 
-          // --- PROSES TRANSAKSI ---
           (trxData || []).forEach(row => {
               let status = (row.status_transaksi || "").toLowerCase();
               let noStruk = row.no_struk || "";
-              let metode = (row.metode_pembayaran || "").toLowerCase(); // Sesuaikan nama kolom
+              let metode = (row.metode_pembayaran || "").toLowerCase(); 
               let omzet = parseFloat(row.total_akhir) || 0;
               let hpp = parseFloat(row.total_hpp_transaksi) || 0;
               
@@ -10097,14 +10094,12 @@
               if (status === "dibatalkan" || status === "void" || status === "pending") {
                   if (noStruk) setVoid[noStruk] = true;
               } else {
-                  // Hitung Saldo ke Dompet
                   if (metode.includes("tunai") || metode.includes("cash") || metode.includes("laci")) saldos["Laci Kasir"] += omzet;
                   else if (metode.includes("qris")) saldos["QRIS"] += omzet;
                   else if (metode.includes("midtrans")) saldos["Midtrans"] += omzet;
                   else if (metode.includes("bank") || metode.includes("transfer")) saldos["BANK"] += omzet;
                   else saldos["Laci Kasir"] += omzet;
 
-                  // Cek Filter Waktu 
                   let masukWaktuTrx = (safeMode === "total") ||
                                       (safeMode === "hari ini" && tglStr === todayStr) ||
                                       (safeMode === "bulanan" && tglBln === targetBlnTahun);
@@ -10121,7 +10116,6 @@
           let riwayat = [];
           let totalSaldo = 0;
 
-          // --- PROSES ARUS KAS ---
           (kasData || []).forEach(row => {
               let akunAsal = row.akun_asal;
               let akunTujuan = row.akun_tujuan || "-";
@@ -10133,7 +10127,6 @@
               let { tglStr, tglBln } = parseDateLocal(row.tanggal);
               let tglObj = new Date(row.tanggal);
 
-              // Inisialisasi akun kustom
               if (akunAsal && !saldos[akunAsal]) saldos[akunAsal] = 0;
               if (akunTujuan && akunTujuan !== "-" && !saldos[akunTujuan]) saldos[akunTujuan] = 0;
 
@@ -10144,19 +10137,15 @@
                   }
               }
 
-              // Mutasi Saldo Total
               if (!isVoid) {
-                  if (tipe === "Pemasukan") {
-                      if (akunAsal) saldos[akunAsal] += nominal;
-                  } else if (tipe === "Pengeluaran") {
-                      if (akunAsal) saldos[akunAsal] -= nominal;
-                  } else if (tipe === "Mutasi") {
+                  if (tipe === "Pemasukan") { if (akunAsal) saldos[akunAsal] += nominal; } 
+                  else if (tipe === "Pengeluaran") { if (akunAsal) saldos[akunAsal] -= nominal; } 
+                  else if (tipe === "Mutasi") {
                       if (akunAsal) saldos[akunAsal] -= nominal;
                       if (akunTujuan && akunTujuan !== "-") saldos[akunTujuan] += nominal;
                   }
               }
 
-              // Cek Filter Waktu
               let masukWaktuKas = (safeMode === "total") ||
                                   (safeMode === "hari ini" && tglStr === todayStr) ||
                                   (safeMode === "bulanan" && tglBln === targetBlnTahun);
@@ -10164,19 +10153,21 @@
               if (masukWaktuKas) {
                   if (!isVoid) {
                       let ketLower = keterangan.toLowerCase();
-                      let isPenyesuaianPlus = ketLower.includes("penyesuaian plus");
-                      let isPenyesuaianMinus = ketLower.includes("penyesuaian minus");
-
-                      if (tipe === "Pemasukan" && !isPenyesuaianPlus) totalPemasukanLain += nominal;
-                      else if (tipe === "Pengeluaran" && !isPenyesuaianMinus) totalPengeluaran += nominal;
+                      if (tipe === "Pemasukan" && !ketLower.includes("penyesuaian plus")) totalPemasukanLain += nominal;
+                      else if (tipe === "Pengeluaran" && !ketLower.includes("penyesuaian minus")) totalPengeluaran += nominal;
                   }
 
-                  let tglFormat = !isNaN(tglObj) ? tglObj.toLocaleString('id-ID', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' }).replace(/\./g, ':') : tglStr;
+                  // ✨ PERBAIKAN FORMAT TANGGAL KHUSUS TABEL (DD/MM/YYYY HH:MM)
+                  let day = String(tglObj.getDate()).padStart(2, '0');
+                  let month = String(tglObj.getMonth() + 1).padStart(2, '0');
+                  let year = tglObj.getFullYear();
+                  let hours = String(tglObj.getHours()).padStart(2, '0');
+                  let mins = String(tglObj.getMinutes()).padStart(2, '0');
+                  let tglFormatMurni = `${day}/${month}/${year} ${hours}:${mins}`;
 
                   riwayat.push({
                       id: row.id,
-                      tanggal: tglFormat,
-                      tanggalAsli: tglStr, 
+                      tanggal: tglFormatMurni,
                       tipe: tipe,
                       akunAsal: akunAsal,
                       akunTujuan: akunTujuan,
@@ -10189,10 +10180,8 @@
           });
 
           for (let ak in saldos) totalSaldo += saldos[ak];
-          
           let pendapatanBersih = (totalOmzetPenjualan + totalPemasukanLain) - (totalPengeluaran + totalHppPenjualan);
 
-          // ✨ PASTIKAN totalPengeluaran DI-RETURN
           return { saldos, riwayat, totalSaldo, pendapatanBersih, totalPengeluaran };
       }
       // --- 1. Fungsi untuk memuat data tersinkron dari Server ---
@@ -10227,108 +10216,77 @@
       }
 
       // --- 2. Render Kotak Saldo Akun (HTML Biasa) ---
-      function renderTampilanManajemenKas(saldos, riwayat, totalSaldo, pendapatanBersih) {
-        window.saldosGlobal = saldos;
-        let roleAktif = typeof currentRole !== 'undefined' ? currentRole : 'Kasir';
+      function renderTampilanManajemenKas(saldos, totalSaldo) {
+          let roleAktif = typeof currentRole !== 'undefined' ? currentRole : 'Kasir';
 
-        // ✨ 1. AMANKAN DATA ASLI UNTUK FITUR FILTER TAB
-        window.riwayatKasAsli = [...riwayat]; // Simpan data utuh dari server agar tidak hilang saat di-filter
-        riwayatKasGlobal = [...riwayat]; // Inisialisasi awal
+          // 1. UPDATE KARTU TOTAL SALDO
+          let elTotal = document.getElementById('cardTotalSaldo');
+          if (elTotal) {
+              elTotal.innerText = 'Rp ' + (totalSaldo || 0).toLocaleString('id-ID');
+              elTotal.style.color = totalSaldo < 0 ? '#ef4444' : '#3b82f6';
+          }
 
-        // ✨ 2. UPDATE KARTU PENDAPATAN & TOTAL SALDO (Tetap statis keseluruhan dari server)
-        let elPendapatan = document.getElementById('cardPendapatanBersih');
-        if(elPendapatan) {
-            if (roleAktif === 'Owner') {
-                elPendapatan.innerText = 'Rp ' + (pendapatanBersih || 0).toLocaleString('id-ID');
-                elPendapatan.style.color = pendapatanBersih < 0 ? '#ef4444' : '#10b981';
-            } else {
-                elPendapatan.innerText = 'Rp ***.***';
-                elPendapatan.style.color = 'var(--text-muted, #94a3b8)';
-            }
-        }
+          // 2. KONTROL TOMBOL FAB UNTUK OWNER
+          let fabMutasi = document.getElementById('fabBtnMutasi');
+          if (fabMutasi) fabMutasi.style.display = (roleAktif === 'Owner') ? 'flex' : 'none';
 
-        let elTotal = document.getElementById('cardTotalSaldo');
-        if(elTotal) {
-            elTotal.innerText = 'Rp ' + (totalSaldo || 0).toLocaleString('id-ID');
-            elTotal.style.color = totalSaldo < 0 ? '#ef4444' : '#3b82f6';
-        }
+          let dropdownOpsiMutasi = document.getElementById('dropdownOpsiMutasi');
+          if (dropdownOpsiMutasi) dropdownOpsiMutasi.style.display = (roleAktif === 'Owner') ? 'flex' : 'none';
 
-        // 💡 SEMBUNYIKAN OPSI MUTASI DARI FAB UNTUK SELAIN OWNER
-        let fabMutasi = document.getElementById('fabBtnMutasi');
-        if (fabMutasi) {
-            if (roleAktif === 'Owner') {
-                fabMutasi.style.display = 'flex'; 
-            } else {
-                fabMutasi.style.display = 'none'; 
-            }
-        }
+          // 3. RENDER KARTU SALDO DOMPET
+          let containerSaldo = document.getElementById('containerSaldoAkun');
+          if (containerSaldo) {
+              let htmlAkunCards = '';
+              const DOMPET_DEFAULT = ['Laci Kasir', 'QRIS', 'Midtrans', 'BANK', 'Brankas Utama', 'Selisih Kas'];
+              let customWallets = window.customWalletsData || []; 
+              
+              let listSemuaAkun = [...DOMPET_DEFAULT, ...customWallets, ...Object.keys(saldos)];
+              
+              // Sembunyikan 'Brankas Utama' jika bukan Owner
+              if (roleAktif !== 'Owner') {
+                  listSemuaAkun = listSemuaAkun.filter(akun => akun !== 'Brankas Utama');
+              }
 
-        // ✨ SEMBUNYIKAN OPSI FILTER MUTASI DARI DROPDOWN UNTUK SELAIN OWNER
-        let dropdownOpsiMutasi = document.getElementById('dropdownOpsiMutasi');
-        if (dropdownOpsiMutasi) {
-            dropdownOpsiMutasi.style.display = (roleAktif === 'Owner') ? 'flex' : 'none';
-        }
+              let semuaAkun = new Set(listSemuaAkun);
 
-        // ✨ 3. RENDER KARTU SALDO DOMPET
-        let containerSaldo = document.getElementById('containerSaldoAkun');
-        if(containerSaldo) {
-            let htmlAkunCards = '';
-            
-            const DOMPET_DEFAULT = ['Laci Kasir', 'QRIS', 'Midtrans', 'BANK', 'Brankas Utama', 'Selisih Kas'];
-            let customWallets = window.customWalletsData || []; 
-            
-            // Kumpulkan semua dompet mentah
-            let listSemuaAkun = [...DOMPET_DEFAULT, ...customWallets, ...Object.keys(saldos)];
-            
-            // ✨ FILTER: Jika BUKAN Owner, buang 'Brankas Utama' dari daftar kartu
-            if (roleAktif !== 'Owner') {
-                listSemuaAkun = listSemuaAkun.filter(akun => akun !== 'Brankas Utama');
-            }
+              semuaAkun.forEach(akun => {
+                  let nominal = saldos[akun] || 0; 
+                  if (DOMPET_DEFAULT.includes(akun) || customWallets.includes(akun) || nominal !== 0) {
+                      let warnaCard = nominal < 0 ? '#ef4444' : '#10b981';
+                      let tombolHapus = customWallets.includes(akun) 
+                          ? `<button onclick="hapusAkunDariKartu('${akun}', ${nominal})" style="position: absolute; top: 4px; right: 6px; background: none; border: none; font-size: 18px; color: #ef4444; cursor: pointer; line-height: 1; padding: 4px; z-index: 10;" title="Hapus Dompet">&times;</button>`
+                          : '';
 
-            // Gunakan Set untuk menghapus nama dompet yang ganda/duplikat
-            let semuaAkun = new Set(listSemuaAkun);
+                      htmlAkunCards += `
+                          <div class="akun-card-item" style="position: relative; background: var(--surface, #ffffff); border: 1px solid var(--border-color, #e2e8f0); border-radius: 8px; padding: 14px; text-align: center; box-sizing: border-box; box-shadow: 0 1px 3px rgba(0,0,0,0.05); min-width: 140px; flex: 1;">
+                              ${tombolHapus}
+                              <div style="font-size: 12px; color: var(--text-muted, #666); font-weight: 600; margin-bottom: 4px; padding: 0 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${akun}</div>
+                              <div style="font-size: 16px; font-weight: 700; color: ${warnaCard};">Rp ${nominal.toLocaleString('id-ID')}</div>
+                          </div>
+                      `;
+                  }
+              });
 
-            semuaAkun.forEach(akun => {
-                let nominal = saldos[akun] || 0; 
-                // Render jika itu dompet default, custom wallet, atau jika saldonya tidak nol
-                if (DOMPET_DEFAULT.includes(akun) || customWallets.includes(akun) || nominal !== 0) {
-                    let warnaCard = nominal < 0 ? '#ef4444' : '#10b981';
-                    let tombolHapus = customWallets.includes(akun) 
-                        ? `<button onclick="hapusAkunDariKartu('${akun}', ${nominal})" style="position: absolute; top: 4px; right: 6px; background: none; border: none; font-size: 18px; color: #ef4444; cursor: pointer; line-height: 1; padding: 4px; z-index: 10;" title="Hapus Dompet">&times;</button>`
-                        : '';
+              if (roleAktif === 'Owner') {
+                  htmlAkunCards += `
+                      <div onclick="tambahDompetBaru()" class="akun-card-item" style="cursor: pointer; background: rgba(59, 130, 246, 0.04); border: 1.5px dashed #3b82f6; border-radius: 8px; padding: 14px; text-align: center; box-sizing: border-box; min-width: 140px; flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 78px; transition: all 0.2s;" onmouseover="this.style.background='rgba(59, 130, 246, 0.08)'" onmouseout="this.style.background='rgba(59, 130, 246, 0.04)'">
+                          <span style="font-size: 24px; color: #3b82f6; font-weight: 400; line-height: 1;">+</span>
+                          <span style="font-size: 11px; color: #3b82f6; font-weight: 600; margin-top: 4px;">Dompet Baru</span>
+                      </div>
+                  `;
+              }
+              containerSaldo.innerHTML = htmlAkunCards;
+          }
 
-                    htmlAkunCards += `
-                        <div class="akun-card-item" style="position: relative; background: var(--surface, #ffffff); border: 1px solid var(--border-color, #e2e8f0); border-radius: 8px; padding: 14px; text-align: center; box-sizing: border-box; box-shadow: 0 1px 3px rgba(0,0,0,0.05); min-width: 140px; flex: 1;">
-                            ${tombolHapus}
-                            <div style="font-size: 12px; color: var(--text-muted, #666); font-weight: 600; margin-bottom: 4px; padding: 0 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${akun}</div>
-                            <div style="font-size: 16px; font-weight: 700; color: ${warnaCard};">Rp ${nominal.toLocaleString('id-ID')}</div>
-                        </div>
-                    `;
-                }
-            });
-
-            // ✨ TAMBAHAN: KARTU "+ TAMBAH DOMPET BARU" DI POSISI PALING AKHIR (Hanya Owner)
-            if (roleAktif === 'Owner') {
-                htmlAkunCards += `
-                    <div onclick="tambahDompetBaru()" class="akun-card-item" style="cursor: pointer; background: rgba(59, 130, 246, 0.04); border: 1.5px dashed #3b82f6; border-radius: 8px; padding: 14px; text-align: center; box-sizing: border-box; min-width: 140px; flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 78px; transition: all 0.2s;" onmouseover="this.style.background='rgba(59, 130, 246, 0.08)'" onmouseout="this.style.background='rgba(59, 130, 246, 0.04)'">
-                        <span style="font-size: 24px; color: #3b82f6; font-weight: 400; line-height: 1;">+</span>
-                        <span style="font-size: 11px; color: #3b82f6; font-weight: 600; margin-top: 4px;">Dompet Baru</span>
-                    </div>
-                `;
-            }
-
-            containerSaldo.innerHTML = htmlAkunCards;
-        }
-
-        // ✨ 4. TERAPKAN FILTER OTOMATIS
-        // Memanggil fungsi filter ini akan otomatis menghitung Pengeluaran dan merender Tabel 
-        // berdasarkan Tab (Hari Ini / Bulanan) yang sedang aktif!
-        if (typeof terapkanFilterKas === 'function') {
-            terapkanFilterKas();
-        } else {
-            // Fallback cadangan jika script filter belum termuat
-            renderTabelKas();
-        }
+          /*// ✨ 4. TERAPKAN FILTER OTOMATIS
+          // Memanggil fungsi filter ini akan otomatis menghitung Pengeluaran dan merender Tabel 
+          // berdasarkan Tab (Hari Ini / Bulanan) yang sedang aktif!
+          if (typeof terapkanFilterKas === 'function') {
+              terapkanFilterKas();
+          } else {
+              // Fallback cadangan jika script filter belum termuat
+              renderTabelKas();
+          }*/
       }
 
       // Menutup Modal HTML Biasa
@@ -10840,27 +10798,29 @@
           try {
               let data = await hitungArusKasSupabase(mode, filterBulan);
               
-              // 1. UPDATE CARD SECARA MANUAL SEBAGAI KEAMANAN GANDA
+              // ✨ PENTING: ISI VARIABEL GLOBAL AGAR TABEL BISA MEMBACA DATANYA!
+              window.saldosGlobal = data.saldos;
+              window.riwayatKasAsli = [...data.riwayat];
+              riwayatKasGlobal = [...data.riwayat]; 
+
+              // Update Nilai Pendapatan dan Pengeluaran
               if (elPengeluaran) {
                   elPengeluaran.innerText = 'Rp ' + (data.totalPengeluaran || 0).toLocaleString('id-ID');
-                  elPengeluaran.style.color = ''; // kembalikan warna awal
+                  elPengeluaran.style.color = '#ef4444'; 
               }
               if (elPendapatan && roleAktif === 'Owner') {
                   elPendapatan.innerText = 'Rp ' + (data.pendapatanBersih || 0).toLocaleString('id-ID');
-                  elPendapatan.style.color = ''; 
+                  elPendapatan.style.color = data.pendapatanBersih < 0 ? '#ef4444' : '#10b981'; 
               }
 
-              // 2. JALANKAN FUNGSI RENDER (Sekarang memasukkan parameter data.totalPengeluaran)
-              try {
-                  if (typeof renderTampilanManajemenKas === "function") {
-                      renderTampilanManajemenKas(data.saldos, data.riwayat, data.totalSaldo, data.pendapatanBersih, data.totalPengeluaran);
-                  }
-              } catch (renderError) {
-                  console.warn("Peringatan UI Render:", renderError);
-                  // 3. JIKA RENDER TAMPILAN CRASH, PAKSA MUAT TABELNYA SAJA
-                  if (typeof renderTabelKas === "function") {
-                      renderTabelKas(data.riwayat);
-                  }
+              // Update Kartu Dompet
+              if (typeof renderTampilanManajemenKas === "function") {
+                  renderTampilanManajemenKas(data.saldos, data.totalSaldo);
+              }
+              
+              // Render Tabel
+              if (typeof renderTabelKas === "function") {
+                  renderTabelKas();
               }
 
           } catch (error) {
