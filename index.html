@@ -12070,7 +12070,7 @@
           let currentY = 0;
           let isActionTriggered = false;
           
-          // Batas piksel untuk masing-masing tahap
+          // Batas piksel untuk masing-micaḥ tahap
           const thresholdSoft = 70;  // Batas untuk Soft Refresh
           const thresholdHard = 160; // Batas untuk Hard Refresh (F5)
       
@@ -12080,41 +12080,55 @@
       
           if (!ptrIndicator) return;
       
+          // 1. Deteksi jari pertama kali menyentuh layar
           document.addEventListener('touchstart', (e) => {
-              if (window.scrollY === 0 && !isActionTriggered) {
+              // Cari elemen scrollable, prioritaskan .main-wrapper (pembungkus konten POS Anda)
+              const target = e.target.closest('.scrollable-area') || document.querySelector('.main-wrapper') || document.documentElement;
+              
+              window.activeScrollElement = target;
+      
+              // Cek posisi scroll (gunakan <= 0 untuk mengantisipasi selisih pixel layar)
+              if (target.scrollTop <= 0 && !isActionTriggered) {
                   startY = e.touches[0].clientY;
+              } else {
+                  startY = 0; // Reset jika posisi scroll tidak di paling atas
               }
           }, { passive: true });
       
+          // 2. Deteksi jari saat menggeser layar ke bawah
           document.addEventListener('touchmove', (e) => {
-              if (window.scrollY === 0 && startY > 0 && !isActionTriggered) {
+              const target = window.activeScrollElement || document.querySelector('.main-wrapper') || document.documentElement;
+      
+              // Syarat mutlak: 
+              // 1. Posisi scrollTop elemen benar-benar di atas (<= 0)
+              // 2. startY valid (disentuh dari posisi atas)
+              if (target.scrollTop <= 0 && startY > 0 && !isActionTriggered) {
                   currentY = e.touches[0].clientY;
                   let diffY = currentY - startY;
       
-                  if (diffY > 0 && diffY < 220) { 
+                  // Mencegah "bounce" browser bawaan jika ditarik ke bawah
+                  if (diffY > 10) {
+                      if (e.cancelable) e.preventDefault(); 
+                  }
+      
+                  if (diffY > 0 && diffY < 220) {  
                       ptrIndicator.style.opacity = '1';
-                      ptrIndicator.style.top = `${Math.min(diffY - 40, 70)}px`; // Gerakan dibatasi agar tidak terlalu turun
+                      ptrIndicator.style.top = `${Math.min(diffY - 40, 70)}px`;
                       
-                      // --- PERUBAHAN TAHAP INDIKATOR ---
+                      // --- LOGIKA 2 TAHAP ---
                       if (diffY > thresholdHard) {
-                          // TAHAP 2: Siap Hard Refresh (F5)
-                          ptrIcon.style.transform = 'rotate(360deg)';
-                          ptrIcon.style.stroke = '#ef4444'; // Berubah jadi warna merah (tanda refresh total)
+                          ptrIcon.style.stroke = '#ef4444';
                           ptrText.innerHTML = '<b style="color: #ef4444;">Lepas untuk Refresh Total (F5)</b>';
                       } else if (diffY > thresholdSoft) {
-                          // TAHAP 1: Siap Soft Refresh
-                          ptrIcon.style.transform = 'rotate(180deg)';
-                          ptrIcon.style.stroke = '#3b82f6'; // Warna biru
+                          ptrIcon.style.stroke = '#3b82f6';
                           ptrText.innerText = 'Lepas untuk Muat Data';
                       } else {
-                          // Belum mencapai batas
-                          ptrIcon.style.transform = 'rotate(0deg)';
                           ptrIcon.style.stroke = '#3b82f6';
                           ptrText.innerText = 'Tarik ke bawah...';
                       }
                   }
               }
-          }, { passive: true });
+          }, { passive: false }); // Wajib false agar e.preventDefault() berfungsi
       
           document.addEventListener('touchend', (e) => {
               if (startY > 0 && currentY > 0 && !isActionTriggered) {
@@ -12129,7 +12143,7 @@
                       ptrIndicator.style.top = '20px';
                       
                       setTimeout(() => {
-                          window.location.reload(); // Refresh total browser
+                          window.location.reload(); 
                       }, 400);
       
                   } else if (diffY > thresholdSoft) {
@@ -12138,19 +12152,16 @@
                       // ==========================================
                       isActionTriggered = true;
                       
-                      // Ubah ikon jadi animasi loading berputar
                       ptrIcon.innerHTML = `<path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/>`; 
                       ptrIcon.style.animation = 'ptr-spin 1s linear infinite';
                       ptrText.innerText = 'Sinkronisasi data...';
                       ptrIndicator.style.top = '20px';
       
-                      // Jalankan fungsi pembaruan data tanpa reload halaman
                       sinkronisasiUlangData().then(() => {
                           setTimeout(() => { resetPtr(); }, 500);
                       });
       
                   } else {
-                      // Jika tarikan dibatalkan (kurang dari batas)
                       resetPtr();
                   }
               }
@@ -12169,23 +12180,20 @@
               }, 300);
           }
       
-          // Fungsi untuk memanggil semua fungsi render data Anda
           async function sinkronisasiUlangData() {
               try {
-                  // Panggil fungsi-fungsi pengambilan data Anda di sini
                   if (typeof muatDataKatalog === "function") await muatDataKatalog();
-                  if (typeof muatDashboard === "function") await muatDashboard()
+                  if (typeof muatDashboard === "function") await muatDashboard();
                   if (typeof muatManajemenKas === "function") await muatManajemenKas();
                   if (typeof muatDaftarPelanggan === 'function') await muatDaftarPelanggan();
                   if (typeof muatDaftarUsers === 'function') await muatDaftarUsers();
                   if (typeof muatPengaturanData === 'function') await muatPengaturanData();
-                  // (Opsional) tambahkan pemuatan tabel lain jika ada
               } catch (err) {
                   console.error("Gagal melakukan pull-to-refresh:", err);
               }
           }
       });
-            
+                  
     </script>
   </body>
 </html>
