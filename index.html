@@ -2168,7 +2168,7 @@
         <svg id="ptr-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
     </div>
 
-    <div id="offlineBanner" style="display: none; position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: var(--danger, #dc3545); color: white; padding: 8px 24px; font-size: 12px; font-weight: 600; border-radius: 30px; box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4); z-index: 9999; white-space: nowrap; display: flex; align-items: center; gap: 8px;">  
+    <div id="offlineBanner" style="display: none; position: fixed; top: 0; left: 50%; transform: translateX(-50%); background: var(--danger, #dc3545); color: white; padding: 8px 24px; font-size: 12px; font-weight: 600; border-radius: 0 0 15px 15px; box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4); z-index: 9999; white-space: nowrap; display: flex; align-items: center; gap: 8px;">  
       <!-- Ikon SVG Wi-Fi Off -->
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <line x1="2" y1="2" x2="22" y2="22"></line>
@@ -8845,15 +8845,28 @@
 
     function updateStatusKoneksi() {
       let offlineBanner = document.getElementById('offlineBanner');
-      
+    
       if (navigator.onLine) {
         if (offlineBanner) offlineBanner.style.display = 'none';
         sinkronisasiDataOffline(); // Jalankan sinkronisasi saat internet kembali
       } else {
         if (offlineBanner) {
-            offlineBanner.innerText = "Koneksi terputus. Mode Offline aktif.";
+            // Gunakan innerHTML agar kita bisa menyisipkan SVG kembali beserta teksnya
+            offlineBanner.innerHTML = `
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
+                <line x1="2" y1="2" x2="22" y2="22"></line>
+                <path d="M8.5 16.5a5 5 0 0 1 7 0"></path>
+                <path d="M2 8.82a15 15 0 0 1 4.17-2.65"></path>
+                <path d="M10.66 5c4.01-.36 8.14.9 11.34 3.82"></path>
+                <path d="M16.85 11.4a10 10 0 0 1 2.22 1.6"></path>
+                <path d="M5 11.5a10 10 0 0 1 1.35-1.07"></path>
+                <line x1="12" y1="20" x2="12.01" y2="20"></line>
+              </svg>
+              <span>Koneksi terputus. Mode Offline aktif.</span>
+            `;
+            
             offlineBanner.style.background = "#ff9800"; // Warna oranye peringatan
-            offlineBanner.style.display = 'block';
+            offlineBanner.style.display = 'flex'; // WAJIB 'flex' agar ikon dan teks sejajar
         }
       }
     }
