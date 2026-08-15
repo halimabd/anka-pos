@@ -10042,32 +10042,182 @@
           }
       });
 
+      // =========================================================================
+      // FUNGSI UTAMA: MENGHITUNG ARUS KAS & SALDO DARI SUPABASE (MENGGANTIKAN BACKEND)
+      // =========================================================================
+      async function hitungArusKasSupabase(mode, filterBulan) {
+          const klienId = localStorage.getItem('klien_id');
+          if (!klienId) throw new Error("Klien ID tidak ditemukan");
+
+          // 1. Tarik Data Transaksi (Untuk Saldo Omzet & Pendapatan Bersih)
+          const { data: trxData, error: errTrx } = await window.supabaseClient
+              .from('transaksi')
+              .select('no_struk, status_transaksi, metode_bayar, total_akhir, total_hpp_transaksi, created_at')
+              .eq('klien_id', klienId);
+          if (errTrx) throw errTrx;
+
+          // 2. Tarik Data Arus Kas (Untuk Saldo Kas & Riwayat Layar)
+          const { data: kasData, error: errKas } = await window.supabaseClient
+              .from('arus_kas')
+              .select('*')
+              .eq('klien_id', klienId)
+              .order('tanggal', { ascending: false });
+          if (errKas) throw errKas;
+
+          let saldos = { "Laci Kasir": 0, "QRIS": 0, "Midtrans": 0, "BANK": 0, "Brankas Utama": 0 };
+          let setVoid = {};
+          let totalOmzetPenjualan = 0;
+          let totalHppPenjualan = 0;
+
+          let targetBlnTahun = filterBulan ? filterBulan : ""; // Format "YYYY-MM"
+          let todayStr = new Date().toLocaleDateString('en-CA'); // Format "YYYY-MM-DD"
+
+          // --- PROSES TRANSAKSI ---
+          (trxData || []).forEach(row => {
+              let status = (row.status_transaksi || "").toLowerCase();
+              let noStruk = row.no_struk || "";
+              let metode = (row.metode_bayar || "").toLowerCase();
+              let omzet = parseFloat(row.total_akhir) || 0;
+              let hpp = parseFloat(row.total_hpp_transaksi) || 0;
+              
+              let tglObj = new Date(row.created_at);
+              let tglStr = tglObj.toLocaleDateString('en-CA'); // "YYYY-MM-DD"
+              let tglBln = tglStr.substring(0, 7); // "YYYY-MM"
+
+              if (status === "dibatalkan" || status === "void" || status === "pending") {
+                  if (noStruk) setVoid[noStruk] = true;
+              } else {
+                  // Hitung Saldo ke Dompet
+                  if (metode.includes("tunai") || metode.includes("cash") || metode.includes("laci")) saldos["Laci Kasir"] += omzet;
+                  else if (metode.includes("qris")) saldos["QRIS"] += omzet;
+                  else if (metode.includes("midtrans")) saldos["Midtrans"] += omzet;
+                  else if (metode.includes("bank") || metode.includes("transfer")) saldos["BANK"] += omzet;
+                  else saldos["Laci Kasir"] += omzet;
+
+                  // Cek Filter Waktu Untuk Pendapatan Bersih
+                  let masukWaktuTrx = (!mode || mode === "Total") ||
+                                      (mode === "Hari Ini" && tglStr === todayStr) ||
+                                      (mode === "Bulanan" && tglBln === targetBlnTahun);
+
+                  if (masukWaktuTrx) {
+                      totalOmzetPenjualan += omzet;
+                      totalHppPenjualan += hpp;
+                  }
+              }
+          });
+
+          let totalPemasukanLain = 0;
+          let totalPengeluaran = 0;
+          let riwayat = [];
+          let totalSaldo = 0;
+
+          // --- PROSES ARUS KAS ---
+          (kasData || []).forEach(row => {
+              let akunAsal = row.akun_asal;
+              let akunTujuan = row.akun_tujuan || "-";
+              let tipe = row.tipe;
+              let nominal = parseFloat(row.nominal) || 0;
+              let keterangan = row.keterangan || "";
+              let statusManual = (row.status || "").toLowerCase();
+              
+              let tglObj = new Date(row.tanggal);
+              let tglStr = tglObj.toLocaleDateString('en-CA');
+              let tglBln = tglStr.substring(0, 7);
+
+              // Inisialisasi akun kustom jika belum ada di object
+              if (akunAsal && !saldos[akunAsal]) saldos[akunAsal] = 0;
+              if (akunTujuan && akunTujuan !== "-" && !saldos[akunTujuan]) saldos[akunTujuan] = 0;
+
+              let isVoid = (statusManual === "dibatalkan" || statusManual === "void");
+              if (!isVoid) {
+                  for (let struk in setVoid) {
+                      if (keterangan.includes(struk)) { isVoid = true; break; }
+                  }
+              }
+
+              // Hitung Mutasi Saldo
+              if (!isVoid) {
+                  if (tipe === "Pemasukan") {
+                      if (akunAsal) saldos[akunAsal] += nominal;
+                  } else if (tipe === "Pengeluaran") {
+                      if (akunAsal) saldos[akunAsal] -= nominal;
+                  } else if (tipe === "Mutasi") {
+                      if (akunAsal) saldos[akunAsal] -= nominal;
+                      if (akunTujuan && akunTujuan !== "-") saldos[akunTujuan] += nominal;
+                  }
+              }
+
+              // Cek Filter Waktu untuk Riwayat dan Pengeluaran
+              let masukWaktuKas = (!mode || mode === "Total") ||
+                                  (mode === "Hari Ini" && tglStr === todayStr) ||
+                                  (mode === "Bulanan" && tglBln === targetBlnTahun);
+
+              if (masukWaktuKas) {
+                  if (!isVoid) {
+                      let ketLower = keterangan.toLowerCase();
+                      let isPenyesuaianPlus = ketLower.includes("penyesuaian plus");
+                      let isPenyesuaianMinus = ketLower.includes("penyesuaian minus");
+
+                      if (tipe === "Pemasukan" && !isPenyesuaianPlus) totalPemasukanLain += nominal;
+                      else if (tipe === "Pengeluaran" && !isPenyesuaianMinus) totalPengeluaran += nominal;
+                  }
+
+                  // Format tanggal untuk UI (dd/MM/yyyy HH:mm)
+                  let tglFormat = tglObj.toLocaleString('id-ID', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' }).replace(/\./g, ':');
+
+                  riwayat.push({
+                      id: row.id,
+                      tanggal: tglFormat,
+                      tanggalAsli: tglStr, // Disimpan untuk fungsi filter UI
+                      tipe: tipe,
+                      akunAsal: akunAsal,
+                      akunTujuan: akunTujuan,
+                      nominal: nominal,
+                      keterangan: keterangan,
+                      kasir: row.kasir,
+                      status: isVoid ? "Void" : "Sukses"
+                  });
+              }
+          });
+
+          // Hitung Total Seluruh Saldo
+          for (let ak in saldos) {
+              totalSaldo += saldos[ak];
+          }
+
+          let pendapatanBersih = (totalOmzetPenjualan + totalPemasukanLain) - (totalPengeluaran + totalHppPenjualan);
+
+          return { saldos, riwayat, totalSaldo, pendapatanBersih };
+      }
       // --- 1. Fungsi untuk memuat data tersinkron dari Server ---
       async function muatManajemenKas() {
-        let containerSaldo = document.getElementById('containerSaldoAkun');
-        if(containerSaldo) containerSaldo.innerHTML = '<div style="color: var(--text-muted); font-size: 13px; padding: 10px;">Memuat sinkronisasi dompet & data keuangan...</div>';
+          let containerSaldo = document.getElementById('containerSaldoAkun');
+          if(containerSaldo) containerSaldo.innerHTML = '<div style="color: var(--text-muted); font-size: 13px; padding: 10px;">Memuat sinkronisasi dompet & data keuangan...</div>';
 
-        try {
-            // 1. Ambil daftar dompet dari server
-            let customWalletsServer = await panggilBackend('dapatkanDompetKustom');
-            
-            // Simpan ke variabel global web
-            window.customWalletsData = customWalletsServer; 
-            
-            // Refresh dropdown
-            if (typeof muatDaftarDompetDropdown === "function") muatDaftarDompetDropdown();
+          try {
+              const klienId = localStorage.getItem('klien_id');
+              if(!klienId) return;
 
-            // 2. Setelah dompet didapat, ambil data arus kas
-            let res = await panggilBackend('getArusKasData', {});
-            
-            renderTampilanManajemenKas(res.saldos, res.riwayat, res.totalSaldo, res.pendapatanBersih);
+              // 1. Ambil daftar dompet kustom dari Supabase
+              let { data: customWalletsServer, error: errWallets } = await window.supabaseClient
+                  .from('dompet_kustom')
+                  .select('nama_dompet')
+                  .eq('klien_id', klienId);
+              
+              if(errWallets) throw errWallets;
 
-        } catch (error) {
-            console.error("Gagal memuat manajemen kas:", error);
-            if(containerSaldo) {
-                containerSaldo.innerHTML = '<div style="color: red; font-size: 13px; padding: 10px;">Gagal memuat data keuangan dari server.</div>';
-            }
-        }
+              window.customWalletsData = (customWalletsServer || []).map(w => w.nama_dompet); 
+              if (typeof muatDaftarDompetDropdown === "function") muatDaftarDompetDropdown();
+
+              // 2. Ambil & Hitung Data Arus Kas
+              terapkanFilterKas();
+
+          } catch (error) {
+              console.error("Gagal memuat manajemen kas:", error);
+              if(containerSaldo) {
+                  containerSaldo.innerHTML = '<div style="color: red; font-size: 13px; padding: 10px;">Gagal memuat data keuangan dari server.</div>';
+              }
+          }
       }
 
       // --- 2. Render Kotak Saldo Akun (HTML Biasa) ---
@@ -10323,119 +10473,74 @@
 
       // Proses Submit Form Arus Kas
       async function submitFormArusKas(event) {
-        event.preventDefault();
-        
-        let waktuTipe = document.getElementById('modalWaktuTipe').value;
-        let tanggalFinal = null;
-        
-        if (waktuTipe === 'kustom') {
-            let tglVal = document.getElementById('modalTglVal').value;
-            let blnVal = document.getElementById('modalBlnVal').value;
-            let thnVal = document.getElementById('modalThnVal').value;
-            let jamVal = document.getElementById('modalJamVal').value || "00";
-            let menitVal = document.getElementById('modalMenitVal').value || "00";
-            
-            if (!tglVal || !blnVal || !thnVal) {
-                Swal.fire({
-                    title: 'Peringatan',
-                    text: 'Silakan pilih tanggal transaksi terlebih dahulu!',
-                    icon: 'warning', confirmButtonColor: '#3b82f6',
-                    background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)',
-                    width: '280px', customClass: { popup: 'swal-custom-small' }
-                });
-                return;
-            }
-            tanggalFinal = `${thnVal}-${blnVal}-${tglVal}T${jamVal}:${menitVal}`;
-        }
-        
-        let tipe = document.getElementById('inputArusKasTipe').value;
-        let akunAsal = document.getElementById('modalAkunAsalVal').value;
-        let akunTujuan = tipe === 'Mutasi' ? document.getElementById('modalAkunTujuanVal').value : "-";
-        let nominal = parseFloat(document.getElementById('modalNominal').value) || 0;
-        let keterangan = document.getElementById('modalKeterangan').value.trim();
-        
-        if (nominal <= 0) {
-            Swal.fire({
-                title: 'Peringatan', text: 'Nominal harus lebih besar dari 0!',
-                icon: 'warning', confirmButtonColor: '#3b82f6',
-                background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)',
-                width: '280px', customClass: { popup: 'swal-custom-small' }
-            });
-            return;
-        }
-        
-        if (tipe === 'Mutasi' && akunAsal === akunTujuan) {
-            Swal.fire({
-                title: 'Peringatan', text: 'Akun asal dan tujuan tidak boleh sama!',
-                icon: 'warning', confirmButtonColor: '#3b82f6',
-                background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)',
-                width: '280px', customClass: { popup: 'swal-custom-small' }
-            });
-            return;
-        }
-        
-        // =========================================================================
-        // ✨ VALIDASI BARU: CEK SALDO AGAR TIDAK MINUS ✨
-        // =========================================================================
-        if (tipe === 'Keluar' || tipe === 'Mutasi') {
-            let saldoTersedia = window.saldosGlobal ? (window.saldosGlobal[akunAsal] || 0) : 0;
-            
-            if (window.saldosGlobal && nominal > saldoTersedia) {
-                Swal.fire({
-                    title: 'Saldo Tidak Cukup!',
-                    html: `Saldo di <b>${akunAsal}</b> tidak mencukupi untuk transaksi ini.<br><br>Sisa saldo: <b style="color: #ef4444;">Rp ${saldoTersedia.toLocaleString('id-ID')}</b>`,
-                    icon: 'error',
-                    confirmButtonColor: '#ef4444',
-                    background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)',
-                    width: '300px', customClass: { popup: 'swal-custom-small' }
-                });
-                return; // Hentikan proses simpan!
-            }
-        }
-        // =========================================================================
-        
-        let payload = {
-            tanggal: tanggalFinal,
-            tipe: tipe,
-            akunAsal: akunAsal,
-            akunTujuan: akunTujuan,
-            nominal: nominal,
-            keterangan: keterangan,
-            kasir: typeof currentUser !== 'undefined' ? currentUser : 'Owner'
-        };
-        
-        tutupModalArusKas();
-        
-        Swal.fire({
-            title: 'Menyimpan...', text: 'Mohon tunggu sebentar',
-            allowOutsideClick: false,
-            background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)',
-            width: '280px', customClass: { popup: 'swal-custom-small' },
-            didOpen: () => { Swal.showLoading(); }
-        });
-        
-        try {
-            // Mengirim data ke backend menggunakan panggilBackend
-            let res = await panggilBackend('catatArusKas', payload);
-            
-            if (res.success) {
-                await Swal.fire({
-                    title: 'Berhasil!', text: 'Catatan arus kas berhasil disimpan.',
-                    icon: 'success', timer: 1200, showConfirmButton: false,
-                    background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)',
-                    width: '280px', customClass: { popup: 'swal-custom-small' }
-                });
-                
-                muatManajemenKas(); 
-            } else {
-                // Berjaga-jaga jika backend menolak
-                Swal.fire('Gagal', res.message || 'Terjadi kesalahan sistem.', 'error');
-            }
+          event.preventDefault();
+          
+          let waktuTipe = document.getElementById('modalWaktuTipe').value;
+          let tanggalFinal = new Date().toISOString(); 
+          
+          if (waktuTipe === 'kustom') {
+              let tglVal = document.getElementById('modalTglVal').value;
+              let blnVal = document.getElementById('modalBlnVal').value;
+              let thnVal = document.getElementById('modalThnVal').value;
+              let jamVal = document.getElementById('modalJamVal').value || "00";
+              let menitVal = document.getElementById('modalMenitVal').value || "00";
+              
+              if (!tglVal || !blnVal || !thnVal) return Swal.fire('Peringatan', 'Pilih tanggal!', 'warning');
+              // Format ISO 8601 Local
+              tanggalFinal = new Date(`${thnVal}-${blnVal}-${tglVal}T${jamVal}:${menitVal}:00`).toISOString();
+          }
+          
+          let tipe = document.getElementById('inputArusKasTipe').value;
+          let akunAsal = document.getElementById('modalAkunAsalVal').value;
+          let akunTujuan = tipe === 'Mutasi' ? document.getElementById('modalAkunTujuanVal').value : "-";
+          let nominal = parseFloat(document.getElementById('modalNominal').value) || 0;
+          let keterangan = document.getElementById('modalKeterangan').value.trim();
+          let namaKasir = typeof currentUser !== 'undefined' ? currentUser : 'Owner';
+          
+          if (nominal <= 0) return Swal.fire('Peringatan', 'Nominal harus lebih dari 0!', 'warning');
+          if (tipe === 'Mutasi' && akunAsal === akunTujuan) return Swal.fire('Peringatan', 'Akun asal dan tujuan sama!', 'warning');
+          
+          // ✨ Validasi Saldo Minus
+          if (tipe === 'Keluar' || tipe === 'Mutasi') {
+              let saldoTersedia = window.saldosGlobal ? (window.saldosGlobal[akunAsal] || 0) : 0;
+              if (window.saldosGlobal && nominal > saldoTersedia) {
+                  return Swal.fire({
+                      title: 'Saldo Tidak Cukup!',
+                      html: `Saldo di <b>${akunAsal}</b> tidak mencukupi.<br><br>Sisa saldo: <b style="color: #ef4444;">Rp ${saldoTersedia.toLocaleString('id-ID')}</b>`,
+                      icon: 'error'
+                  });
+              }
+          }
+          
+          const klienId = localStorage.getItem('klien_id');
+          if(!klienId) return;
 
-        } catch (error) {
-            console.error("Gagal mencatat arus kas:", error);
-            Swal.fire('Gagal', 'Terjadi kesalahan koneksi ke server.', 'error');
-        }
+          let payload = {
+              klien_id: klienId,
+              tanggal: tanggalFinal,
+              tipe: tipe === 'Keluar' ? 'Pengeluaran' : (tipe === 'Masuk' ? 'Pemasukan' : tipe),
+              akun_asal: akunAsal,
+              akun_tujuan: akunTujuan,
+              nominal: nominal,
+              keterangan: keterangan,
+              kasir: namaKasir,
+              status: 'Sukses'
+          };
+          
+          tutupModalArusKas();
+          Swal.fire({ title: 'Menyimpan...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+          
+          try {
+              let { error } = await window.supabaseClient.from('arus_kas').insert([payload]);
+              if (error) throw error;
+              
+              await Swal.fire({ title: 'Berhasil!', text: 'Catatan arus kas disimpan.', icon: 'success', timer: 1200, showConfirmButton: false });
+              muatManajemenKas(); 
+
+          } catch (error) {
+              console.error("Gagal mencatat arus kas:", error);
+              Swal.fire('Gagal', 'Terjadi kesalahan koneksi ke server.', 'error');
+          }
       }
 
       // Variabel status kalender aktif
@@ -10571,150 +10676,84 @@
 
       // --- 3. Fungsi Tambah Dompet (Sinkron Server) ---
       async function tambahDompetBaru() {
-        let result = await Swal.fire({
-            title: 'Tambah Akun Baru',
-            input: 'text',
-            inputPlaceholder: 'Contoh: Mandiri / DANA',
-            showCancelButton: true,
-            confirmButtonText: 'Simpan',
-            cancelButtonText: 'Batal',
-            reverseButtons: true,
-            confirmButtonColor: '#3b82f6',
-            background: 'var(--surface, #ffffff)',
-            color: 'var(--text-dark, #333333)',
-            width: '280px',
-            customClass: { popup: 'swal-custom-small' },
-            inputValidator: (value) => {
-                if (!value || value.trim() === '') return 'Nama akun tidak boleh kosong!';
-                
-                const DOMPET_DEFAULT = ['Laci Kasir', 'QRIS', 'Midtrans', 'BANK', 'Brankas Utama', 'Selisih Kas'];
-                let customWallets = window.customWalletsData || []; 
-                
-                if (DOMPET_DEFAULT.includes(value.trim()) || customWallets.includes(value.trim())) {
-                    return 'Nama akun sudah ada!';
-                }
-            }
-        });
+          let result = await Swal.fire({
+              title: 'Tambah Akun Baru', input: 'text', inputPlaceholder: 'Contoh: Mandiri / DANA',
+              showCancelButton: true, confirmButtonText: 'Simpan', cancelButtonText: 'Batal',
+              inputValidator: (value) => {
+                  if (!value || value.trim() === '') return 'Nama akun kosong!';
+                  const DOMPET_DEFAULT = ['Laci Kasir', 'QRIS', 'Midtrans', 'BANK', 'Brankas Utama', 'Selisih Kas'];
+                  if (DOMPET_DEFAULT.includes(value.trim()) || (window.customWalletsData || []).includes(value.trim())) return 'Nama akun sudah ada!';
+              }
+          });
 
-        if (result.isConfirmed) {
-            let namaAkun = result.value.trim();
-            
-            Swal.fire({
-                title: 'Menyinkronkan...',
-                allowOutsideClick: false,
-                background: 'var(--surface, #ffffff)',
-                color: 'var(--text-dark, #333333)',
-                width: '280px',
-                customClass: { popup: 'swal-custom-small' },
-                didOpen: () => { Swal.showLoading(); }
-            });
+          if (result.isConfirmed) {
+              const klienId = localStorage.getItem('klien_id');
+              if(!klienId) return;
 
-            try {
-                // Kirim ke server menggunakan panggilBackend
-                await panggilBackend('tambahDompetKustom', { namaAkun: namaAkun });
-                
-                await Swal.fire({
-                    title: 'Tersimpan!',
-                    text: `${namaAkun} berhasil ditambahkan.`,
-                    icon: 'success',
-                    timer: 1200,
-                    showConfirmButton: false,
-                    background: 'var(--surface, #ffffff)',
-                    color: 'var(--text-dark, #333333)',
-                    width: '280px',
-                    customClass: { popup: 'swal-custom-small' }
-                });
-                
-                muatManajemenKas(); // Muat ulang layar kas
+              let namaAkun = result.value.trim();
+              Swal.fire({ title: 'Menyinkronkan...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
-            } catch (error) {
-                console.error("Gagal menambah dompet kustom:", error);
-                Swal.fire({
-                    title: 'Gagal',
-                    text: 'Terjadi kesalahan koneksi saat menyimpan akun baru.',
-                    icon: 'error',
-                    background: 'var(--surface, #ffffff)',
-                    color: 'var(--text-dark, #333333)',
-                    width: '280px',
-                    customClass: { popup: 'swal-custom-small' }
-                });
-            }
-        }
+              try {
+                  let { error } = await window.supabaseClient.from('dompet_kustom').insert([{ klien_id: klienId, nama_dompet: namaAkun }]);
+                  if (error) throw error;
+                  
+                  await Swal.fire({ title: 'Tersimpan!', text: `${namaAkun} ditambahkan.`, icon: 'success', timer: 1200, showConfirmButton: false });
+                  muatManajemenKas(); 
+              } catch (error) {
+                  Swal.fire('Gagal', 'Terjadi kesalahan menyimpan akun.', 'error');
+              }
+          }
       }
 
       // --- 4. Fungsi Hapus Dompet (Sinkron Server) ---
       async function hapusAkunDariKartu(namaAkun, nominal) {
-        if (nominal !== 0) {
-            await Swal.fire({
-                title: 'Tidak Bisa Dihapus!',
-                text: `Dompet "${namaAkun}" masih memiliki saldo Rp ${nominal.toLocaleString('id-ID')}. Lakukan Mutasi Pindah terlebih dahulu.`,
-                icon: 'warning',
-                confirmButtonColor: '#3b82f6',
-                background: 'var(--surface, #ffffff)',
-                color: 'var(--text-dark, #333333)',
-                width: '320px',
-                customClass: { popup: 'swal-custom-small' }
-            });
-            return; 
-        }
+          if (nominal !== 0) {
+              return Swal.fire('Tidak Bisa Dihapus!', `Dompet "${namaAkun}" memiliki saldo Rp ${nominal.toLocaleString('id-ID')}. Lakukan Mutasi Pindah.`, 'warning');
+          }
 
-        let result = await Swal.fire({
-            title: 'Hapus Akun?',
-            text: `Yakin hapus dompet "${namaAkun}"?`,
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonText: 'Ya, Hapus',
-            cancelButtonText: 'Batal',
-            reverseButtons: true,
-            confirmButtonColor: '#ef4444',
-            background: 'var(--surface, #ffffff)',
-            color: 'var(--text-dark, #333333)',
-            width: '280px',
-            customClass: { popup: 'swal-custom-small' }
-        });
+          let result = await Swal.fire({
+              title: 'Hapus Akun?', text: `Yakin hapus dompet "${namaAkun}"?`, icon: 'question',
+              showCancelButton: true, confirmButtonText: 'Ya, Hapus', cancelButtonText: 'Batal', confirmButtonColor: '#ef4444'
+          });
 
-        if (result.isConfirmed) {
-            Swal.fire({
-                title: 'Menghapus...',
-                allowOutsideClick: false,
-                background: 'var(--surface, #ffffff)',
-                color: 'var(--text-dark, #333333)',
-                width: '280px',
-                customClass: { popup: 'swal-custom-small' },
-                didOpen: () => { Swal.showLoading(); }
-            });
+          if (result.isConfirmed) {
+              const klienId = localStorage.getItem('klien_id');
+              if(!klienId) return;
 
-            try {
-                // Hapus dari server menggunakan panggilBackend
-                await panggilBackend('hapusDompetKustomServer', { namaAkun: namaAkun });
-                
-                await Swal.fire({
-                    title: 'Dihapus!',
-                    text: 'Dompet berhasil dihapus.',
-                    icon: 'success',
-                    timer: 1200,
-                    showConfirmButton: false,
-                    background: 'var(--surface, #ffffff)',
-                    color: 'var(--text-dark, #333333)',
-                    width: '280px',
-                    customClass: { popup: 'swal-custom-small' }
-                });
-                
-                muatManajemenKas(); // Muat ulang layar kas
+              Swal.fire({ title: 'Menghapus...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
-            } catch (error) {
-                console.error("Gagal menghapus dompet:", error);
-                Swal.fire({
-                    title: 'Gagal',
-                    text: 'Terjadi kesalahan koneksi saat menghapus dompet dari server.',
-                    icon: 'error',
-                    background: 'var(--surface, #ffffff)',
-                    color: 'var(--text-dark, #333333)',
-                    width: '280px',
-                    customClass: { popup: 'swal-custom-small' }
-                });
-            }
-        }
+              try {
+                  let { error } = await window.supabaseClient.from('dompet_kustom').delete().eq('klien_id', klienId).eq('nama_dompet', namaAkun);
+                  if (error) throw error;
+                  
+                  await Swal.fire({ title: 'Dihapus!', icon: 'success', timer: 1200, showConfirmButton: false });
+                  muatManajemenKas(); 
+              } catch (error) {
+                  Swal.fire('Gagal', 'Kesalahan koneksi.', 'error');
+              }
+          }
+      }
+
+      // =========================================================================
+      // MENGGANTIKAN BUKA/TUTUP KASIR (Bulk Insert)
+      // =========================================================================
+      async function prosesBukaKasirWeb(dataBuka) {
+          const klienId = localStorage.getItem('klien_id');
+          if(!klienId) return;
+          
+          if (dataBuka.modalAwal > 0) {
+              await window.supabaseClient.from('arus_kas').insert([{
+                  klien_id: klienId,
+                  tanggal: new Date().toISOString(),
+                  tipe: 'Buka Kasir',
+                  akun_asal: 'Laci Kasir',
+                  akun_tujuan: '-',
+                  nominal: dataBuka.modalAwal,
+                  keterangan: `SHIFT DIBUKA OLEH ${dataBuka.kasir.toUpperCase()} (Modal Awal: Rp ${parseFloat(dataBuka.modalAwal).toLocaleString('id-ID')})`,
+                  kasir: dataBuka.kasir,
+                  status: 'Sukses'
+              }]);
+          }
       }
 
       // Fungsi Toggle Kolom Input Ongkir Delivery
@@ -10776,68 +10815,29 @@
           }
       });
 
-      // =========================================================
-      // LOGIKA FILTER DAN PAGINASI MANAJEMEN KAS
-      // =========================================================
-
       async function terapkanFilterKas() {
-        // 1. Reset paginasi ke halaman 1 setiap kali filter/tab diubah
-        if (typeof currentPageKas !== 'undefined') {
-            currentPageKas = 1; 
-        }
+          if (typeof currentPageKas !== 'undefined') currentPageKas = 1; 
 
-        // 2. Ambil mode tab aktif ('Hari Ini', 'Bulanan', 'Total')
-        let mode = typeof modeFilterKasAktif !== 'undefined' ? modeFilterKasAktif : 'Hari Ini';
-        let filterBulan = document.getElementById('filterBulanKas') ? document.getElementById('filterBulanKas').value : '';
+          let mode = typeof modeFilterKasAktif !== 'undefined' ? modeFilterKasAktif : 'Hari Ini';
+          let filterBulan = document.getElementById('filterBulanKas') ? document.getElementById('filterBulanKas').value : '';
 
-        let elPengeluaran = document.getElementById('cardPengeluaran');
-        if (elPengeluaran) {
-            elPengeluaran.innerText = 'Menghitung...';
-            elPengeluaran.style.color = 'var(--text-muted, #94a3b8)';
-        }
+          let elPengeluaran = document.getElementById('cardPengeluaran');
+          if (elPengeluaran) { elPengeluaran.innerText = 'Menghitung...'; elPengeluaran.style.color = 'var(--text-muted)'; }
 
-        // 3. Tampilkan indikator loading kecil jika diperlukan
-        let elPendapatan = document.getElementById('cardPendapatanBersih');
-        let roleAktif = typeof currentRole !== 'undefined' ? currentRole : 'Kasir';
-        if (elPendapatan && roleAktif === 'Owner') {
-            elPendapatan.innerText = 'Menghitung...';
-            elPendapatan.style.color = 'var(--text-muted, #94a3b8)';
-        }
+          let elPendapatan = document.getElementById('cardPendapatanBersih');
+          let roleAktif = typeof currentRole !== 'undefined' ? currentRole : 'Kasir';
+          if (elPendapatan && roleAktif === 'Owner') { elPendapatan.innerText = 'Menghitung...'; elPendapatan.style.color = 'var(--text-muted)'; }
 
-        try {
-            // 4. Minta data yang sudah terfilter secara otomatis dari backend
-            let data = await panggilBackend('getArusKasData', { mode, filterBulan });
-            
-            // Perbarui data global kas
-            window.saldosGlobal = data.saldos;
-            riwayatKasGlobal = data.riwayat;
-            window.riwayatKasAsli = [...data.riwayat];
+          try {
+              // ✨ Hitung dan Tarik Data secara Lokal (Javascript) menggunakan Supabase
+              let data = await hitungArusKasSupabase(mode, filterBulan);
+              
+              // Perbarui UI
+              renderTampilanManajemenKas(data.saldos, data.riwayat, data.totalSaldo, data.pendapatanBersih);
 
-            // Perbarui Kartu Pendapatan Bersih (Owner)
-            if (elPendapatan && roleAktif === 'Owner') {
-                elPendapatan.innerText = 'Rp ' + (data.pendapatanBersih || 0).toLocaleString('id-ID');
-                elPendapatan.style.color = data.pendapatanBersih < 0 ? '#ef4444' : '#10b981';
-            }
-
-            // Perbarui Kartu Total Saldo
-            let elTotal = document.getElementById('cardTotalSaldo');
-            if (elTotal) {
-                elTotal.innerText = 'Rp ' + (data.totalSaldo || 0).toLocaleString('id-ID');
-                elTotal.style.color = data.totalSaldo < 0 ? '#ef4444' : '#3b82f6';
-            }
-
-            // Render ulang tabel kas di layar
-            if (typeof renderTabelKas === 'function') {
-                renderTabelKas();
-            }
-
-            // Hitung ulang total pengeluaran kartu atas berdasarkan data riwayat yang baru
-            hitungUlangPengeluaranKas(data.riwayat);
-
-        } catch (error) {
-            console.error("Gagal memuat data arus kas:", error);
-            // Bisa tambahkan alert atau kembalikan teks kartu ke angka terakhir jika terjadi error
-        }
+          } catch (error) {
+              console.error("Gagal memuat data arus kas:", error);
+          }
       }
 
       function resetFilterKas() {
@@ -11184,292 +11184,293 @@
 
 
       // =========================================================================
-      // 1. FUNGSI BUKA KASIR (MODAL AWAL) - DENGAN BERSIH SALDO LAMA
+      // MENGGANTIKAN BUKA/TUTUP KASIR (Bulk Insert)
       // =========================================================================
+      async function prosesBukaKasirWeb(dataBuka) {
+          const klienId = localStorage.getItem('klien_id');
+          if(!klienId) return;
+          
+          if (dataBuka.modalAwal > 0) {
+              await window.supabaseClient.from('arus_kas').insert([{
+                  klien_id: klienId,
+                  tanggal: new Date().toISOString(),
+                  tipe: 'Buka Kasir',
+                  akun_asal: 'Laci Kasir',
+                  akun_tujuan: '-',
+                  nominal: dataBuka.modalAwal,
+                  keterangan: `SHIFT DIBUKA OLEH ${dataBuka.kasir.toUpperCase()} (Modal Awal: Rp ${parseFloat(dataBuka.modalAwal).toLocaleString('id-ID')})`,
+                  kasir: dataBuka.kasir,
+                  status: 'Sukses'
+              }]);
+          }
+      }
+
+      // Panggil "prosesBukaKasirWeb" dari dalam fungsi "bukaModalBukaKasir" Anda
       async function bukaModalBukaKasir() {
-        let namaKasir = typeof currentUser !== 'undefined' ? currentUser : 'Kasir';
-        let saldoLaciSekarang = (typeof window.saldosGlobal !== 'undefined' && window.saldosGlobal['Laci Kasir'] !== undefined) ? window.saldosGlobal['Laci Kasir'] : 0;
+          let namaKasir = typeof currentUser !== 'undefined' ? currentUser : 'Kasir';
+          let saldoLaciSekarang = (typeof window.saldosGlobal !== 'undefined' && window.saldosGlobal['Laci Kasir'] !== undefined) ? window.saldosGlobal['Laci Kasir'] : 0;
 
-        let result = await Swal.fire({
-            html: `
-                <div style="text-align: left; color: var(--text-dark, inherit);">
-                    <div style="font-size: 16px; font-weight: 600; margin-bottom: 5px;">Buka Kasir (Mulai Shift)</div>
-                    <div style="font-size: 12px; color: var(--text-muted, rgba(128,128,128,0.8)); margin-bottom: 15px;">
-                        Masukkan jumlah uang tunai fisik yang ada di laci kasir saat ini sebagai <b>Modal Awal</b>.
-                    </div>
-                    
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 13px; border-bottom: 1px solid var(--border-color, rgba(128,128,128,0.2)); padding-bottom: 8px;">
-                        <span style="color: var(--text-muted, rgba(128,128,128,0.8));">Kasir:</span> 
-                        <strong style="color: inherit;">${namaKasir}</strong>
-                    </div>
+          // ... (Blok Swal.fire Input Modal Sama Persis Seperti Kode Anda) ...
+          let result = await Swal.fire({
+              html: `
+                  <div style="text-align: left; color: var(--text-dark, inherit);">
+                      <div style="font-size: 16px; font-weight: 600; margin-bottom: 5px;">Buka Kasir (Mulai Shift)</div>
+                      <div style="font-size: 12px; color: var(--text-muted, rgba(128,128,128,0.8)); margin-bottom: 15px;">
+                          Masukkan jumlah uang tunai fisik yang ada di laci kasir saat ini sebagai <b>Modal Awal</b>.
+                      </div>
+                      <div style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 13px; border-bottom: 1px solid var(--border-color, rgba(128,128,128,0.2)); padding-bottom: 8px;">
+                          <span style="color: var(--text-muted, rgba(128,128,128,0.8));">Kasir:</span> 
+                          <strong style="color: inherit;">${namaKasir}</strong>
+                      </div>
+                      <label style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 6px;">Nominal Modal (Rp):</label>
+                      <input type="number" id="inputModalAwal" placeholder="Contoh: 50000" style="width: 100%; background: transparent; color: inherit; border: 1px solid var(--border-color, rgba(128,128,128,0.4)); border-radius: 8px; padding: 10px 12px; font-size: 13px; box-sizing: border-box; outline: none;">
+                  </div>
+              `,
+              showCancelButton: true, confirmButtonText: 'Mulai Shift', cancelButtonText: 'Batal',
+              preConfirm: () => {
+                  const modalAwal = document.getElementById('inputModalAwal').value;
+                  if (!modalAwal || modalAwal < 0) return Swal.showValidationMessage('Harap masukkan nominal modal!');
+                  return parseFloat(modalAwal);
+              }
+          });
 
-                    <label style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 6px;">Nominal Modal (Rp):</label>
-                    <input type="number" id="inputModalAwal" placeholder="Contoh: 50000" style="width: 100%; background: transparent; color: inherit; border: 1px solid var(--border-color, rgba(128,128,128,0.4)); border-radius: 8px; padding: 10px 12px; font-size: 13px; box-sizing: border-box; outline: none; transition: all 0.2s;" onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='var(--border-color, rgba(128,128,128,0.4))'">
-                </div>
-            `,
-            width: '300px', padding: '20px', 
-            background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)',
-            showCancelButton: true,
-            reverseButtons: true, 
-            buttonsStyling: false,
-            confirmButtonText: 'Mulai Shift', 
-            cancelButtonText: 'Batal',
-            didOpen: () => {
-                const actions = Swal.getActions();
-                const confirmBtn = Swal.getConfirmButton();
-                const cancelBtn = Swal.getCancelButton();
-                
-                if(actions) actions.style.cssText = "display: flex; justify-content: flex-end; gap: 8px; width: 100%; margin-top: 15px; padding: 0;";
-                if(cancelBtn) cancelBtn.style.cssText = "background-color: var(--border-color, rgba(128,128,128,0.2)); color: inherit; border: none; padding: 8px 16px; border-radius: 20px; font-weight: 600; font-size: 12px; cursor: pointer;";
-                if(confirmBtn) confirmBtn.style.cssText = "background-color: #3b82f6; color: #ffffff; border: none; padding: 8px 16px; border-radius: 20px; font-weight: 600; font-size: 12px; cursor: pointer; margin: 0;";
-            },
-            preConfirm: () => {
-                const modalAwal = document.getElementById('inputModalAwal').value;
-                if (!modalAwal || modalAwal < 0) {
-                    Swal.showValidationMessage('Harap masukkan nominal modal awal yang benar!');
-                    return false;
-                }
-                return parseFloat(modalAwal);
-            }
-        });
-
-        if (result.isConfirmed) {
-            Swal.fire({ 
-                title: '<span style="font-size: 15px; font-weight: 600;">Membuka Kasir...</span>',
-                html: '<span style="font-size: 12px; color: var(--text-muted, #64748b);">Mohon tunggu sebentar</span>',
-                allowOutsideClick: false, 
-                background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)',
-                width: '260px', padding: '20px',
-                didOpen: () => { Swal.showLoading(); } 
-            });
-
-            let dataBuka = {
-                kasir: namaKasir,
-                modalAwal: result.value,
-                saldoLama: saldoLaciSekarang,
-                waktu: new Date().toLocaleString('id-ID')
-            };
-
-            try {
-                // Memanggil backend menggunakan panggilBackend
-                await panggilBackend('prosesBukaKasirWeb', dataBuka);
-
-                await Swal.fire({ 
-                    title: '<span style="font-size: 16px; font-weight: 600;">Berhasil!</span>', 
-                    html: '<span style="font-size: 13px;">Kasir telah dibuka.</span>', 
-                    icon: 'success', 
-                    background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)',
-                    width: '260px', padding: '20px',
-                    timer: 1500, showConfirmButton: false 
-                });
-
-                if(typeof muatManajemenKas === 'function') muatManajemenKas();
-                else if(typeof loadDataKas === 'function') loadDataKas();
-
-            } catch (error) {
-                console.error("Gagal membuka kasir:", error);
-                Swal.fire({
-                    title: 'Gagal',
-                    text: 'Terjadi kesalahan koneksi saat membuka kasir.',
-                    icon: 'error',
-                    background: 'var(--surface, #ffffff)',
-                    color: 'var(--text-dark, #333333)',
-                    width: '260px', padding: '20px'
-                });
-            }
-        }
+          if (result.isConfirmed) {
+              Swal.fire({ title: 'Membuka Kasir...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+              try {
+                  await prosesBukaKasirWeb({ kasir: namaKasir, modalAwal: result.value });
+                  await Swal.fire({ title: 'Berhasil!', icon: 'success', timer: 1500, showConfirmButton: false });
+                  muatManajemenKas();
+              } catch (error) {
+                  Swal.fire('Gagal', 'Terjadi kesalahan membuka kasir.', 'error');
+              }
+          }
       }
 
       // =========================================================================
       // 2. FUNGSI TUTUP KASIR (SETOR KE BRANKAS UTAMA)
       // =========================================================================
+      // ✨ FUNGSI BULK INSERT TUTUP KASIR
+      async function prosesTutupKasirWeb(data) {
+          const klienId = localStorage.getItem('klien_id');
+          if(!klienId) return;
+
+          let arrayInsert = [];
+          let timeNow = new Date().toISOString();
+          let sisaLaciKasir = data.sisaLaci || 0;
+          let uangDisetorTotal = data.uangDisetor || data.uangAktual;
+
+          // 1. Catat Tutup Kasir (Batas)
+          arrayInsert.push({
+              klien_id: klienId, tanggal: timeNow, tipe: "Tutup Kasir", akun_asal: "Laci Kasir", akun_tujuan: "-",
+              nominal: sisaLaciKasir, keterangan: `SHIFT DITUTUP OLEH ${data.kasir.toUpperCase()} (Sisa Laci: Rp ${sisaLaciKasir.toLocaleString('id-ID')})`, kasir: data.kasir, status: "Sukses"
+          });
+
+          if (data.selisih < 0) { // KASUS MINUS
+              arrayInsert.push({ klien_id: klienId, tanggal: timeNow, tipe: "Pengeluaran", akun_asal: "Selisih Kas", akun_tujuan: "-", nominal: Math.abs(data.selisih), keterangan: "Kekurangan/Kehilangan Uang Fisik Kasir", kasir: data.kasir, status: "Sukses" });
+              arrayInsert.push({ klien_id: klienId, tanggal: timeNow, tipe: "Pengeluaran", akun_asal: "Laci Kasir", akun_tujuan: "-", nominal: Math.abs(data.selisih), keterangan: "Penyesuaian minus laci kasir", kasir: data.kasir, status: "Sukses" });
+              if (uangDisetorTotal > 0) arrayInsert.push({ klien_id: klienId, tanggal: timeNow, tipe: "Mutasi", akun_asal: "Laci Kasir", akun_tujuan: "Brankas Utama", nominal: uangDisetorTotal, keterangan: "Setoran Tutup Shift ke Brankas", kasir: data.kasir, status: "Sukses" });
+          } else if (data.selisih > 0) { // KASUS SURPLUS
+              let setorKeSelisih = Math.min(data.selisih, uangDisetorTotal);
+              let setorKeBrankas = uangDisetorTotal - setorKeSelisih;
+
+              arrayInsert.push({ klien_id: klienId, tanggal: timeNow, tipe: "Pemasukan", akun_asal: "Laci Kasir", akun_tujuan: "-", nominal: data.selisih, keterangan: "Penyesuaian plus laci kasir", kasir: data.kasir, status: "Sukses" });
+              if (setorKeSelisih > 0) arrayInsert.push({ klien_id: klienId, tanggal: timeNow, tipe: "Mutasi", akun_asal: "Laci Kasir", akun_tujuan: "Selisih Kas", nominal: setorKeSelisih, keterangan: "Setoran Kelebihan Uang Fisik Kasir", kasir: data.kasir, status: "Sukses" });
+              if (setorKeBrankas > 0) arrayInsert.push({ klien_id: klienId, tanggal: timeNow, tipe: "Mutasi", akun_asal: "Laci Kasir", akun_tujuan: "Brankas Utama", nominal: setorKeBrankas, keterangan: "Setoran Tutup Shift ke Brankas", kasir: data.kasir, status: "Sukses" });
+          } else { // BALANCE
+              if (uangDisetorTotal > 0) arrayInsert.push({ klien_id: klienId, tanggal: timeNow, tipe: "Mutasi", akun_asal: "Laci Kasir", akun_tujuan: "Brankas Utama", nominal: uangDisetorTotal, keterangan: "Setoran Tutup Shift ke Brankas", kasir: data.kasir, status: "Sukses" });
+          }
+
+          // Kirim seluruh array ke Supabase sekaligus
+          let { error } = await window.supabaseClient.from('arus_kas').insert(arrayInsert);
+          if (error) throw error;
+      }
       async function bukaModalTutupKasir() {
-        let saldoSistem = 0;
-        if (typeof window.saldosGlobal !== 'undefined' && window.saldosGlobal['Laci Kasir'] !== undefined) {
-            saldoSistem = window.saldosGlobal['Laci Kasir'];
-        } else if (typeof saldoKasGlobal !== 'undefined') {
-            saldoSistem = saldoKasGlobal;
-        }
-        let namaKasir = typeof currentUser !== 'undefined' ? currentUser : 'Kasir';
-
-        // 1. Pop-up Pertama: Input Uang Fisik & Sisa Laci
-        let result = await Swal.fire({
-            html: `
-                <div style="text-align: left; color: var(--text-dark, inherit);">
-                    <div style="font-size: 16px; font-weight: 600; margin-bottom: 5px;">Tutup Kasir (Akhir Shift)</div>
-                    <div style="font-size: 12px; color: var(--text-muted, rgba(128,128,128,0.8)); margin-bottom: 15px;">
-                        Hitung uang fisik dan tentukan nominal yang ingin disisakan di laci.
-                    </div>
-                    
-                    <div style="margin-bottom: 15px; border-bottom: 1px solid var(--border-color, rgba(128,128,128,0.2)); padding-bottom: 10px;">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px;">
-                            <span style="color: var(--text-muted, rgba(128,128,128,0.8));">Kasir:</span> 
-                            <strong style="color: inherit;">${namaKasir}</strong>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; font-size: 13px;">
-                            <span style="color: var(--text-muted, rgba(128,128,128,0.8));">Ekspektasi Sistem:</span> 
-                            <strong style="color: #3b82f6; font-size: 14px;">Rp ${saldoSistem.toLocaleString('id-ID')}</strong>
-                        </div>
-                    </div>
-
-                    <label style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 6px;">Total Uang Fisik (Rp):</label>
-                    <input type="number" id="inputUangFisik" placeholder="Contoh: 150000" style="width: 100%; background: transparent; color: inherit; border: 1px solid var(--border-color, rgba(128,128,128,0.4)); border-radius: 8px; padding: 10px 12px; font-size: 13px; box-sizing: border-box; outline: none; transition: all 0.2s; margin-bottom: 12px;" onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='var(--border-color, rgba(128,128,128,0.4))'">
-
-                    <label style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 6px;">Tinggalkan di Laci (Modal Besok):</label>
-                    <input type="number" id="inputSisaLaci" placeholder="0" style="width: 100%; background: transparent; color: inherit; border: 1px solid var(--border-color, rgba(128,128,128,0.4)); border-radius: 8px; padding: 10px 12px; font-size: 13px; box-sizing: border-box; outline: none; transition: all 0.2s;" onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='var(--border-color, rgba(128,128,128,0.4))'">
-                </div>
-            `,
-            width: '300px', padding: '20px', 
-            background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)',
-            showCancelButton: true,
-            reverseButtons: true,
-            buttonsStyling: false,
-            confirmButtonText: 'Hitung Selisih', 
-            cancelButtonText: 'Batal',
-            didOpen: () => {
-                const actions = Swal.getActions();
-                const confirmBtn = Swal.getConfirmButton();
-                const cancelBtn = Swal.getCancelButton();
-                
-                if(actions) actions.style.cssText = "display: flex; justify-content: flex-end; gap: 8px; width: 100%; margin-top: 15px; padding: 0;";
-                if(cancelBtn) cancelBtn.style.cssText = "background-color: var(--border-color, rgba(128,128,128,0.2)); color: inherit; border: none; padding: 8px 16px; border-radius: 20px; font-weight: 600; font-size: 12px; cursor: pointer;";
-                if(confirmBtn) confirmBtn.style.cssText = "background-color: #3b82f6; color: #ffffff; border: none; padding: 8px 16px; border-radius: 20px; font-weight: 600; font-size: 12px; cursor: pointer; margin: 0;";
-            },
-            preConfirm: () => {
-                const uangFisik = document.getElementById('inputUangFisik').value;
-                const sisaLaci = document.getElementById('inputSisaLaci').value;
-                
-                if (!uangFisik || uangFisik < 0) {
-                    Swal.showValidationMessage('Harap masukkan nominal uang fisik yang benar!');
-                    return false;
-                }
-                
-                let numSisa = sisaLaci ? parseFloat(sisaLaci) : 0;
-                if (numSisa < 0 || numSisa > parseFloat(uangFisik)) {
-                    Swal.showValidationMessage('Uang sisa tidak boleh minus atau melebihi total uang fisik!');
-                    return false;
-                }
-                
-                return {
-                    uangAktual: parseFloat(uangFisik),
-                    sisaLaci: numSisa
-                };
-            }
-        });
-
-        if (result.isConfirmed) {
-            let uangAktual = result.value.uangAktual;
-            let sisaLaci = result.value.sisaLaci;
-            let uangDisetorTotal = uangAktual - sisaLaci; 
-            let selisih = uangAktual - saldoSistem;
-            
-            let setorKeSelisih = 0;
-            let setorKeBrankas = uangDisetorTotal;
-
-            if (selisih > 0) {
-                setorKeSelisih = Math.min(selisih, uangDisetorTotal);
-                setorKeBrankas = uangDisetorTotal - setorKeSelisih;
-            }
-
-            let warnaSelisih = selisih === 0 ? '#10b981' : (selisih > 0 ? '#3b82f6' : '#ef4444');
-            let teksSelisih = selisih === 0 ? 'Sesuai (Balance)' : (selisih > 0 ? `Lebih Rp ${Math.abs(selisih).toLocaleString('id-ID')}` : `Minus Rp ${Math.abs(selisih).toLocaleString('id-ID')}`);
-
-            // 2. Pop-up Kedua: Konfirmasi Akhir dengan Rincian Selisih Kas
-            let resKonfirmasi = await Swal.fire({
-                html: `
-                    <div style="text-align: left; color: var(--text-dark, inherit);">
-                        <div style="font-size: 16px; font-weight: 600; margin-bottom: 12px;">Konfirmasi Setoran</div>
-                        
-                        <div style="background: rgba(128,128,128,0.1); border: 1px solid var(--border-color, rgba(128,128,128,0.2)); border-radius: 8px; padding: 12px; font-size: 13px; margin-bottom: 12px;">
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                                <span style="color: var(--text-muted, rgba(128,128,128,0.8));">Total Fisik:</span> 
-                                <strong style="color: inherit;">Rp ${uangAktual.toLocaleString('id-ID')}</strong>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                                <span style="color: var(--text-muted, rgba(128,128,128,0.8));">Tinggal di Laci:</span> 
-                                <strong style="color: #10b981;">Rp ${sisaLaci.toLocaleString('id-ID')}</strong>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                                <span style="color: var(--text-muted, rgba(128,128,128,0.8));">Setor Brankas:</span> 
-                                <strong style="color: #3b82f6;">Rp ${setorKeBrankas.toLocaleString('id-ID')}</strong>
-                            </div>
-                            ${setorKeSelisih > 0 ? `
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                                <span style="color: var(--text-muted, rgba(128,128,128,0.8));">Setor Selisih Kas:</span> 
-                                <strong style="color: #f59e0b;">Rp ${setorKeSelisih.toLocaleString('id-ID')}</strong>
-                            </div>` : ''}
-                            <div style="display: flex; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border-color, rgba(128,128,128,0.3));">
-                                <span style="color: var(--text-muted, rgba(128,128,128,0.8));">Status Selisih:</span> 
-                                <strong style="color: ${warnaSelisih};">${teksSelisih}</strong>
-                            </div>
-                        </div>
-                        
-                        <div style="font-size: 11px; color: var(--text-muted, rgba(128,128,128,0.8)); line-height: 1.4;">
-                            Dana akan dialokasikan ke Brankas Utama dan Selisih Kas sesuai rincian di atas. Lanjutkan?
-                        </div>
-                    </div>
-                `,
-                width: '300px', padding: '20px', 
-                background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)',
-                showCancelButton: true, reverseButtons: true, buttonsStyling: false,
-                confirmButtonText: 'Ya, Setorkan!', cancelButtonText: 'Batal',
-                didOpen: () => {
-                    const actions = Swal.getActions();
-                    const confirmBtn = Swal.getConfirmButton();
-                    const cancelBtn = Swal.getCancelButton();
-                    
-                    if(actions) actions.style.cssText = "display: flex; justify-content: flex-end; gap: 8px; width: 100%; margin-top: 15px; padding: 0;";
-                    if(cancelBtn) cancelBtn.style.cssText = "background-color: var(--border-color, rgba(128,128,128,0.2)); color: inherit; border: none; padding: 8px 16px; border-radius: 20px; font-weight: 600; font-size: 12px; cursor: pointer;";
-                    if(confirmBtn) confirmBtn.style.cssText = "background-color: #3b82f6; color: #ffffff; border: none; padding: 8px 16px; border-radius: 20px; font-weight: 600; font-size: 12px; cursor: pointer; margin: 0;";
-                }
-            });
-
-            if (resKonfirmasi.isConfirmed) {
-                Swal.fire({ 
-                    title: '<span style="font-size: 15px; font-weight: 600;">Menyimpan...</span>', 
-                    html: '<span style="font-size: 12px; color: var(--text-muted, #64748b);">Mohon tunggu sebentar</span>',
-                    background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)', 
-                    allowOutsideClick: false, width: '260px', padding: '20px',
-                    didOpen: () => { Swal.showLoading(); } 
-                });
-
-                let dataTutupKasir = { 
-                    kasir: namaKasir, 
-                    saldoSistem: saldoSistem, 
-                    uangAktual: uangAktual,
-                    sisaLaci: sisaLaci,
-                    uangDisetor: uangDisetorTotal,
-                    selisih: selisih, 
-                    waktu: new Date().toLocaleString('id-ID') 
-                };
-
-                try {
-                    // Memanggil backend menggunakan panggilBackend
-                    await panggilBackend('prosesTutupKasirWeb', dataTutupKasir);
-
-                    await Swal.fire({ 
-                        title: '<span style="font-size: 16px; font-weight: 600;">Berhasil!</span>', 
-                        html: '<span style="font-size: 13px;">Shift ditutup dan disetorkan.</span>', 
-                        icon: 'success', 
-                        background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)',
-                        timer: 1500, showConfirmButton: false, width: '260px', padding: '20px'
-                    });
-
-                    if(typeof muatManajemenKas === 'function') muatManajemenKas();
-                    else if(typeof loadDataKas === 'function') loadDataKas();
-
-                } catch (error) {
-                    console.error("Gagal menutup kasir:", error);
-                    Swal.fire({
-                        title: 'Gagal',
-                        text: 'Terjadi kesalahan koneksi saat menutup shift kasir.',
-                        icon: 'error',
-                        background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)',
-                        width: '260px', padding: '20px'
-                    });
-                }
-            }
-        }
+          let saldoSistem = 0;
+          if (typeof window.saldosGlobal !== 'undefined' && window.saldosGlobal['Laci Kasir'] !== undefined) {
+              saldoSistem = window.saldosGlobal['Laci Kasir'];
+          } else if (typeof saldoKasGlobal !== 'undefined') {
+              saldoSistem = saldoKasGlobal;
+          }
+          let namaKasir = typeof currentUser !== 'undefined' ? currentUser : 'Kasir';
+      
+          // 1. Pop-up Pertama: Input Uang Fisik & Sisa Laci
+          let result = await Swal.fire({
+              html: `
+                  <div style="text-align: left; color: var(--text-dark, inherit);">
+                      <div style="font-size: 16px; font-weight: 600; margin-bottom: 5px;">Tutup Kasir (Akhir Shift)</div>
+                      <div style="font-size: 12px; color: var(--text-muted, rgba(128,128,128,0.8)); margin-bottom: 15px;">
+                          Hitung uang fisik dan tentukan nominal yang ingin disisakan di laci.
+                      </div>
+                      
+                      <div style="margin-bottom: 15px; border-bottom: 1px solid var(--border-color, rgba(128,128,128,0.2)); padding-bottom: 10px;">
+                          <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px;">
+                              <span style="color: var(--text-muted, rgba(128,128,128,0.8));">Kasir:</span> 
+                              <strong style="color: inherit;">${namaKasir}</strong>
+                          </div>
+                          <div style="display: flex; justify-content: space-between; font-size: 13px;">
+                              <span style="color: var(--text-muted, rgba(128,128,128,0.8));">Ekspektasi Sistem:</span> 
+                              <strong style="color: #3b82f6; font-size: 14px;">Rp ${saldoSistem.toLocaleString('id-ID')}</strong>
+                          </div>
+                      </div>
+      
+                      <label style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 6px;">Total Uang Fisik (Rp):</label>
+                      <input type="number" id="inputUangFisik" placeholder="Contoh: 150000" style="width: 100%; background: transparent; color: inherit; border: 1px solid var(--border-color, rgba(128,128,128,0.4)); border-radius: 8px; padding: 10px 12px; font-size: 13px; box-sizing: border-box; outline: none; transition: all 0.2s; margin-bottom: 12px;" onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='var(--border-color, rgba(128,128,128,0.4))'">
+      
+                      <label style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 6px;">Tinggalkan di Laci (Modal Besok):</label>
+                      <input type="number" id="inputSisaLaci" placeholder="0" style="width: 100%; background: transparent; color: inherit; border: 1px solid var(--border-color, rgba(128,128,128,0.4)); border-radius: 8px; padding: 10px 12px; font-size: 13px; box-sizing: border-box; outline: none; transition: all 0.2s;" onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='var(--border-color, rgba(128,128,128,0.4))'">
+                  </div>
+              `,
+              width: '300px', padding: '20px', 
+              background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)',
+              showCancelButton: true,
+              reverseButtons: true,
+              buttonsStyling: false,
+              confirmButtonText: 'Hitung Selisih', 
+              cancelButtonText: 'Batal',
+              didOpen: () => {
+                  const actions = Swal.getActions();
+                  const confirmBtn = Swal.getConfirmButton();
+                  const cancelBtn = Swal.getCancelButton();
+                  
+                  if(actions) actions.style.cssText = "display: flex; justify-content: flex-end; gap: 8px; width: 100%; margin-top: 15px; padding: 0;";
+                  if(cancelBtn) cancelBtn.style.cssText = "background-color: var(--border-color, rgba(128,128,128,0.2)); color: inherit; border: none; padding: 8px 16px; border-radius: 20px; font-weight: 600; font-size: 12px; cursor: pointer;";
+                  if(confirmBtn) confirmBtn.style.cssText = "background-color: #3b82f6; color: #ffffff; border: none; padding: 8px 16px; border-radius: 20px; font-weight: 600; font-size: 12px; cursor: pointer; margin: 0;";
+              },
+              preConfirm: () => {
+                  const uangFisik = document.getElementById('inputUangFisik').value;
+                  const sisaLaci = document.getElementById('inputSisaLaci').value;
+                  
+                  if (!uangFisik || uangFisik < 0) {
+                      Swal.showValidationMessage('Harap masukkan nominal uang fisik yang benar!');
+                      return false;
+                  }
+                  
+                  let numSisa = sisaLaci ? parseFloat(sisaLaci) : 0;
+                  if (numSisa < 0 || numSisa > parseFloat(uangFisik)) {
+                      Swal.showValidationMessage('Uang sisa tidak boleh minus atau melebihi total uang fisik!');
+                      return false;
+                  }
+                  
+                  return {
+                      uangAktual: parseFloat(uangFisik),
+                      sisaLaci: numSisa
+                  };
+              }
+          });
+      
+          if (result.isConfirmed) {
+              let uangAktual = result.value.uangAktual;
+              let sisaLaci = result.value.sisaLaci;
+              let uangDisetorTotal = uangAktual - sisaLaci; 
+              let selisih = uangAktual - saldoSistem;
+              
+              let setorKeSelisih = 0;
+              let setorKeBrankas = uangDisetorTotal;
+      
+              if (selisih > 0) {
+                  setorKeSelisih = Math.min(selisih, uangDisetorTotal);
+                  setorKeBrankas = uangDisetorTotal - setorKeSelisih;
+              }
+      
+              let warnaSelisih = selisih === 0 ? '#10b981' : (selisih > 0 ? '#3b82f6' : '#ef4444');
+              let teksSelisih = selisih === 0 ? 'Sesuai (Balance)' : (selisih > 0 ? `Lebih Rp ${Math.abs(selisih).toLocaleString('id-ID')}` : `Minus Rp ${Math.abs(selisih).toLocaleString('id-ID')}`);
+      
+              // 2. Pop-up Kedua: Konfirmasi Akhir dengan Rincian Selisih Kas
+              let resKonfirmasi = await Swal.fire({
+                  html: `
+                      <div style="text-align: left; color: var(--text-dark, inherit);">
+                          <div style="font-size: 16px; font-weight: 600; margin-bottom: 12px;">Konfirmasi Setoran</div>
+                          
+                          <div style="background: rgba(128,128,128,0.1); border: 1px solid var(--border-color, rgba(128,128,128,0.2)); border-radius: 8px; padding: 12px; font-size: 13px; margin-bottom: 12px;">
+                              <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                                  <span style="color: var(--text-muted, rgba(128,128,128,0.8));">Total Fisik:</span> 
+                                  <strong style="color: inherit;">Rp ${uangAktual.toLocaleString('id-ID')}</strong>
+                              </div>
+                              <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                                  <span style="color: var(--text-muted, rgba(128,128,128,0.8));">Tinggal di Laci:</span> 
+                                  <strong style="color: #10b981;">Rp ${sisaLaci.toLocaleString('id-ID')}</strong>
+                              </div>
+                              <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                                  <span style="color: var(--text-muted, rgba(128,128,128,0.8));">Setor Brankas:</span> 
+                                  <strong style="color: #3b82f6;">Rp ${setorKeBrankas.toLocaleString('id-ID')}</strong>
+                              </div>
+                              ${setorKeSelisih > 0 ? `
+                              <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                                  <span style="color: var(--text-muted, rgba(128,128,128,0.8));">Setor Selisih Kas:</span> 
+                                  <strong style="color: #f59e0b;">Rp ${setorKeSelisih.toLocaleString('id-ID')}</strong>
+                              </div>` : ''}
+                              <div style="display: flex; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border-color, rgba(128,128,128,0.3));">
+                                  <span style="color: var(--text-muted, rgba(128,128,128,0.8));">Status Selisih:</span> 
+                                  <strong style="color: ${warnaSelisih};">${teksSelisih}</strong>
+                              </div>
+                          </div>
+                          
+                          <div style="font-size: 11px; color: var(--text-muted, rgba(128,128,128,0.8)); line-height: 1.4;">
+                              Dana akan dialokasikan ke Brankas Utama dan Selisih Kas sesuai rincian di atas. Lanjutkan?
+                          </div>
+                      </div>
+                  `,
+                  width: '300px', padding: '20px', 
+                  background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)',
+                  showCancelButton: true, reverseButtons: true, buttonsStyling: false,
+                  confirmButtonText: 'Ya, Setorkan!', cancelButtonText: 'Batal',
+                  didOpen: () => {
+                      const actions = Swal.getActions();
+                      const confirmBtn = Swal.getConfirmButton();
+                      const cancelBtn = Swal.getCancelButton();
+                      
+                      if(actions) actions.style.cssText = "display: flex; justify-content: flex-end; gap: 8px; width: 100%; margin-top: 15px; padding: 0;";
+                      if(cancelBtn) cancelBtn.style.cssText = "background-color: var(--border-color, rgba(128,128,128,0.2)); color: inherit; border: none; padding: 8px 16px; border-radius: 20px; font-weight: 600; font-size: 12px; cursor: pointer;";
+                      if(confirmBtn) confirmBtn.style.cssText = "background-color: #3b82f6; color: #ffffff; border: none; padding: 8px 16px; border-radius: 20px; font-weight: 600; font-size: 12px; cursor: pointer; margin: 0;";
+                  }
+              });
+      
+              if (resKonfirmasi.isConfirmed) {
+                  Swal.fire({ 
+                      title: '<span style="font-size: 15px; font-weight: 600;">Menyimpan...</span>', 
+                      html: '<span style="font-size: 12px; color: var(--text-muted, #64748b);">Mohon tunggu sebentar</span>',
+                      background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)', 
+                      allowOutsideClick: false, width: '260px', padding: '20px',
+                      didOpen: () => { Swal.showLoading(); } 
+                  });
+      
+                  let dataTutupKasir = { 
+                      kasir: namaKasir, 
+                      saldoSistem: saldoSistem, 
+                      uangAktual: uangAktual,
+                      sisaLaci: sisaLaci,
+                      uangDisetor: uangDisetorTotal,
+                      selisih: selisih, 
+                      waktu: new Date().toLocaleString('id-ID') 
+                  };
+      
+                  try {
+                      // Memanggil fungsi Supabase yang sudah dibuat di lokal (menggantikan panggilBackend)
+                      await prosesTutupKasirWeb(dataTutupKasir);
+      
+                      await Swal.fire({ 
+                          title: '<span style="font-size: 16px; font-weight: 600;">Berhasil!</span>', 
+                          html: '<span style="font-size: 13px;">Shift ditutup dan disetorkan.</span>', 
+                          icon: 'success', 
+                          background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)',
+                          timer: 1500, showConfirmButton: false, width: '260px', padding: '20px'
+                      });
+      
+                      if(typeof muatManajemenKas === 'function') muatManajemenKas();
+                      else if(typeof loadDataKas === 'function') loadDataKas();
+      
+                  } catch (error) {
+                      console.error("Gagal menutup kasir:", error);
+                      Swal.fire({
+                          title: 'Gagal',
+                          text: 'Terjadi kesalahan koneksi saat menutup shift kasir.',
+                          icon: 'error',
+                          background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)',
+                          width: '260px', padding: '20px'
+                      });
+                  }
+              }
+          }
       }
 
       let modeFilterKasAktif = 'Hari Ini'; 
