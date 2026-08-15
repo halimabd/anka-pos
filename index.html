@@ -2154,6 +2154,15 @@
   </head>
   <body>
 
+    <style>
+      @keyframes ptr-spin { 100% { transform: rotate(360deg); } }
+    </style>
+    <div id="ptr-indicator" style="position: fixed; top: -60px; left: 50%; transform: translateX(-50%); background: var(--surface, #ffffff); box-shadow: 0 4px 10px rgba(0,0,0,0.15); border-radius: 30px; padding: 8px 20px; display: flex; align-items: center; gap: 8px; z-index: 9999; transition: top 0.3s ease, opacity 0.3s ease; opacity: 0; pointer-events: none;">
+        <!-- Ikon Panah (Default) -->
+        <svg id="ptr-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
+        <span id="ptr-text" style="font-size: 13px; font-weight: 600; color: #3b82f6;">Tarik ke bawah...</span>
+    </div>
+
     <div id="offlineBanner" style="display: none; background: var(--danger, #dc3545); color: white; text-align: center; padding: 8px; font-size: 13px; font-weight: 600; position: sticky; top: 0; z-index: 9999;">
       ⚠️ Koneksi terputus. Transaksi akan disimpan di perangkat sementara.
     </div>
@@ -12044,7 +12053,7 @@
                       }
       
                       if (namaTabel === 'staff_toko') {
-                          console.log("Data staff/kasir mengalami pembaruan di database.");
+                          if (typeof muatDaftarUsers === 'function') muatDaftarUsers();
                           // Anda bisa menambahkan fungsi render ulang tabel staff jika ada menu manajemen karyawan
                       }
                   })
@@ -12052,6 +12061,114 @@
           });
           console.log("Sistem Realtime aktif untuk seluruh tabel (termasuk staff_toko).");
       }
+
+      // =========================================================================
+      // FUNGSI PULL-TO-REFRESH (Penyegaran Layar Sentuh)
+      // =========================================================================
+      document.addEventListener("DOMContentLoaded", function() {
+          let startY = 0;
+          let currentY = 0;
+          let isRefreshing = false;
+          const threshold = 70; // Jarak ditarik (dalam pixel) untuk memicu refresh
+      
+          const ptrIndicator = document.getElementById('ptr-indicator');
+          const ptrIcon = document.getElementById('ptr-icon');
+          const ptrText = document.getElementById('ptr-text');
+      
+          if (!ptrIndicator) return;
+      
+          // 1. Deteksi jari pertama kali menyentuh layar
+          document.addEventListener('touchstart', (e) => {
+              // Hanya berfungsi jika scroll layar sedang mentok di paling atas (scrollY === 0)
+              if (window.scrollY === 0 && !isRefreshing) {
+                  startY = e.touches[0].clientY;
+              }
+          }, { passive: true });
+      
+          // 2. Deteksi jari saat menggeser layar ke bawah
+          document.addEventListener('touchmove', (e) => {
+              if (window.scrollY === 0 && startY > 0 && !isRefreshing) {
+                  currentY = e.touches[0].clientY;
+                  let diffY = currentY - startY;
+      
+                  // Jika benar-benar digeser ke bawah
+                  if (diffY > 0 && diffY < 150) { 
+                      ptrIndicator.style.opacity = '1';
+                      ptrIndicator.style.top = `${diffY - 50}px`; // Muncul perlahan mengikuti jari
+                      
+                      // Jika tarikan sudah melewati batas threshold (siap direfresh)
+                      if (diffY > threshold) {
+                          ptrIcon.style.transform = 'rotate(180deg)'; // Balikkan arah panah ke atas
+                          ptrText.innerText = 'Lepas untuk memuat';
+                      } else {
+                          ptrIcon.style.transform = 'rotate(0deg)'; // Panah tetap ke bawah
+                          ptrText.innerText = 'Tarik ke bawah...';
+                      }
+                  }
+              }
+          }, { passive: true });
+      
+          // 3. Deteksi saat jari dilepas dari layar
+          document.addEventListener('touchend', (e) => {
+              if (startY > 0 && currentY > 0 && !isRefreshing) {
+                  let diffY = currentY - startY;
+      
+                  if (diffY > threshold) {
+                      // JIKA TARIKAN CUKUP JAUH: Memicu Refresh
+                      isRefreshing = true;
+                      
+                      // Ubah ikon menjadi ikon loading (putar)
+                      ptrIcon.style.transform = 'rotate(0deg)';
+                      ptrIcon.innerHTML = `<path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/>`; 
+                      ptrIcon.style.animation = 'ptr-spin 1s linear infinite';
+                      
+                      ptrText.innerText = 'Memuat ulang...';
+                      ptrIndicator.style.top = '20px'; // Tahan kapsul di layar
+      
+                      // --- JALANKAN PROSES AMBIL DATA ULANG DARI DATABASE ---
+                      sinkronisasiUlangData().then(() => {
+                          // Jika sukses, sembunyikan kembali indikatornya
+                          setTimeout(() => { resetPtr(); }, 600); // Beri jeda agar animasi terasa halus
+                      });
+      
+                  } else {
+                      // JIKA TARIKAN KURANG JAUH: Batal Refresh, sembunyikan lagi
+                      resetPtr();
+                  }
+              }
+              // Reset kordinat untuk sentuhan berikutnya
+              startY = 0;
+              currentY = 0;
+          });
+      
+          // Fungsi untuk mereset tampilan indikator
+          function resetPtr() {
+              ptrIndicator.style.top = '-60px';
+              ptrIndicator.style.opacity = '0';
+              setTimeout(() => {
+                  isRefreshing = false;
+                  ptrIcon.style.animation = 'none';
+                  // Kembalikan ke ikon panah bawah default
+                  ptrIcon.innerHTML = `<line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline>`; 
+              }, 300);
+          }
+      
+          // Fungsi untuk memanggil semua fungsi render data Anda
+          async function sinkronisasiUlangData() {
+              try {
+                  // Panggil fungsi-fungsi pengambilan data Anda di sini
+                  if (typeof muatDataKatalog === "function") await muatDataKatalog();
+                  if (typeof muatDashboard === "function") await muatDashboard()
+                  if (typeof muatManajemenKas === "function") await muatManajemenKas();
+                  if (typeof muatDaftarPelanggan === 'function') await muatDaftarPelanggan();
+                  if (typeof muatDaftarUsers === 'function') await muatDaftarUsers();
+                  if (typeof muatPengaturanData === 'function') await muatPengaturanData();
+                  // (Opsional) tambahkan pemuatan tabel lain jika ada
+              } catch (err) {
+                  console.error("Gagal melakukan pull-to-refresh:", err);
+              }
+          }
+      });
             
     </script>
   </body>
