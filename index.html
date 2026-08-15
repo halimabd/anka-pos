@@ -2160,7 +2160,6 @@
     <div id="ptr-indicator" style="position: fixed; top: -60px; left: 50%; transform: translateX(-50%); background: var(--surface, #ffffff); box-shadow: 0 4px 10px rgba(0,0,0,0.15); border-radius: 30px; padding: 8px 20px; display: flex; align-items: center; gap: 8px; z-index: 9999; transition: top 0.3s ease, opacity 0.3s ease; opacity: 0; pointer-events: none;">
         <!-- Ikon Panah (Default) -->
         <svg id="ptr-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
-        <span id="ptr-text" style="font-size: 13px; font-weight: 600; color: #3b82f6;">Tarik ke bawah...</span>
     </div>
 
     <div id="offlineBanner" style="display: none; background: var(--danger, #dc3545); color: white; text-align: center; padding: 8px; font-size: 13px; font-weight: 600; position: sticky; top: 0; z-index: 9999;">
@@ -12059,7 +12058,7 @@
       }
 
       // =========================================================================
-      // PULL-TO-REFRESH DENGAN 2 TAHAP (Soft Refresh & Full Reload / F5)
+      // PULL-TO-REFRESH TANPA TEKS (HANYA IKON)
       // =========================================================================
       document.addEventListener("DOMContentLoaded", function() {
           let startY = 0;
@@ -12071,45 +12070,31 @@
       
           const ptrIndicator = document.getElementById('ptr-indicator');
           const ptrIcon = document.getElementById('ptr-icon');
-          const ptrText = document.getElementById('ptr-text');
       
           if (!ptrIndicator) return;
       
-          // Fungsi untuk mengecek apakah elemen atau induknya sedang di-scroll ke bawah
           function checkIfScrolledDown(targetElement) {
               let current = targetElement;
               const mainWrapper = document.querySelector('.main-wrapper');
       
               while (current && current !== document.body) {
-                  if (current.scrollTop > 0) {
-                      return true; // Artinya posisi konten tidak di paling atas
-                  }
+                  if (current.scrollTop > 0) return true; 
                   if (current === mainWrapper) break;
                   current = current.parentElement;
               }
               return false;
           }
       
-          // 1. Deteksi jari pertama kali menyentuh layar
           document.addEventListener('touchstart', (e) => {
-              if (isActionTriggered) return;
-      
-              // Jika elemen yang disentuh atau induknya sedang di-scroll ke bawah, batalkan PTR
-              if (checkIfScrolledDown(e.target)) {
+              if (isActionTriggered || checkIfScrolledDown(e.target)) {
                   startY = 0;
                   return;
               }
-      
-              // Jika benar-benar di posisi paling atas
               startY = e.touches[0].clientY;
           }, { passive: true });
       
-          // 2. Deteksi jari saat menggeser layar ke bawah
           document.addEventListener('touchmove', (e) => {
-              if (isActionTriggered) return;
-      
-              // Cek ulang secara real-time saat digeser
-              if (checkIfScrolledDown(e.target)) {
+              if (isActionTriggered || checkIfScrolledDown(e.target)) {
                   startY = 0;
                   return;
               }
@@ -12126,15 +12111,16 @@
                       ptrIndicator.style.opacity = '1';
                       ptrIndicator.style.top = `${Math.min(diffY - 40, 70)}px`;
                       
+                      // Ubah warna dan putar panah ke atas jika tarikan sudah melewati batas
                       if (diffY > thresholdHard) {
-                          ptrIcon.style.stroke = '#ef4444';
-                          ptrText.innerHTML = '<b style="color: #ef4444;">Lepas untuk Refresh Total (F5)</b>';
+                          ptrIcon.style.stroke = '#ef4444'; // Merah (Hard Refresh)
+                          ptrIcon.style.transform = 'rotate(180deg)'; 
                       } else if (diffY > thresholdSoft) {
-                          ptrIcon.style.stroke = '#3b82f6';
-                          ptrText.innerText = 'Lepas untuk Muat Data';
+                          ptrIcon.style.stroke = '#3b82f6'; // Biru (Soft Refresh)
+                          ptrIcon.style.transform = 'rotate(180deg)';
                       } else {
-                          ptrIcon.style.stroke = '#3b82f6';
-                          ptrText.innerText = 'Tarik ke bawah...';
+                          ptrIcon.style.stroke = '#94a3b8'; // Abu-abu (Belum sampai batas)
+                          ptrIcon.style.transform = 'rotate(0deg)';
                       }
                   }
               }
@@ -12146,7 +12132,6 @@
       
                   if (diffY > thresholdHard) {
                       isActionTriggered = true;
-                      ptrText.innerText = 'Memuat ulang halaman...';
                       ptrIndicator.style.top = '20px';
                       
                       setTimeout(() => {
@@ -12155,11 +12140,12 @@
       
                   } else if (diffY > thresholdSoft) {
                       isActionTriggered = true;
-                      
-                      ptrIcon.innerHTML = `<path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/>`; 
-                      ptrIcon.style.animation = 'ptr-spin 1s linear infinite';
-                      ptrText.innerText = 'Sinkronisasi data...';
                       ptrIndicator.style.top = '20px';
+                      
+                      // Ganti panah menjadi ikon loading berputar
+                      ptrIcon.innerHTML = `<path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/>`; 
+                      ptrIcon.style.transform = 'rotate(0deg)'; // Reset rotasi sebelum animasi spin
+                      ptrIcon.style.animation = 'ptr-spin 1s linear infinite';
       
                       sinkronisasiUlangData().then(() => {
                           setTimeout(() => { resetPtr(); }, 500);
@@ -12179,7 +12165,9 @@
               setTimeout(() => {
                   isActionTriggered = false;
                   ptrIcon.style.animation = 'none';
+                  ptrIcon.style.transform = 'rotate(0deg)';
                   ptrIcon.style.stroke = '#3b82f6';
+                  // Kembalikan ke ikon panah bawah
                   ptrIcon.innerHTML = `<line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline>`; 
               }, 300);
           }
