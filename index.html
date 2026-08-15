@@ -10233,7 +10233,7 @@
                   elTotal.style.color = totalSaldo < 0 ? '#ef4444' : '#3b82f6';
               }
           } else {
-              if (elTotal) elTotal.innerText = '🔒 Khusus Owner';
+              if (elTotal) elTotal.innerText = '********';
           }
 
           // KONTROL TOMBOL FAB & OPSI UNTUK OWNER
@@ -10943,8 +10943,8 @@
               if (elTotalSaldo) { elTotalSaldo.innerText = 'Menghitung...'; elTotalSaldo.style.color = 'var(--text-muted)'; }
           } else {
               // Jika Kasir, sembunyikan atau beri keterangan khusus
-              if (elPendapatan) elPendapatan.innerText = 'Khusus Owner';
-              if (elTotalSaldo) elTotalSaldo.innerText = 'Khusus Owner';
+              if (elPendapatan) elPendapatan.innerText = '********';
+              if (elTotalSaldo) elTotalSaldo.innerText = '********';
           }
 
           try {
