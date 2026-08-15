@@ -12031,6 +12031,48 @@
           });
           console.log("Sistem Realtime aktif untuk seluruh tabel (termasuk staff_toko).");
       }
+
+      // =========================================================================
+      // FUNGSI PEMULIHAN SESI OTOMATIS (SAAT HALAMAN DI-REFRESH)
+      // =========================================================================
+      document.addEventListener("DOMContentLoaded", function() {
+          // 1. Cek apakah ada data sesi login yang tersimpan di Local Storage
+          let savedUser = localStorage.getItem('pos_aktif_user');
+          let savedRole = localStorage.getItem('pos_aktif_role');
+          let savedNama = localStorage.getItem('pos_aktif_nama');
+      
+          // 2. Jika ada sesi yang tersimpan, langsung pulihkan tampilannya
+          if (savedUser && savedRole) {
+              // Pulihkan variabel global
+              window.currentUser = savedUser;
+              window.currentRole = savedRole;
+              window.currentNama = savedNama || savedUser;
+      
+              // Ubah teks nama kasir di layar
+              let elNamaKasir = document.getElementById('namaKasir');
+              if (elNamaKasir) elNamaKasir.innerText = window.currentNama;
+      
+              // Sembunyikan halaman Login, dan Tampilkan halaman App
+              let loginView = document.getElementById('loginView');
+              let appView = document.getElementById('appView');
+              if (loginView) loginView.style.display = 'none';
+              if (appView) appView.style.display = 'flex';
+      
+              // Panggil kembali fungsi-fungsi pengaturan UI persis seperti saat berhasil login
+              if (typeof tampilkanNamaUser === "function") tampilkanNamaUser(); 
+              if (typeof aturHakAkses === "function") aturHakAkses(window.currentRole); 
+              if (typeof muatDataKatalog === "function") muatDataKatalog(); 
+              if (typeof muatPengaturanData === "function") muatPengaturanData(); 
+              if (typeof muatManajemenKas === "function") muatManajemenKas();
+              
+          } else {
+              // 3. Jika tidak ada sesi (belum login / sudah logout), pastikan berada di halaman Login
+              let loginView = document.getElementById('loginView');
+              let appView = document.getElementById('appView');
+              if (loginView) loginView.style.display = 'flex';
+              if (appView) appView.style.display = 'none';
+          }
+      });
             
     </script>
   </body>
