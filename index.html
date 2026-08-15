@@ -10713,9 +10713,10 @@
                   const cancelBtn = Swal.getCancelButton();
                   const inputEl = Swal.getInput();
                   
-                  if(actions) actions.style.cssText = "display: flex; justify-content: flex-end; gap: 8px; width: 100%; margin-top: 15px; padding: 0;";
-                  if(cancelBtn) cancelBtn.style.cssText = "background-color: var(--border-color, rgba(128,128,128,0.2)); color: inherit; border: none; padding: 8px 16px; border-radius: 20px; font-weight: 600; font-size: 12px; cursor: pointer;";
-                  if(confirmBtn) confirmBtn.style.cssText = "background-color: #3b82f6; color: #ffffff; border: none; padding: 8px 16px; border-radius: 20px; font-weight: 600; font-size: 12px; cursor: pointer; margin: 0;";
+                  // ✨ Diubah ke center agar tombol ada di tengah
+                  if(actions) actions.style.cssText = "display: flex; justify-content: center; gap: 10px; width: 100%; margin-top: 15px; padding: 0;";
+                  if(cancelBtn) cancelBtn.style.cssText = "background-color: var(--border-color, rgba(128,128,128,0.2)); color: inherit; border: none; padding: 8px 20px; border-radius: 20px; font-weight: 600; font-size: 12px; cursor: pointer;";
+                  if(confirmBtn) confirmBtn.style.cssText = "background-color: #3b82f6; color: #ffffff; border: none; padding: 8px 20px; border-radius: 20px; font-weight: 600; font-size: 12px; cursor: pointer; margin: 0;";
                   if(inputEl) {
                       inputEl.style.cssText = "width: 100%; background: transparent; color: inherit; border: 1px solid var(--border-color, rgba(128,128,128,0.4)); border-radius: 8px; padding: 10px 12px; font-size: 13px; box-sizing: border-box; outline: none; margin-top: 10px;";
                   }
@@ -10807,9 +10808,10 @@
                   const confirmBtn = Swal.getConfirmButton();
                   const cancelBtn = Swal.getCancelButton();
                   
-                  if(actions) actions.style.cssText = "display: flex; justify-content: flex-end; gap: 8px; width: 100%; margin-top: 15px; padding: 0;";
-                  if(cancelBtn) cancelBtn.style.cssText = "background-color: var(--border-color, rgba(128,128,128,0.2)); color: inherit; border: none; padding: 8px 16px; border-radius: 20px; font-weight: 600; font-size: 12px; cursor: pointer;";
-                  if(confirmBtn) confirmBtn.style.cssText = "background-color: #ef4444; color: #ffffff; border: none; padding: 8px 16px; border-radius: 20px; font-weight: 600; font-size: 12px; cursor: pointer; margin: 0;";
+                  // ✨ Diubah ke center agar tombol ada di tengah
+                  if(actions) actions.style.cssText = "display: flex; justify-content: center; gap: 10px; width: 100%; margin-top: 15px; padding: 0;";
+                  if(cancelBtn) cancelBtn.style.cssText = "background-color: var(--border-color, rgba(128,128,128,0.2)); color: inherit; border: none; padding: 8px 20px; border-radius: 20px; font-weight: 600; font-size: 12px; cursor: pointer;";
+                  if(confirmBtn) confirmBtn.style.cssText = "background-color: #ef4444; color: #ffffff; border: none; padding: 8px 20px; border-radius: 20px; font-weight: 600; font-size: 12px; cursor: pointer; margin: 0;";
               }
           });
 
@@ -10856,28 +10858,6 @@
                       confirmButtonColor: '#ef4444'
                   });
               }
-          }
-      }
-
-      // =========================================================================
-      // MENGGANTIKAN BUKA/TUTUP KASIR (Bulk Insert)
-      // =========================================================================
-      async function prosesBukaKasirWeb(dataBuka) {
-          const klienId = localStorage.getItem('klien_id');
-          if(!klienId) return;
-          
-          if (dataBuka.modalAwal > 0) {
-              await window.supabaseClient.from('arus_kas').insert([{
-                  klien_id: klienId,
-                  tanggal: new Date().toISOString(),
-                  tipe: 'Buka Kasir',
-                  akun_asal: 'Laci Kasir',
-                  akun_tujuan: '-',
-                  nominal: dataBuka.modalAwal,
-                  keterangan: `SHIFT DIBUKA OLEH ${dataBuka.kasir.toUpperCase()} (Modal Awal: Rp ${parseFloat(dataBuka.modalAwal).toLocaleString('id-ID')})`,
-                  kasir: dataBuka.kasir,
-                  status: 'Sukses'
-              }]);
           }
       }
 
