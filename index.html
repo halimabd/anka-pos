@@ -10052,7 +10052,7 @@
           // 1. Tarik Data Transaksi (Untuk Saldo Omzet & Pendapatan Bersih)
           const { data: trxData, error: errTrx } = await window.supabaseClient
               .from('transaksi')
-              .select('no_struk, status_transaksi, metode_bayar, total_akhir, total_hpp_transaksi, created_at')
+              .select('no_struk, status_transaksi, metode_pembayaran, total_akhir, total_hpp_transaksi, created_at')
               .eq('klien_id', klienId);
           if (errTrx) throw errTrx;
 
@@ -10076,7 +10076,7 @@
           (trxData || []).forEach(row => {
               let status = (row.status_transaksi || "").toLowerCase();
               let noStruk = row.no_struk || "";
-              let metode = (row.metode_bayar || "").toLowerCase();
+              let metode = (row.metode_pembayaran || "").toLowerCase();
               let omzet = parseFloat(row.total_akhir) || 0;
               let hpp = parseFloat(row.total_hpp_transaksi) || 0;
               
