@@ -201,128 +201,6 @@
       .fee-row { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-muted); margin-bottom: 8px; }
       .cart-total-text { display: flex; justify-content: space-between; font-size: 18px; font-weight: 700; color: var(--text-dark); margin: 16px 0; border-top: 1px dashed var(--border-color); padding-top: 16px; }
 
-      /* =========================================
-         CSS PENGATURAN PROFIL (DARK THEME POS)
-      ========================================= */
-      .setting-card-dark {
-        background: #1e293b; /* Warna background card gelap */
-        border: 1px solid #334155;
-        border-radius: 12px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        overflow: hidden;
-      }
-      .setting-header-dark {
-        padding: 24px 30px;
-        display: flex;
-        align-items: center;
-        gap: 18px;
-        border-bottom: 1px solid #334155;
-        background: rgba(15, 23, 42, 0.4);
-      }
-      .avatar-container-dark {
-        position: relative;
-        width: 65px;
-        height: 65px;
-      }
-      .avatar-container-dark img {
-        width: 100%;
-        height: 100%;
-        border-radius: 50%; /* Dibuat bulat agar modern */
-        object-fit: cover;
-        border: 2px solid #334155;
-      }
-      .avatar-cam-icon-dark {
-        position: absolute;
-        bottom: 0;
-        right: -2px;
-        background: #334155;
-        color: #f8fafc;
-        border-radius: 50%;
-        width: 24px;
-        height: 24px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        cursor: pointer;
-        border: 2px solid #1e293b;
-        transition: 0.2s;
-      }
-      .avatar-cam-icon-dark:hover { background: #475569; }
-      .setting-body-dark {
-        padding: 24px 30px;
-      }
-      .setting-card-title-dark {
-        padding: 18px 30px;
-        border-bottom: 1px solid #334155;
-        font-weight: 600;
-        font-size: 15px;
-        color: #f8fafc;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        background: rgba(15, 23, 42, 0.4);
-      }
-      .form-row { margin-bottom: 20px; display: flex; gap: 20px; }
-      .form-row.split-2 > div { flex: 1; }
-      .form-row.split-3 > div { flex: 1; }
-      .form-group label {
-        display: block;
-        font-size: 13px;
-        font-weight: 500;
-        color: #94a3b8;
-        margin-bottom: 8px;
-      }
-      .text-hint {
-        display: block;
-        font-size: 12px;
-        color: #64748b;
-        margin-top: 6px;
-      }
-      .input-btn-group-dark, .input-with-icon-dark {
-        display: flex;
-        background: #0f172a; /* Warna input gelap */
-        border: 1px solid #334155;
-        border-radius: 8px;
-        overflow: hidden;
-        transition: border-color 0.2s;
-      }
-      .input-btn-group-dark:focus-within, .basic-input-dark:focus {
-        border-color: #22c55e;
-      }
-      .input-with-icon-dark { align-items: center; padding-left: 12px; }
-      .input-with-icon-dark.disabled {
-        background: rgba(15, 23, 42, 0.5);
-        opacity: 0.7;
-      }
-      .input-btn-group-dark input, .input-with-icon-dark input, .basic-input-dark {
-        border: none;
-        padding: 10px 14px;
-        font-size: 14px;
-        color: #f8fafc;
-        outline: none;
-        width: 100%;
-        background: transparent;
-      }
-      .basic-input-dark {
-        background: #0f172a;
-        border: 1px solid #334155;
-        border-radius: 8px;
-        box-sizing: border-box;
-      }
-      .btn-save-green {
-        background: #22c55e;
-        color: white;
-        border: none;
-        padding: 0 18px;
-        font-weight: 600;
-        font-size: 13px;
-        cursor: pointer;
-        transition: 0.2s;
-      }
-      .btn-save-green:hover { background: #16a34a; }
-      .mt-4 { margin-top: 24px; }
-      .mt-2 { margin-top: 8px; }
-
       .switch.switch-small {
         width: 32px;
         height: 18px;
@@ -1347,20 +1225,24 @@
           font-size: 12px;
           color: var(--text-muted); /* Warna teks abu-abu agar lebih elegan */
           font-weight: 500;
-          text-align: center;
-          padding: 8px 20px; /* Indentasi disamakan persis dengan menu navigasi */
+          text-align: left; /* Diubah ke left agar teks rapi */
+          padding: 0; /* Padding dihapus agar tidak mendorong tombol ke bawah */
           background: transparent; 
           border: none;
       }
-
+      
       /* Tombol logout rata kiri dengan ikon */
       .nav-btn.logout {
-          color: var(--danger);
+          color: var(--danger); /* atau #ef4444 */
           width: 100%;
           display: flex;
-          justify-content: center; 
+          justify-content: flex-start; /* Rata kiri sesuai komentar Anda */
           align-items: center;
           gap: 8px; /* Jarak ikon dengan teks */
+          padding: 8px 20px; /* Indentasi disamakan persis dengan menu navigasi */
+          background: transparent;
+          border: none;
+          cursor: pointer;
       }
 
       /* === FIX POSISI TOMBOL & TOGGLE MOBILE === */
@@ -2363,25 +2245,28 @@
             Pengaturan
           </button>
 
-          <div class="user-wrapper" style="padding: 12px 15px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 8px;">
-            <div style="display: flex; align-items: center; gap: 10px; width: 100%;">
-              <!-- Avatar -->
-              <img id="sidebarUserAvatar" src="https://ui-avatars.com/api/?name=User&background=3b82f6&color=fff" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover; flex-shrink: 0;" alt="User">              
-              <!-- Info User (Nama & Role) -->
-              <div id="sidebarUserInfo" style="line-height: 1.3; flex-grow: 1; min-width: 0;">
-                <div id="sidebarUserName" style="font-weight: 600; font-size: 13px; color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Hi, Memuat...</div>
-                <div id="sidebarUserRole" style="font-size: 11px; color: #94a3b8;">(Role)</div>
-              </div>              
-              <!-- Tombol Pengaturan -->
-              <button onclick="gantiTab('tabProfilUser', this)" style="background: transparent; border: none; cursor: pointer; color: #94a3b8; padding: 4px; flex-shrink: 0;" title="Pengaturan Profil">
+          <div class="user-wrapper" style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px; display: flex; flex-direction: column; gap: 5px;">
+            <!-- Baris Profil & Pengaturan (Rata Kiri Kanan) -->
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 0 20px;">             
+              <!-- Avatar & Teks Info (Kiri) -->
+              <div style="display: flex; align-items: center; gap: 10px; overflow: hidden;">
+                <img id="sidebarUserAvatar" src="https://ui-avatars.com/api/?name=US&background=3b82f6&color=fff" style="width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;" alt="User">
+                
+                <div class="user-label" style="display: flex; flex-direction: column; line-height: 1.2;">
+                  <span id="sidebarUserName" style="font-size: 13px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px;">Hi, Memuat...</span>
+                  <span id="sidebarUserRole" style="font-size: 11px;">(Role)</span>
+                </div>
+              </div>          
+              <!-- Ikon Pengaturan (Kanan) -->
+              <button onclick="gantiTab('tabProfilUser', this)" style="background: transparent; border: none; cursor: pointer; color: var(--text-muted, #94a3b8); padding: 0; display: flex;" title="Pengaturan Profil">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
               </button>
             </div>            
             <!-- Tombol Keluar Akun -->
-            <button class="nav-btn logout" onclick="logout()" style="color: #ef4444; justify-content: flex-start; gap: 8px; font-weight: 600; padding: 6px 4px; background: none; border: none; cursor: pointer; display: flex; align-items: center; width: 100%; font-size: 13px;">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+            <button class="nav-btn logout" onclick="logout()">
+              <svg class="icon-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
               Keluar Akun
-            </button>
+            </button>          
           </div>
         </div>
       </div>
