@@ -1213,33 +1213,35 @@
       /* Wrapper nama user dan tombol (Menyatu dengan gaya Sidebar) */
       .user-wrapper {
           margin-top: auto; 
-          /* Urutan padding: Atas, Kanan, Bawah, Kiri */
-          padding: 0 16px 48px 16px; /* <-- Angka 48px ini yang akan mendorongnya ke atas */
+          margin-bottom: 20px; /* <-- Ini yang akan mendorong seluruh blok ke atas menjauhi batas bawah layar */
+          padding: 15px 16px 10px 16px; 
+          border-top: 1px solid var(--border-color, rgba(148, 163, 184, 0.2));
           display: flex;
           flex-direction: column;
-          gap: 0px; 
+          gap: 8px; /* Jarak antara profil dan tombol logout */
+          flex-shrink: 0; /* <-- WAJIB ADA: Mencegah elemen tergencet/terpotong saat layar sempit */
       }
-
+      
       /* Tampilan nama user polos tanpa border atau background */
       .user-label {
           font-size: 12px;
-          color: var(--text-muted); /* Warna teks abu-abu agar lebih elegan */
+          color: var(--text-muted);
           font-weight: 500;
-          text-align: left; /* Diubah ke left agar teks rapi */
-          padding: 0; /* Padding dihapus agar tidak mendorong tombol ke bawah */
+          text-align: left;
+          padding: 0;
           background: transparent; 
           border: none;
       }
       
       /* Tombol logout rata kiri dengan ikon */
       .nav-btn.logout {
-          color: var(--danger); /* atau #ef4444 */
+          color: var(--danger);
           width: 100%;
           display: flex;
-          justify-content: flex-start; /* Rata kiri sesuai komentar Anda */
+          justify-content: flex-start;
           align-items: center;
-          gap: 8px; /* Jarak ikon dengan teks */
-          padding: 8px 20px; /* Indentasi disamakan persis dengan menu navigasi */
+          gap: 12px; /* Jarak yang pas antara ikon bulat dan teks */
+          padding: 8px 10px; /* Padding disesuaikan */
           background: transparent;
           border: none;
           cursor: pointer;
@@ -2245,12 +2247,12 @@
             Pengaturan
           </button>
 
-          <div class="user-wrapper" style="border-top: 1px solid var(--border-color, rgba(148, 163, 184, 0.2)); padding-top: 15px; padding-bottom: 45px; margin-top: auto; flex-shrink: 0;">
+          <div class="user-wrapper">  
             <!-- Baris Profil & Pengaturan -->
-            <div style="display: flex; align-items: center; justify-content: space-between; padding: 0 15px; margin-bottom: 12px;">            
+            <div style="display: flex; align-items: center; justify-content: space-between;">              
               <div style="display: flex; align-items: center; gap: 10px; overflow: hidden;">
-                <img id="sidebarUserAvatar" src="" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; flex-shrink: 0;" alt="User">             
-                <div style="display: flex; flex-direction: column; line-height: 1.2; text-align: left;">
+                <img id="sidebarUserAvatar" src="" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; flex-shrink: 0;" alt="User">                
+                <div class="user-label" style="display: flex; flex-direction: column; line-height: 1.2;">
                   <span id="sidebarUserName" style="font-size: 13px; font-weight: 600; color: inherit; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90px;">Hi, Memuat...</span>
                   <span id="sidebarUserRole" style="font-size: 11px; color: var(--text-muted, #94a3b8);">(Role)</span>
                 </div>
@@ -2261,7 +2263,7 @@
               </button>
             </div>            
             <!-- Tombol Keluar Akun -->
-            <button class="nav-btn logout" onclick="logout()" style="padding: 0 15px; margin: 0; display: flex; align-items: center; justify-content: flex-start; gap: 8px; background: transparent; border: none; cursor: pointer; color: var(--danger, #ef4444); width: 100%;">
+            <button class="nav-btn logout" onclick="logout()">
               <div style="display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 1.5px solid currentColor; border-radius: 50%; flex-shrink: 0;">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 2px;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
               </div>
