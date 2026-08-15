@@ -10223,10 +10223,8 @@
       function renderTampilanManajemenKas(saldos, totalSaldo) {
           let roleAktif = typeof currentRole !== 'undefined' ? currentRole : 'Kasir';
 
-          // KONTROL AKSES TOTAL SALDO (Hanya Owner)
-          let cardTotalSaldoWrapper = document.getElementById('wrapperCardTotalSaldo') || document.getElementById('cardTotalSaldo')?.parentElement;
+          // KONTROL AKSES TOTAL SALDO (Hanya Owner yang bisa melihat total keseluruhan)
           let elTotal = document.getElementById('cardTotalSaldo');
-          
           if (roleAktif === 'Owner') {
               if (elTotal) {
                   elTotal.innerText = 'Rp ' + (totalSaldo || 0).toLocaleString('id-ID');
@@ -10252,9 +10250,9 @@
               
               let listSemuaAkun = [...DOMPET_DEFAULT, ...customWallets, ...Object.keys(saldos)];
               
-              // Sembunyikan 'Brankas Utama' dan akun sensitif jika bukan Owner
-              if (roleAktif !== 'Owner') {
-                  listSemuaAkun = listSemuaAkun.filter(akun => akun !== 'Brankas Utama' && akun !== 'Selisih Kas');
+              // ✨ ATURAN AKSES ROLE: Kasir & Supervisor HANYA bisa melihat 'Laci Kasir' dan 'Selisih Kas'
+              if (roleAktif === 'Kasir' || roleAktif === 'Supervisor') {
+                  listSemuaAkun = listSemuaAkun.filter(akun => akun === 'Laci Kasir' || akun === 'Selisih Kas');
               }
 
               let semuaAkun = new Set(listSemuaAkun);
@@ -10263,6 +10261,7 @@
                   let nominal = saldos[akun] || 0; 
                   if (DOMPET_DEFAULT.includes(akun) || customWallets.includes(akun) || nominal !== 0) {
                       let warnaCard = nominal < 0 ? '#ef4444' : '#10b981';
+                      // Tombol hapus hanya muncul untuk Owner pada dompet kustom
                       let tombolHapus = (roleAktif === 'Owner' && customWallets.includes(akun)) 
                           ? `<button onclick="hapusAkunDariKartu('${akun}', ${nominal})" style="position: absolute; top: 4px; right: 6px; background: none; border: none; font-size: 18px; color: #ef4444; cursor: pointer; line-height: 1; padding: 4px; z-index: 10;" title="Hapus Dompet">&times;</button>`
                           : '';
@@ -10277,6 +10276,7 @@
                   }
               });
 
+              // Tombol tambah dompet baru hanya muncul untuk Owner
               if (roleAktif === 'Owner') {
                   htmlAkunCards += `
                       <div onclick="tambahDompetBaru()" class="akun-card-item" style="cursor: pointer; background: rgba(59, 130, 246, 0.04); border: 1.5px dashed #3b82f6; border-radius: 8px; padding: 14px; text-align: center; box-sizing: border-box; min-width: 140px; flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 78px; transition: all 0.2s;" onmouseover="this.style.background='rgba(59, 130, 246, 0.08)'" onmouseout="this.style.background='rgba(59, 130, 246, 0.04)'">
