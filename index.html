@@ -12070,9 +12070,8 @@
           let currentY = 0;
           let isActionTriggered = false;
           
-          // Batas piksel untuk masing-micaḥ tahap
-          const thresholdSoft = 70;  // Batas untuk Soft Refresh
-          const thresholdHard = 160; // Batas untuk Hard Refresh (F5)
+          const thresholdSoft = 70;  
+          const thresholdHard = 160; 
       
           const ptrIndicator = document.getElementById('ptr-indicator');
           const ptrIcon = document.getElementById('ptr-icon');
@@ -12080,33 +12079,49 @@
       
           if (!ptrIndicator) return;
       
+          // Fungsi untuk mengecek apakah elemen atau induknya sedang di-scroll ke bawah
+          function checkIfScrolledDown(targetElement) {
+              let current = targetElement;
+              const mainWrapper = document.querySelector('.main-wrapper');
+      
+              while (current && current !== document.body) {
+                  if (current.scrollTop > 0) {
+                      return true; // Artinya posisi konten tidak di paling atas
+                  }
+                  if (current === mainWrapper) break;
+                  current = current.parentElement;
+              }
+              return false;
+          }
+      
           // 1. Deteksi jari pertama kali menyentuh layar
           document.addEventListener('touchstart', (e) => {
-              // Cari elemen scrollable, prioritaskan .main-wrapper (pembungkus konten POS Anda)
-              const target = e.target.closest('.scrollable-area') || document.querySelector('.main-wrapper') || document.documentElement;
-              
-              window.activeScrollElement = target;
+              if (isActionTriggered) return;
       
-              // Cek posisi scroll (gunakan <= 0 untuk mengantisipasi selisih pixel layar)
-              if (target.scrollTop <= 0 && !isActionTriggered) {
-                  startY = e.touches[0].clientY;
-              } else {
-                  startY = 0; // Reset jika posisi scroll tidak di paling atas
+              // Jika elemen yang disentuh atau induknya sedang di-scroll ke bawah, batalkan PTR
+              if (checkIfScrolledDown(e.target)) {
+                  startY = 0;
+                  return;
               }
+      
+              // Jika benar-benar di posisi paling atas
+              startY = e.touches[0].clientY;
           }, { passive: true });
       
           // 2. Deteksi jari saat menggeser layar ke bawah
           document.addEventListener('touchmove', (e) => {
-              const target = window.activeScrollElement || document.querySelector('.main-wrapper') || document.documentElement;
+              if (isActionTriggered) return;
       
-              // Syarat mutlak: 
-              // 1. Posisi scrollTop elemen benar-benar di atas (<= 0)
-              // 2. startY valid (disentuh dari posisi atas)
-              if (target.scrollTop <= 0 && startY > 0 && !isActionTriggered) {
+              // Cek ulang secara real-time saat digeser
+              if (checkIfScrolledDown(e.target)) {
+                  startY = 0;
+                  return;
+              }
+      
+              if (startY > 0) {
                   currentY = e.touches[0].clientY;
                   let diffY = currentY - startY;
       
-                  // Mencegah "bounce" browser bawaan jika ditarik ke bawah
                   if (diffY > 10) {
                       if (e.cancelable) e.preventDefault(); 
                   }
@@ -12115,7 +12130,6 @@
                       ptrIndicator.style.opacity = '1';
                       ptrIndicator.style.top = `${Math.min(diffY - 40, 70)}px`;
                       
-                      // --- LOGIKA 2 TAHAP ---
                       if (diffY > thresholdHard) {
                           ptrIcon.style.stroke = '#ef4444';
                           ptrText.innerHTML = '<b style="color: #ef4444;">Lepas untuk Refresh Total (F5)</b>';
@@ -12128,16 +12142,13 @@
                       }
                   }
               }
-          }, { passive: false }); // Wajib false agar e.preventDefault() berfungsi
+          }, { passive: false });
       
           document.addEventListener('touchend', (e) => {
               if (startY > 0 && currentY > 0 && !isActionTriggered) {
                   let diffY = currentY - startY;
       
                   if (diffY > thresholdHard) {
-                      // ==========================================
-                      // EKSEKUSI TAHAP 2: HARD REFRESH (SEPERTI F5)
-                      // ==========================================
                       isActionTriggered = true;
                       ptrText.innerText = 'Memuat ulang halaman...';
                       ptrIndicator.style.top = '20px';
@@ -12147,9 +12158,6 @@
                       }, 400);
       
                   } else if (diffY > thresholdSoft) {
-                      // ==========================================
-                      // EKSEKUSI TAHAP 1: SOFT REFRESH (DATA SAJA)
-                      // ==========================================
                       isActionTriggered = true;
                       
                       ptrIcon.innerHTML = `<path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/>`; 
@@ -12193,7 +12201,7 @@
               }
           }
       });
-                  
+                        
     </script>
   </body>
 </html>
