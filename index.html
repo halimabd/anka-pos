@@ -201,6 +201,139 @@
       .fee-row { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-muted); margin-bottom: 8px; }
       .cart-total-text { display: flex; justify-content: space-between; font-size: 18px; font-weight: 700; color: var(--text-dark); margin: 16px 0; border-top: 1px dashed var(--border-color); padding-top: 16px; }
 
+      /* CSS Untuk Halaman Profil */
+      .setting-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      }
+      .setting-header-green {
+        background: #22c55e;
+        padding: 30px;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        color: #ffffff;
+      }
+      .avatar-container {
+        position: relative;
+        width: 70px;
+        height: 70px;
+      }
+      .avatar-container img {
+        width: 100%;
+        height: 100%;
+        border-radius: 10px;
+        object-fit: cover;
+        border: 2px solid rgba(255,255,255,0.5);
+        background: #ffffff;
+      }
+      .avatar-cam-icon {
+        position: absolute;
+        bottom: -5px;
+        right: -5px;
+        background: #ffffff;
+        color: #64748b;
+        border-radius: 50%;
+        width: 26px;
+        height: 26px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        cursor: pointer;
+      }
+      .header-info h2 {
+        margin: 0 0 5px 0;
+        font-size: 20px;
+        font-weight: 700;
+      }
+      .header-info p {
+        margin: 0;
+        font-size: 14px;
+        opacity: 0.9;
+      }
+      .setting-body {
+        padding: 25px 30px;
+      }
+      .form-row {
+        margin-bottom: 20px;
+        display: flex;
+        gap: 20px;
+      }
+      .form-row.split-2 > div { flex: 1; }
+      .form-row.split-3 > div { flex: 1; }
+      .form-group label {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        color: #475569;
+        margin-bottom: 8px;
+      }
+      .text-hint {
+        display: block;
+        font-size: 12px;
+        color: #94a3b8;
+        margin-top: 5px;
+      }
+      .input-btn-group, .input-with-icon {
+        display: flex;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        overflow: hidden;
+        background: #ffffff;
+      }
+      .input-with-icon {
+        align-items: center;
+        padding-left: 12px;
+      }
+      .input-with-icon.disabled {
+        background: #f8fafc;
+        border-color: #e2e8f0;
+      }
+      .input-btn-group input, .input-with-icon input, .basic-input {
+        border: none;
+        padding: 10px 12px;
+        font-size: 14px;
+        color: #334155;
+        outline: none;
+        width: 100%;
+        background: transparent;
+      }
+      .basic-input {
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+      }
+      .btn-save-green {
+        background: #22c55e;
+        color: white;
+        border: none;
+        padding: 0 16px;
+        font-weight: 600;
+        font-size: 14px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: 0.2s;
+      }
+      .btn-save-green:hover { background: #16a34a; }
+      .setting-card-title {
+        padding: 15px 30px;
+        border-bottom: 1px solid #e2e8f0;
+        font-weight: 600;
+        font-size: 15px;
+        color: #1e293b;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: #f8fafc;
+      }
+      .mt-4 { margin-top: 25px; }
+      .mt-3 { margin-top: 15px; }
+
       .switch.switch-small {
         width: 32px;
         height: 18px;
@@ -2241,10 +2374,27 @@
             Pengaturan
           </button>
 
-          <div class="user-wrapper">
-            <div id="userDisplay" class="user-label">Memuat...</div>
-            <button class="nav-btn logout" onclick="logout()" style="justify-content: center;">
-              <svg class="icon-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+          <div class="user-wrapper" style="padding: 15px; border-top: 1px solid var(--border-color, #e2e8f0); display: flex; flex-direction: column; gap: 15px;">
+            <!-- Bagian Profil & Tombol Pengaturan -->
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <!-- Avatar Profil (Akan menyesuaikan akun Google) -->
+                <img id="sidebarUserAvatar" src="https://ui-avatars.com/api/?name=User&background=f1f5f9&color=64748b" style="width: 38px; height: 38px; border-radius: 50%; object-fit: cover; border: 1px solid #cbd5e1;" alt="User">
+                <div id="sidebarUserInfo" style="line-height: 1.3;">
+                  <div id="sidebarUserName" style="font-weight: 600; font-size: 14px; color: var(--text-dark, #1e293b);">Hi, Memuat...</div>
+                  <div id="sidebarUserRole" style="font-size: 12px; color: var(--text-muted, #64748b);">(Role)</div>
+                </div>
+              </div>
+              
+              <!-- Tombol Pengaturan (Gear) -->
+              <button onclick="gantiTab('tabProfilUser', this)" style="background: transparent; border: none; cursor: pointer; color: var(--text-muted, #64748b); padding: 5px; display: flex; align-items: center;" title="Pengaturan Profil">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+              </button>
+            </div>
+            
+            <!-- Tombol Keluar Akun -->
+            <button class="nav-btn logout" onclick="logout()" style="color: #ef4444; justify-content: flex-start; gap: 8px; font-weight: 600; padding: 10px; background: none; border: none; cursor: pointer; display: flex; align-items: center; width: 100%;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
               Keluar Akun
             </button>
           </div>
@@ -3914,6 +4064,100 @@
               </div>
             </div>
           </div>
+        </div>
+
+        <div id="tabProfilUser" class="tab-pane" style="display: none; padding: 20px; max-width: 900px; margin: 0 auto;">
+  
+          <!-- Kartu Profil Utama -->
+          <div class="setting-card">
+            <!-- Header Hijau -->
+            <div class="setting-header-green">
+              <div class="avatar-container">
+                <img id="mainProfileAvatar" src="https://ui-avatars.com/api/?name=Rini&background=ffffff&color=22c55e" alt="Profile">
+                <div class="avatar-cam-icon">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                </div>
+              </div>
+              <div class="header-info">
+                <h2 id="mainProfileName">Rini</h2>
+                <p id="mainProfileEmail">rini@pos.com</p>
+              </div>
+            </div>
+        
+            <!-- Form Data Diri -->
+            <div class="setting-body">
+              <div class="form-row">
+                <div class="form-group" style="flex: 1; max-width: 50%;">
+                  <label>Nama Lengkap</label>
+                  <div class="input-btn-group">
+                    <input type="text" id="inputProfileName" value="Rini">
+                    <button class="btn-save-green"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg> Simpan</button>
+                  </div>
+                </div>
+              </div>
+        
+              <div class="form-row split-2">
+                <div class="form-group">
+                  <label>Email</label>
+                  <div class="input-with-icon disabled">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                    <input type="email" id="inputProfileEmail" value="rini@pos.com" disabled>
+                  </div>
+                  <small class="text-hint">Email tidak dapat diubah.</small>
+                </div>
+                <div class="form-group">
+                  <label>Nomor HP</label>
+                  <div class="input-btn-group">
+                    <div class="input-with-icon" style="flex: 1;">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+                      <input type="text" id="inputProfilePhone" value="6281234567890">
+                    </div>
+                    <button class="btn-save-green"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg> Simpan</button>
+                  </div>
+                </div>
+              </div>
+        
+              <div class="form-row">
+                <div class="form-group" style="flex: 1; max-width: 50%;">
+                  <label>Username Domain</label>
+                  <div class="input-btn-group">
+                    <div class="input-with-icon" style="flex: 1;">
+                      <span style="color: #94a3b8; font-weight: 600; padding-left: 10px;">@</span>
+                      <input type="text" value="nama-bisnis-kamu" style="padding-left: 5px;">
+                    </div>
+                    <button class="btn-save-green"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg> Simpan</button>
+                  </div>
+                  <small class="text-hint"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:3px; vertical-align:-2px;"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg> URL halaman kamu: <b>....santaiscale.com</b></small>
+                </div>
+              </div>
+            </div>
+          </div>
+        
+          <!-- Kartu Ubah Password -->
+          <div class="setting-card mt-4">
+            <div class="setting-card-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path></svg>
+              Ubah Password
+            </div>
+            <div class="setting-body">
+              <div class="form-row split-3">
+                <div class="form-group">
+                  <label>Password Saat Ini</label>
+                  <input type="password" class="basic-input">
+                </div>
+                <div class="form-group">
+                  <label>Password Baru</label>
+                  <input type="password" class="basic-input">
+                </div>
+                <div class="form-group">
+                  <label>Konfirmasi</label>
+                  <input type="password" class="basic-input">
+                </div>
+              </div>
+              <button class="btn-save-green mt-3"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg> Ubah Password</button>
+            </div>
+          </div>
+        
         </div>
 
         <div id="tabUsers" class="tab-content">
@@ -12185,6 +12429,31 @@
               }
           }
       });
+
+      // Fungsi ini dipanggil saat aplikasi mendeteksi pengguna yang berhasil login
+      function setInfoPengguna(nama, role, email, photoUrl) {
+          // 1. Update teks Sidebar
+          document.getElementById('sidebarUserName').innerText = `Hi, ${nama}`;
+          document.getElementById('sidebarUserRole').innerText = `(${role})`;
+      
+          // 2. Update halaman pengaturan (Tab Profil)
+          document.getElementById('mainProfileName').innerText = nama;
+          document.getElementById('mainProfileEmail').innerText = email;
+          document.getElementById('inputProfileName').value = nama;
+          document.getElementById('inputProfileEmail').value = email;
+      
+          // 3. Update Foto Profil Jika Tersedia (Login via Google)
+          if (photoUrl && photoUrl !== "") {
+              document.getElementById('sidebarUserAvatar').src = photoUrl;
+              document.getElementById('mainProfileAvatar').src = photoUrl;
+          } else {
+              // Fallback jika login biasa / tidak ada foto
+              let initial = nama.charAt(0).toUpperCase();
+              let fallbackUrl = `https://ui-avatars.com/api/?name=${initial}&background=22c55e&color=fff`;
+              document.getElementById('sidebarUserAvatar').src = fallbackUrl;
+              document.getElementById('mainProfileAvatar').src = fallbackUrl;
+          }
+      }
                         
     </script>
   </body>
