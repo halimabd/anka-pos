@@ -4130,14 +4130,13 @@
       const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhuYnNiZmh5emN3c29mY3lkeWJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0ODA0NjcsImV4cCI6MjEwMjA1NjQ2N30.WWC2nmzHLk2D3rssFswpidlq0S6ExwLU6xEoSS2w_2k';
       
       // Inisialisasi klien Supabase
-      const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+      const supabase = supabase.createClient(supabaseUrl, supabaseKey);*/
+
+      // ✨ PULIHKAN SESI SAAT HALAMAN DI-REFRESH
+      window.currentRole = localStorage.getItem('pos_aktif_role') || 'Owner'; 
+      window.currentUser = localStorage.getItem('pos_aktif_user') || 'Owner';
+      window.currentNama = localStorage.getItem('pos_aktif_nama') || window.currentUser;
       
-      // Contoh tes koneksi sederhana
-      console.log("Koneksi Supabase siap:", supabase);*/
-
-      // GANTI DENGAN URL YANG KAMU DAPATKAN DI TAHAP 2
-      //const API_URL = "https://script.google.com/macros/s/AKfycbyI5NdK9YWhjrfFTqDu3t82bw9-78oPJIr_aySiPsAY34Q8mVU5YuU6EThcoxdWZUrVSw/exec"; 
-
       // Fungsi Penjinak Tanda Kutip
       function escJS(str) {
         if(str === null || str === undefined) return '';
@@ -10221,7 +10220,7 @@
 
       // --- 2. Render Kotak Saldo Akun (HTML Biasa) ---
       function renderTampilanManajemenKas(saldos, totalSaldo) {
-          let roleAktif = typeof currentRole !== 'undefined' ? currentRole : 'Kasir';
+          let roleAktif = localStorage.getItem('pos_aktif_role') || window.currentRole || 'Owner';
 
           // KONTROL AKSES TOTAL SALDO (Hanya Owner yang bisa melihat total keseluruhan)
           let elTotal = document.getElementById('cardTotalSaldo');
@@ -10467,7 +10466,7 @@
           let akunTujuan = tipe === 'Mutasi' ? document.getElementById('modalAkunTujuanVal').value : "-";
           let nominal = parseFloat(document.getElementById('modalNominal').value) || 0;
           let keterangan = document.getElementById('modalKeterangan').value.trim();
-          let namaKasir = typeof currentUser !== 'undefined' ? currentUser : 'Owner';
+          let namaKasir = localStorage.getItem('pos_aktif_nama') || localStorage.getItem('pos_aktif_user') || window.currentNama || 'Owner';
           
           if (nominal <= 0) {
               return Swal.fire({
@@ -10928,7 +10927,7 @@
 
           let mode = typeof modeFilterKasAktif !== 'undefined' ? modeFilterKasAktif : 'Hari Ini';
           let filterBulan = document.getElementById('filterBulanKas') ? document.getElementById('filterBulanKas').value : '';
-          let roleAktif = typeof currentRole !== 'undefined' ? currentRole : 'Kasir';
+          let roleAktif = localStorage.getItem('pos_aktif_role') || window.currentRole || 'Owner';
 
           let elPemasukan = document.getElementById('cardPemasukan');
           let elPengeluaran = document.getElementById('cardPengeluaran');
@@ -11356,7 +11355,7 @@
 
       // Panggil "prosesBukaKasirWeb" dari dalam fungsi "bukaModalBukaKasir" Anda
       async function bukaModalBukaKasir() {
-          let namaKasir = typeof currentUser !== 'undefined' ? currentUser : 'Kasir';
+          let namaKasir = localStorage.getItem('pos_aktif_nama') || localStorage.getItem('pos_aktif_user') || window.currentNama || 'Owner';
           let saldoLaciSekarang = (typeof window.saldosGlobal !== 'undefined' && window.saldosGlobal['Laci Kasir'] !== undefined) ? window.saldosGlobal['Laci Kasir'] : 0;
 
           let result = await Swal.fire({
@@ -11477,7 +11476,7 @@
           } else if (typeof saldoKasGlobal !== 'undefined') {
               saldoSistem = saldoKasGlobal;
           }
-          let namaKasir = typeof currentUser !== 'undefined' ? currentUser : 'Kasir';
+          let namaKasir = localStorage.getItem('pos_aktif_nama') || localStorage.getItem('pos_aktif_user') || window.currentNama || 'Owner';
       
           // 1. Pop-up Pertama: Input Uang Fisik & Sisa Laci
           let result = await Swal.fire({
