@@ -12063,13 +12063,16 @@
       }
 
       // =========================================================================
-      // FUNGSI PULL-TO-REFRESH (Penyegaran Layar Sentuh)
+      // PULL-TO-REFRESH DENGAN 2 TAHAP (Soft Refresh & Full Reload / F5)
       // =========================================================================
       document.addEventListener("DOMContentLoaded", function() {
           let startY = 0;
           let currentY = 0;
-          let isRefreshing = false;
-          const threshold = 70; // Jarak ditarik (dalam pixel) untuk memicu refresh
+          let isActionTriggered = false;
+          
+          // Batas piksel untuk masing-masing tahap
+          const thresholdSoft = 70;  // Batas untuk Soft Refresh
+          const thresholdHard = 160; // Batas untuk Hard Refresh (F5)
       
           const ptrIndicator = document.getElementById('ptr-indicator');
           const ptrIcon = document.getElementById('ptr-icon');
@@ -12077,78 +12080,91 @@
       
           if (!ptrIndicator) return;
       
-          // 1. Deteksi jari pertama kali menyentuh layar
           document.addEventListener('touchstart', (e) => {
-              // Hanya berfungsi jika scroll layar sedang mentok di paling atas (scrollY === 0)
-              if (window.scrollY === 0 && !isRefreshing) {
+              if (window.scrollY === 0 && !isActionTriggered) {
                   startY = e.touches[0].clientY;
               }
           }, { passive: true });
       
-          // 2. Deteksi jari saat menggeser layar ke bawah
           document.addEventListener('touchmove', (e) => {
-              if (window.scrollY === 0 && startY > 0 && !isRefreshing) {
+              if (window.scrollY === 0 && startY > 0 && !isActionTriggered) {
                   currentY = e.touches[0].clientY;
                   let diffY = currentY - startY;
       
-                  // Jika benar-benar digeser ke bawah
-                  if (diffY > 0 && diffY < 150) { 
+                  if (diffY > 0 && diffY < 220) { 
                       ptrIndicator.style.opacity = '1';
-                      ptrIndicator.style.top = `${diffY - 50}px`; // Muncul perlahan mengikuti jari
+                      ptrIndicator.style.top = `${Math.min(diffY - 40, 70)}px`; // Gerakan dibatasi agar tidak terlalu turun
                       
-                      // Jika tarikan sudah melewati batas threshold (siap direfresh)
-                      if (diffY > threshold) {
-                          ptrIcon.style.transform = 'rotate(180deg)'; // Balikkan arah panah ke atas
-                          ptrText.innerText = 'Lepas untuk memuat';
+                      // --- PERUBAHAN TAHAP INDIKATOR ---
+                      if (diffY > thresholdHard) {
+                          // TAHAP 2: Siap Hard Refresh (F5)
+                          ptrIcon.style.transform = 'rotate(360deg)';
+                          ptrIcon.style.stroke = '#ef4444'; // Berubah jadi warna merah (tanda refresh total)
+                          ptrText.innerHTML = '<b style="color: #ef4444;">Lepas untuk Refresh Total (F5)</b>';
+                      } else if (diffY > thresholdSoft) {
+                          // TAHAP 1: Siap Soft Refresh
+                          ptrIcon.style.transform = 'rotate(180deg)';
+                          ptrIcon.style.stroke = '#3b82f6'; // Warna biru
+                          ptrText.innerText = 'Lepas untuk Muat Data';
                       } else {
-                          ptrIcon.style.transform = 'rotate(0deg)'; // Panah tetap ke bawah
+                          // Belum mencapai batas
+                          ptrIcon.style.transform = 'rotate(0deg)';
+                          ptrIcon.style.stroke = '#3b82f6';
                           ptrText.innerText = 'Tarik ke bawah...';
                       }
                   }
               }
           }, { passive: true });
       
-          // 3. Deteksi saat jari dilepas dari layar
           document.addEventListener('touchend', (e) => {
-              if (startY > 0 && currentY > 0 && !isRefreshing) {
+              if (startY > 0 && currentY > 0 && !isActionTriggered) {
                   let diffY = currentY - startY;
       
-                  if (diffY > threshold) {
-                      // JIKA TARIKAN CUKUP JAUH: Memicu Refresh
-                      isRefreshing = true;
+                  if (diffY > thresholdHard) {
+                      // ==========================================
+                      // EKSEKUSI TAHAP 2: HARD REFRESH (SEPERTI F5)
+                      // ==========================================
+                      isActionTriggered = true;
+                      ptrText.innerText = 'Memuat ulang halaman...';
+                      ptrIndicator.style.top = '20px';
                       
-                      // Ubah ikon menjadi ikon loading (putar)
-                      ptrIcon.style.transform = 'rotate(0deg)';
+                      setTimeout(() => {
+                          window.location.reload(); // Refresh total browser
+                      }, 400);
+      
+                  } else if (diffY > thresholdSoft) {
+                      // ==========================================
+                      // EKSEKUSI TAHAP 1: SOFT REFRESH (DATA SAJA)
+                      // ==========================================
+                      isActionTriggered = true;
+                      
+                      // Ubah ikon jadi animasi loading berputar
                       ptrIcon.innerHTML = `<path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/>`; 
                       ptrIcon.style.animation = 'ptr-spin 1s linear infinite';
-                      
-                      ptrText.innerText = 'Memuat ulang...';
-                      ptrIndicator.style.top = '20px'; // Tahan kapsul di layar
+                      ptrText.innerText = 'Sinkronisasi data...';
+                      ptrIndicator.style.top = '20px';
       
-                      // --- JALANKAN PROSES AMBIL DATA ULANG DARI DATABASE ---
+                      // Jalankan fungsi pembaruan data tanpa reload halaman
                       sinkronisasiUlangData().then(() => {
-                          // Jika sukses, sembunyikan kembali indikatornya
-                          setTimeout(() => { resetPtr(); }, 600); // Beri jeda agar animasi terasa halus
+                          setTimeout(() => { resetPtr(); }, 500);
                       });
       
                   } else {
-                      // JIKA TARIKAN KURANG JAUH: Batal Refresh, sembunyikan lagi
+                      // Jika tarikan dibatalkan (kurang dari batas)
                       resetPtr();
                   }
               }
-              // Reset kordinat untuk sentuhan berikutnya
               startY = 0;
               currentY = 0;
           });
       
-          // Fungsi untuk mereset tampilan indikator
           function resetPtr() {
               ptrIndicator.style.top = '-60px';
               ptrIndicator.style.opacity = '0';
               setTimeout(() => {
-                  isRefreshing = false;
+                  isActionTriggered = false;
                   ptrIcon.style.animation = 'none';
-                  // Kembalikan ke ikon panah bawah default
+                  ptrIcon.style.stroke = '#3b82f6';
                   ptrIcon.innerHTML = `<line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline>`; 
               }, 300);
           }
