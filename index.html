@@ -11893,64 +11893,76 @@
               console.error("Elemen tombol dengan ID 'btnGoogleLogin' tidak ditemukan.");
           }
       
-          // 3. Pengecekan Sesi Otomatis & Pendaftaran Otomatis (Onboarding)
+          // 3. Pengecekan Sesi Otomatis (Google Auth + Sesi POS Kasir)
           window.supabaseClient.auth.getSession().then(async ({ data: { session } }) => {
               if (session) {
-                  console.log("Autentikasi Berhasil! Email:", session.user.email);
+                  console.log("Perangkat terhubung dengan Google! Email:", session.user.email);
                   
                   const klienId = session.user.id;
                   const userEmail = session.user.email;
-                  
-                  // Ambil nama dari Google (jika kosong, gunakan bagian depan email)
                   const namaGoogle = session.user.user_metadata?.full_name || userEmail.split('@')[0];
-      
-                  // Simpan data dasar ke localStorage
+
+                  // Simpan identitas mesin/toko ke perangkat
                   localStorage.setItem('klien_id', klienId);
                   localStorage.setItem('user_email', userEmail);
-                  
-                  const statusEl = document.getElementById('loginStatus');
-                  if (statusEl) statusEl.innerText = "Membuka aplikasi...";
-      
-                  // Cek apakah akun Google ini sudah punya profil 'Owner' di tabel staff_toko
-                  const { data: staffData, error: staffError } = await window.supabaseClient
+
+                  // Cek apakah database toko ini sudah punya profil 'Owner'
+                  const { data: staffData } = await window.supabaseClient
                       .from('staff_toko')
                       .select('*')
                       .eq('klien_id', klienId)
                       .eq('role', 'Owner')
-                      .limit(1); // 💡 PERBAIKAN: Gunakan limit(1) agar kebal dari error duplikat data
+                      .limit(1);
           
-                  if (staffData && staffData.length > 0) {
-                      // PENGGUNA LAMA: Langsung masuk ke aplikasi
-                      console.log("Akun lama terdeteksi, masuk otomatis.");
-                      masukKeAplikasi(staffData[0]); // 💡 PERBAIKAN: Ambil data urutan pertama
-                  } else {
-                      // PENGGUNA BARU: Buat profil otomatis
-                      console.log("Akun baru terdeteksi, menyiapkan profil otomatis...");
-                      
+                  if (!staffData || staffData.length === 0) {
+                      // Jika pengguna baru sama sekali, siapkan database otomatis
+                      console.log("Akun baru terdeteksi, menyiapkan profil Owner...");
                       const sandiAcak = Math.floor(1000 + Math.random() * 9000).toString(); 
-                      
-                      const { data: newStaff, error: insertError } = await window.supabaseClient
-                          .from('staff_toko')
-                          .insert([{
-                              klien_id: klienId,
-                              username: 'admin',
-                              password: sandiAcak,
-                              role: 'Owner',
-                              nama: namaGoogle
-                          }])
-                          .select()
-                          .maybeSingle(); // Saat insert, kita tetap bisa pakai maybeSingle
-          
-                      if (!insertError && newStaff) {
-                          console.log("Profil otomatis berhasil dibuat!");
-                          masukKeAplikasi(newStaff);
-                      } else {
-                          console.error("Gagal membuat profil otomatis:", insertError);
-                          if (statusEl) statusEl.innerText = "Gagal menyiapkan akun baru.";
-                      }
+                      await window.supabaseClient.from('staff_toko').insert([{
+                          klien_id: klienId,
+                          username: 'admin',
+                          password: sandiAcak,
+                          role: 'Owner',
+                          nama: namaGoogle
+                      }]);
                   }
+
+                  // ✨ KUNCI PENYELESAIAN MASALAH ADA DI SINI ✨
+                  // Kita cek, apakah POS ini sedang aktif (belum logout)?
+                  let savedUser = localStorage.getItem('pos_aktif_user');
+                  let savedRole = localStorage.getItem('pos_aktif_role');
+                  let savedNama = localStorage.getItem('pos_aktif_nama');
+
+                  const statusEl = document.getElementById('loginStatus');
+
+                  if (savedUser && savedRole) {
+                      // SKENARIO A: Ada sesi tertinggal (Refresh saat sedang kerja)
+                      // Otomatis pulihkan tampilan kembali ke Kasir / Supervisor / Owner
+                      console.log("Memulihkan sesi kerja:", savedRole);
+                      if (statusEl) statusEl.innerText = "Memulihkan sesi...";
+                      
+                      let dataStaffDariMemori = {
+                          username: savedUser,
+                          role: savedRole,
+                          nama: savedNama || savedUser
+                      };
+                      masukKeAplikasi(dataStaffDariMemori);
+
+                  } else {
+                      // SKENARIO B: Sudah Logout
+                      // TETAP TAHAN DI LAYAR LOGIN! (Menunggu input PIN/Password)
+                      console.log("Sistem terkunci. Menunggu staff login...");
+                      if (statusEl) statusEl.innerText = ""; 
+                      
+                      document.getElementById('loginView').style.display = 'flex';
+                      document.getElementById('appView').style.display = 'none';
+                  }
+
               } else {
-                  console.log("Menunggu pengguna melakukan login...");
+                  // Jika belum pernah Login Google sama sekali
+                  console.log("Menunggu pengguna melakukan login Google...");
+                  document.getElementById('loginView').style.display = 'flex';
+                  document.getElementById('appView').style.display = 'none';
               }
           });
       
@@ -12031,28 +12043,6 @@
           });
           console.log("Sistem Realtime aktif untuk seluruh tabel (termasuk staff_toko).");
       }
-
-      // =========================================================================
-      // PEMICU OTOMATIS SAAT HALAMAN DI-REFRESH (PENTING UNTUK MEMPERTAHANKAN SESI)
-      // =========================================================================
-      document.addEventListener("DOMContentLoaded", function() {
-          // 1. Cek apakah ada data kasir/supervisor yang tertinggal di memori browser
-          let savedUser = localStorage.getItem('pos_aktif_user');
-          let savedRole = localStorage.getItem('pos_aktif_role');
-          let savedNama = localStorage.getItem('pos_aktif_nama');
-
-          // 2. Jika ada, buat objek data tiruan dan lempar ke fungsi masukKeAplikasi
-          if (savedUser && savedRole) {
-              let dataStaffDariMemori = {
-                  username: savedUser,
-                  role: savedRole,
-                  nama: savedNama || savedUser
-              };
-              
-              // Ini akan memicu perubahan UI dan Hak Akses secara otomatis
-              masukKeAplikasi(dataStaffDariMemori);
-          }
-      });
             
     </script>
   </body>
