@@ -12362,6 +12362,142 @@
               }
           }
       });
+
+      // 1. Fungsi untuk Memuat Data dari Database Supabase ke Form Profil
+      async function muatDataProfilUser() {
+          let usernameAktif = localStorage.getItem('pos_aktif_user');
+          if (!usernameAktif) return;
+      
+          // Mengambil data dari tabel staff_toko berdasarkan username yang sedang login
+          let { data, error } = await supabase
+              .from('staff_toko')
+              .select('*')
+              .eq('username', usernameAktif)
+              .single();
+      
+          if (error) {
+              console.error("Gagal memuat data profil:", error.message);
+              return;
+          }
+      
+          if (data) {
+              // Masukkan data ke kolom-kolom HTML form pengaturan profil
+              document.getElementById('inputProfilNama').value = data.nama || '';
+              document.getElementById('inputProfilAlamat').value = data.alamat || '';
+              document.getElementById('inputProfilTelp').value = data.no_telp || '';
+              document.getElementById('inputProfilUsername').value = data.username || '';
+              
+              // Tampilkan foto profil (jika ada di database, jika kosong pakai inisial nama)
+              let avatarImg = document.getElementById('profilUserAvatarImg');
+              if (data.foto_profil && data.foto_profil.trim() !== "" && data.foto_profil !== "null") {
+                  avatarImg.src = data.foto_profil;
+              } else {
+                  let inisial = (data.nama || 'User').substring(0, 2).toUpperCase();
+                  avatarImg.src = `https://ui-avatars.com/api/?name=${inisial}&background=3b82f6&color=fff`;
+              }
+          }
+      }
+      
+      // 2. Fungsi untuk Preview Foto Saat File Dipilih (Menyimpan sementara ke elemen gambar)
+      function prosesUploadAvatar(input) {
+          if (input.files && input.files[0]) {
+              let reader = new FileReader();
+              reader.onload = function(e) {
+                  // Ubah src gambar preview dengan hasil konversi base64 dari file gambar
+                  document.getElementById('profilUserAvatarImg').src = e.target.result;
+              }
+              reader.readAsDataURL(input.files[0]);
+          }
+      }
+      
+      // 3. Fungsi untuk Menyimpan Perubahan Profil (Nama, Alamat, No Telp, Foto Profil) ke Supabase
+      async function simpanProfilPengguna() {
+          let usernameAktif = localStorage.getItem('pos_aktif_user');
+          if (!usernameAktif) {
+              alert("Sesi login tidak ditemukan!");
+              return;
+          }
+      
+          let namaBaru = document.getElementById('inputProfilNama').value;
+          let alamatBaru = document.getElementById('inputProfilAlamat').value;
+          let telpBaru = document.getElementById('inputProfilTelp').value;
+          let fotoBaru = document.getElementById('profilUserAvatarImg').src; // Mengambil data string foto
+      
+          // Update data ke tabel staff_toko di Supabase
+          let { error } = await supabase
+              .from('staff_toko')
+              .update({
+                  nama: namaBaru,
+                  alamat: alamatBaru,
+                  no_telp: telpBaru,
+                  foto_profil: fotoBaru
+              })
+              .eq('username', usernameAktif);
+      
+          if (error) {
+              alert("Gagal memperbarui profil: " + error.message);
+          } else {
+              // Perbarui juga data di localStorage agar sidebar langsung ter-update tanpa perlu relogin
+              localStorage.setItem('pos_aktif_nama', namaBaru);
+              localStorage.setItem('pos_aktif_foto', fotoBaru);
+              
+              // Panggil fungsi pembaru sidebar Anda yang sudah ada
+              tampilkanNamaUser();
+              
+              alert("Profil berhasil diperbarui!");
+          }
+      }
+      
+      // 4. Fungsi untuk Memperbarui Password
+      async function simpanPasswordBaru() {
+          let usernameAktif = localStorage.getItem('pos_aktif_user');
+          let passwordLama = document.getElementById('inputPasswordLama').value;
+          let passwordBaru = document.getElementById('inputPasswordBaru').value;
+          let passwordKonfirmasi = document.getElementById('inputPasswordKonfirmasi').value;
+      
+          if (!passwordLama || !passwordBaru || !passwordKonfirmasi) {
+              alert("Semua kolom password wajib diisi!");
+              return;
+          }
+      
+          if (passwordBaru !== passwordKonfirmasi) {
+              alert("Password baru dan konfirmasi password tidak cocok!");
+              return;
+          }
+      
+          // Verifikasi password lama terlebih dahulu dengan mencocokkan ke database
+          let { data, error } = await supabase
+              .from('staff_toko')
+              .select('password')
+              .eq('username', usernameAktif)
+              .single();
+      
+          if (error || !data) {
+              alert("Gagal memverifikasi data akun.");
+              return;
+          }
+      
+          if (data.password !== passwordLama) {
+              alert("Password saat ini salah!");
+              return;
+          }
+      
+          // Jika valid, lakukan update password baru ke Supabase
+          let { error: updateError } = await supabase
+              .from('staff_toko')
+              .update({ password: passwordBaru })
+              .eq('username', usernameAktif);
+      
+          if (updateError) {
+              alert("Gagal memperbarui password: " + updateError.message);
+          } else {
+              alert("Password berhasil diperbarui!");
+              // Kosongkan form input password setelah berhasil
+              document.getElementById('inputPasswordLama').value = '';
+              document.getElementById('inputPasswordBaru').value = '';
+              document.getElementById('inputPasswordKonfirmasi').value = '';
+          }
+      }
                         
     </script>
   </body>
