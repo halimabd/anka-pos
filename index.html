@@ -3957,22 +3957,21 @@
         
                 <!-- FOTO PROFIL DENGAN TOMBOL UPLOAD MELAYANG (BADGE KAMERA) -->
                 <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 20px;">
-                    
-                    <!-- Bungkus Relative agar Tombol Bisa Melayang di Atas Foto -->
-                    <div style="position: relative; width: 64px; height: 64px; flex-shrink: 0;">
-                        <img id="profilUserAvatarImg" src="" alt="Foto Profil" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary, #1a73e8); background: var(--bg-main, #f8fafc);">
+    
+                    <!-- Bungkus dipaksa berukuran kotak sempurna 64x64px -->
+                    <div style="position: relative; width: 64px; height: 64px; min-width: 64px; min-height: 64px; flex-shrink: 0;">
+                        <img id="profilUserAvatarImg" src="" alt="Foto Profil" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary, #1a73e8); background: var(--bg-main, #f8fafc; display: block;">
                         
-                        <!-- Tombol Ikon Kamera Melayang (Label yang memicu input file tersembunyi) -->
+                        <!-- Tombol Ikon Kamera Melayang -->
                         <label for="inputUploadAvatar" title="Ganti Foto Profil" style="position: absolute; bottom: 0; right: 0; background-color: var(--primary, #1a73e8); color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 2px solid var(--surface, #ffffff); box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
                                 <circle cx="12" cy="13" r="4"></circle>
                             </svg>
-                            <!-- Input file disembunyikan, otomatis terpanggil saat label diklik -->
                             <input type="file" id="inputUploadAvatar" accept="image/*" onchange="prosesUploadAvatar(this)" style="display: none;">
                         </label>
                     </div>
-        
+                
                     <div>
                         <div style="font-size: 14px; font-weight: 600; color: var(--text-dark);">Foto Profil Pengguna</div>
                         <div style="font-size: 12px; color: var(--text-muted, #64748b); margin-top: 2px;">Klik ikon kamera pada foto untuk mengganti gambar.</div>
