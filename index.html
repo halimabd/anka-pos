@@ -4855,24 +4855,29 @@
       function toggleSidebar() { const sidebar = document.getElementById('sidebarNav'); const overlay = document.getElementById('sidebarOverlay'); sidebar.classList.toggle('open'); overlay.style.display = sidebar.classList.contains('open') ? 'block' : 'none'; }
       function closeMobileSidebar() { if(window.innerWidth <= 768) { document.getElementById('sidebarNav').classList.remove('open'); document.getElementById('sidebarOverlay').style.display = 'none'; } }
       function gantiTab(tabId, btnEl) {
-        // 1. Tombol Navigasi
-        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-        btnEl.classList.add('active');
-
-        // 2. Konten Tab (Sembunyikan semua, lalu tampilkan yang aktif)
-        document.querySelectorAll('.tab-content').forEach(t => {
-          t.style.display = 'none'; // Paksa sembunyikan semua
-          t.classList.remove('active');
-        });
-
-        // 3. Tampilkan yang dipilih
-        let selectedTab = document.getElementById(tabId);
-        if (selectedTab) {
-          selectedTab.style.display = 'block'; // Paksa tampilkan
-          selectedTab.classList.add('active');
-        }
-
-        closeMobileSidebar();
+          // 1. Tombol Navigasi
+          document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+          btnEl.classList.add('active');
+      
+          // 2. Konten Tab (Sembunyikan semua, lalu tampilkan yang aktif)
+          document.querySelectorAll('.tab-content').forEach(t => {
+            t.style.display = 'none'; // Paksa sembunyikan semua
+            t.classList.remove('active');
+          });
+      
+          // 3. Tampilkan yang dipilih
+          let selectedTab = document.getElementById(tabId);
+          if (selectedTab) {
+            selectedTab.style.display = 'block'; // Paksa tampilkan
+            selectedTab.classList.add('active');
+          }
+      
+          // ✨ TAMBAHAN: Muat ulang data profil dari database setiap kali tab profil dibuka
+          if (tabId === 'tabProfilUser') {
+              muatDataProfilUser();
+          }
+      
+          closeMobileSidebar();
       }
       
       function toggleMobileKasir(opsi) {
@@ -12196,6 +12201,7 @@
           if (typeof muatPengaturanData === "function") muatPengaturanData(); 
           if (typeof muatManajemenKas === "function") muatManajemenKas();
           if (typeof inisialisasiRealtime === "function") inisialisasiRealtime();
+          if (typeof muatDataProfilUser === "function") muatDataProfilUser();
       }
 
       function inisialisasiRealtime() {
@@ -12366,12 +12372,18 @@
       // 1. Fungsi untuk Memuat Data dari Database Supabase ke Form Profil
       async function muatDataProfilUser() {
           let usernameAktif = localStorage.getItem('pos_aktif_user');
-          if (!usernameAktif) return;
+          let klienId = localStorage.getItem('klien_id');
+          
+          if (!usernameAktif || !klienId) {
+              console.log("Sesi user atau klien_id belum siap.");
+              return;
+          }
       
-          // Mengambil data dari tabel staff_toko berdasarkan username yang sedang login
-          let { data, error } = await supabase
+          // Ambil data dari tabel staff_toko berdasarkan klien_id dan username yang aktif
+          let { data, error } = await window.supabaseClient
               .from('staff_toko')
               .select('*')
+              .eq('klien_id', klienId)
               .eq('username', usernameAktif)
               .single();
       
@@ -12387,7 +12399,7 @@
               document.getElementById('inputProfilTelp').value = data.no_telp || '';
               document.getElementById('inputProfilUsername').value = data.username || '';
               
-              // Tampilkan foto profil (jika ada di database, jika kosong pakai inisial nama)
+              // Tampilkan foto profil
               let avatarImg = document.getElementById('profilUserAvatarImg');
               if (data.foto_profil && data.foto_profil.trim() !== "" && data.foto_profil !== "null") {
                   avatarImg.src = data.foto_profil;
@@ -12398,22 +12410,23 @@
           }
       }
       
-      // 2. Fungsi untuk Preview Foto Saat File Dipilih (Menyimpan sementara ke elemen gambar)
+      // 2. Fungsi Preview Foto Saat File Dipilih (Base64)
       function prosesUploadAvatar(input) {
           if (input.files && input.files[0]) {
               let reader = new FileReader();
               reader.onload = function(e) {
-                  // Ubah src gambar preview dengan hasil konversi base64 dari file gambar
                   document.getElementById('profilUserAvatarImg').src = e.target.result;
               }
               reader.readAsDataURL(input.files[0]);
           }
       }
       
-      // 3. Fungsi untuk Menyimpan Perubahan Profil (Nama, Alamat, No Telp, Foto Profil) ke Supabase
+      // 3. Fungsi Menyimpan Perubahan Profil ke Supabase
       async function simpanProfilPengguna() {
           let usernameAktif = localStorage.getItem('pos_aktif_user');
-          if (!usernameAktif) {
+          let klienId = localStorage.getItem('klien_id');
+          
+          if (!usernameAktif || !klienId) {
               alert("Sesi login tidak ditemukan!");
               return;
           }
@@ -12421,10 +12434,9 @@
           let namaBaru = document.getElementById('inputProfilNama').value;
           let alamatBaru = document.getElementById('inputProfilAlamat').value;
           let telpBaru = document.getElementById('inputProfilTelp').value;
-          let fotoBaru = document.getElementById('profilUserAvatarImg').src; // Mengambil data string foto
+          let fotoBaru = document.getElementById('profilUserAvatarImg').src;
       
-          // Update data ke tabel staff_toko di Supabase
-          let { error } = await supabase
+          let { error } = await window.supabaseClient
               .from('staff_toko')
               .update({
                   nama: namaBaru,
@@ -12432,25 +12444,24 @@
                   no_telp: telpBaru,
                   foto_profil: fotoBaru
               })
+              .eq('klien_id', klienId)
               .eq('username', usernameAktif);
       
           if (error) {
               alert("Gagal memperbarui profil: " + error.message);
           } else {
-              // Perbarui juga data di localStorage agar sidebar langsung ter-update tanpa perlu relogin
               localStorage.setItem('pos_aktif_nama', namaBaru);
               localStorage.setItem('pos_aktif_foto', fotoBaru);
               
-              // Panggil fungsi pembaru sidebar Anda yang sudah ada
-              tampilkanNamaUser();
-              
+              if (typeof tampilkanNamaUser === "function") tampilkanNamaUser();
               alert("Profil berhasil diperbarui!");
           }
       }
       
-      // 4. Fungsi untuk Memperbarui Password
+      // 4. Fungsi Memperbarui Password
       async function simpanPasswordBaru() {
           let usernameAktif = localStorage.getItem('pos_aktif_user');
+          let klienId = localStorage.getItem('klien_id');
           let passwordLama = document.getElementById('inputPasswordLama').value;
           let passwordBaru = document.getElementById('inputPasswordBaru').value;
           let passwordKonfirmasi = document.getElementById('inputPasswordKonfirmasi').value;
@@ -12465,10 +12476,11 @@
               return;
           }
       
-          // Verifikasi password lama terlebih dahulu dengan mencocokkan ke database
-          let { data, error } = await supabase
+          // Verifikasi password lama
+          let { data, error } = await window.supabaseClient
               .from('staff_toko')
               .select('password')
+              .eq('klien_id', klienId)
               .eq('username', usernameAktif)
               .single();
       
@@ -12482,17 +12494,17 @@
               return;
           }
       
-          // Jika valid, lakukan update password baru ke Supabase
-          let { error: updateError } = await supabase
+          // Update password baru
+          let { error: updateError } = await window.supabaseClient
               .from('staff_toko')
               .update({ password: passwordBaru })
+              .eq('klien_id', klienId)
               .eq('username', usernameAktif);
       
           if (updateError) {
               alert("Gagal memperbarui password: " + updateError.message);
           } else {
               alert("Password berhasil diperbarui!");
-              // Kosongkan form input password setelah berhasil
               document.getElementById('inputPasswordLama').value = '';
               document.getElementById('inputPasswordBaru').value = '';
               document.getElementById('inputPasswordKonfirmasi').value = '';
