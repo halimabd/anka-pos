@@ -8781,10 +8781,9 @@
 
     // Fungsi untuk menampilkan nama user saat halaman dimuat
     function tampilkanNamaUser() {
-        // Ambil data langsung dari localStorage (berdasarkan penamaan memori Anda)
         let namaTampil = localStorage.getItem('pos_aktif_nama') || localStorage.getItem('pos_aktif_user') || 'User';
         let roleTampil = localStorage.getItem('pos_aktif_role') || 'Staff';
-        let urlFotoGoogle = localStorage.getItem('pos_aktif_foto'); // Mengambil URL foto dari memori
+        let fotoAktifUser = localStorage.getItem('pos_aktif_foto'); // Hanya foto milik user aktif
         
         // 1. Update elemen Nama User
         let elNama = document.getElementById('sidebarUserName');
@@ -8798,15 +8797,13 @@
             elRole.innerText = `(${roleTampil})`;
         }
     
-        // 3. Update Foto Avatar (Google Foto vs Inisial Nama)
+        // 3. Update Foto Avatar (Murni milik user tersebut atau Inisial)
         let elAvatar = document.getElementById('sidebarUserAvatar');
         if (elAvatar) {
-            // Cek apakah ada URL dari akun Google
-            if (urlFotoGoogle && urlFotoGoogle.trim() !== "" && urlFotoGoogle !== "null") {
-                // Gunakan foto asli dari Google
-                elAvatar.src = urlFotoGoogle;
+            if (fotoAktifUser && fotoAktifUser.trim() !== "" && fotoAktifUser !== "null") {
+                elAvatar.src = fotoAktifUser;
             } else {
-                // Jika login email biasa / foto tidak ada, gunakan 2 inisial huruf dari nama
+                // Jika user tidak punya foto profil tersendiri, buat inisial huruf dari namanya
                 let inisial = namaTampil.substring(0, 2).toUpperCase();
                 elAvatar.src = `https://ui-avatars.com/api/?name=${inisial}&background=3b82f6&color=fff`;
             }
@@ -12177,10 +12174,20 @@
           currentRole = dataStaff.role; 
           currentNama = dataStaff.nama; 
           
+          // Ambil foto spesifik dari database staff_toko, jika kosong/null jadikan string kosong
+          let currentFoto = (dataStaff.foto_profil && dataStaff.foto_profil !== "null" && dataStaff.foto_profil.trim() !== "") ? dataStaff.foto_profil : ""; 
+          
           // Simpan data kasir/owner yang aktif ke Local Storage
           localStorage.setItem('pos_aktif_user', currentUser); 
           localStorage.setItem('pos_aktif_role', currentRole); 
           localStorage.setItem('pos_aktif_nama', currentNama); 
+          
+          // Simpan atau bersihkan memori foto agar tidak saling tumpang tindih antar user
+          if (currentFoto) {
+              localStorage.setItem('pos_aktif_foto', currentFoto);
+          } else {
+              localStorage.removeItem('pos_aktif_foto'); 
+          }
           
           // Ubah UI
           const namaKasirEl = document.getElementById('namaKasir');
@@ -12363,6 +12370,7 @@
                   if (typeof muatDaftarPelanggan === 'function') await muatDaftarPelanggan();
                   if (typeof muatDaftarUsers === 'function') await muatDaftarUsers();
                   if (typeof muatPengaturanData === 'function') await muatPengaturanData();
+                  if (typeof muatDataProfilUser === 'function') await muatDataProfilUser();
               } catch (err) {
                   console.error("Gagal melakukan pull-to-refresh:", err);
               }
