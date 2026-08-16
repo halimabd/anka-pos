@@ -4929,7 +4929,9 @@
                   
                   if (typeof aturHakAkses === "function") aturHakAkses(currentRole); 
                   if (typeof muatDataKatalog === "function") muatDataKatalog(); 
-                  if (typeof muatPengaturanData === "function") muatPengaturanData(); 
+                  if (typeof muatPengaturanData === "function") muatPengaturanData();
+                  if (typeof tampilkanNamaUser === "function") tampilkanNamaUser();
+                  if (typeof muatDataProfilUser === "function") muatDataProfilUser();
                   
                   if (typeof muatManajemenKas === "function") {
                       muatManajemenKas();
@@ -12082,19 +12084,15 @@
                   const klienId = session.user.id;
                   const userEmail = session.user.email;
                   const namaGoogle = session.user.user_metadata?.full_name || userEmail.split('@')[0];
+                  // Tangkap foto dari Google Account
                   const fotoGoogle = session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture || null;
-      
+          
                   localStorage.setItem('klien_id', klienId);
                   localStorage.setItem('user_email', userEmail);
-                  if (fotoGoogle) {
-                      localStorage.setItem('pos_aktif_foto', fotoGoogle);
-                  } else {
-                      localStorage.removeItem('pos_aktif_foto');
-                  }
                   
                   const statusEl = document.getElementById('loginStatus');
-      
-                  // Cek apakah akun Google ini sudah punya profil 'Owner'
+          
+                  // Cek apakah akun Google ini sudah punya profil 'Owner' di staff_toko
                   const { data: staffData } = await window.supabaseClient
                       .from('staff_toko')
                       .select('*')
@@ -12111,37 +12109,60 @@
                           username: 'admin',
                           password: sandiAcak,
                           role: 'Owner',
-                          nama: namaGoogle
+                          nama: namaGoogle,
+                          foto_profil: fotoGoogle // ✨ PERBAIKAN 1: Masukkan foto Google ke dalam database
                       };
+                      
+                      // Insert ke database
                       await window.supabaseClient.from('staff_toko').insert([{ ...dataOwner, klien_id: klienId }]);
+                      
                   } else {
                       // PENGGUNA LAMA
                       dataOwner = staffData[0];
+                      
+                      // ✨ PERBAIKAN 2: Jika di database fotonya masih kosong (misal karena error sblmnya), 
+                      // tapi akun Google punya foto, kita tambahkan fotonya lalu update ke DB!
+                      if ((!dataOwner.foto_profil || dataOwner.foto_profil === "null") && fotoGoogle) {
+                          dataOwner.foto_profil = fotoGoogle;
+                          // Update ke database di background agar sinkron
+                          window.supabaseClient.from('staff_toko')
+                              .update({ foto_profil: fotoGoogle })
+                              .eq('klien_id', klienId)
+                              .eq('username', dataOwner.username)
+                              .then(); // Biarkan berjalan tanpa await agar tidak memperlambat login
+                      }
                   }
-
+          
                   // Cek memori browser
                   let savedUser = localStorage.getItem('pos_aktif_user');
                   let savedRole = localStorage.getItem('pos_aktif_role');
                   let savedNama = localStorage.getItem('pos_aktif_nama');
-                  let savedFoto = localStorage.getItem('pos_aktif_foto');
-                  
-                  // ✨ CEK TANDA GOOGLE DI SINI ✨
+                  let savedFoto = localStorage.getItem('pos_aktif_foto'); // Ambil foto dari memori
+          
+                  // ✨ CEK TANDA GOOGLE
                   let baruLoginGoogle = localStorage.getItem('baru_login_google');
-
+          
                   if (baruLoginGoogle === 'ya') {
-                      // SKENARIO A: User baru saja kembali dari halaman otorisasi Google!
+                      // SKENARIO A: Masuk dari Google Login
                       console.log("Masuk otomatis dari Google Login.");
-                      localStorage.removeItem('baru_login_google'); // Hapus tanda agar tidak berulang saat di-refresh
+                      localStorage.removeItem('baru_login_google'); 
                       
                       if (statusEl) statusEl.innerText = "Membuka aplikasi...";
-                      masukKeAplikasi(dataOwner); // Langsung masukkan sebagai Owner
+                      
+                      // Langsung masukkan ke aplikasi dengan data dari database (yang sudah ada fotoGoogle-nya)
+                      masukKeAplikasi(dataOwner); 
                   } 
                   else if (savedUser && savedRole) {
-                      // SKENARIO B: Halaman di-refresh saat staf sedang kerja (Sesi Kasir/Owner masih aktif)
+                      // SKENARIO B: Halaman di-refresh
                       console.log("Memulihkan sesi kerja:", savedRole);
                       if (statusEl) statusEl.innerText = "Memulihkan sesi...";
                       
-                      let dataStaffDariMemori = { username: savedUser, role: savedRole, nama: savedNama || savedUser, foto_profil: savedFoto };
+                      let dataStaffDariMemori = { 
+                          username: savedUser, 
+                          role: savedRole, 
+                          nama: savedNama || savedUser,
+                          foto_profil: savedFoto // Berikan foto dari memori agar masukKeAplikasi tidak meresetnya
+                      };
                       masukKeAplikasi(dataStaffDariMemori);
                   } 
                   else {
@@ -12152,7 +12173,7 @@
                       document.getElementById('loginView').style.display = 'flex';
                       document.getElementById('appView').style.display = 'none';
                   }
-
+          
               } else {
                   console.log("Menunggu pengguna melakukan login Google...");
                   document.getElementById('loginView').style.display = 'flex';
