@@ -3955,12 +3955,13 @@
                     Informasi Personal
                 </h4>
         
-                <!-- FOTO PROFIL DENGAN TOMBOL UPLOAD MELAYANG (BADGE KAMERA) -->
+                <!-- FOTO PROFIL DENGAN LINGKARAN SEMPURNA MUTLAK -->
                 <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 20px;">
-    
-                    <!-- Bungkus dipaksa berukuran kotak sempurna 64x64px -->
-                    <div style="position: relative; width: 64px; height: 64px; min-width: 64px; min-height: 64px; flex-shrink: 0;">
-                        <img id="profilUserAvatarImg" src="" alt="Foto Profil" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary, #1a73e8); background: var(--bg-main, #f8fafc; display: block;">
+                    
+                    <!-- Bungkus dikunci mati dengan min/max width/height dan aspect-ratio -->
+                    <div style="position: relative; width: 64px !important; height: 64px !important; min-width: 64px !important; min-height: 64px !important; max-width: 64px !important; max-height: 64px !important; flex-shrink: 0; aspect-ratio: 1 / 1;">
+                        
+                        <img id="profilUserAvatarImg" src="" alt="Foto Profil" style="width: 64px !important; height: 64px !important; min-width: 64px !important; min-height: 64px !important; max-width: 64px !important; max-height: 64px !important; border-radius: 50% !important; object-fit: cover !important; border: 2px solid var(--primary, #1a73e8); background: var(--bg-main, #f8fafc); display: block;">
                         
                         <!-- Tombol Ikon Kamera Melayang -->
                         <label for="inputUploadAvatar" title="Ganti Foto Profil" style="position: absolute; bottom: 0; right: 0; background-color: var(--primary, #1a73e8); color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 2px solid var(--surface, #ffffff); box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
