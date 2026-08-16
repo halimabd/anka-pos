@@ -12123,6 +12123,7 @@
                   let savedUser = localStorage.getItem('pos_aktif_user');
                   let savedRole = localStorage.getItem('pos_aktif_role');
                   let savedNama = localStorage.getItem('pos_aktif_nama');
+                  let savedFoto = localStorage.getItem('pos_aktif_foto');
                   
                   // ✨ CEK TANDA GOOGLE DI SINI ✨
                   let baruLoginGoogle = localStorage.getItem('baru_login_google');
@@ -12140,7 +12141,7 @@
                       console.log("Memulihkan sesi kerja:", savedRole);
                       if (statusEl) statusEl.innerText = "Memulihkan sesi...";
                       
-                      let dataStaffDariMemori = { username: savedUser, role: savedRole, nama: savedNama || savedUser };
+                      let dataStaffDariMemori = { username: savedUser, role: savedRole, nama: savedNama || savedUser, foto_profil: savedFoto };
                       masukKeAplikasi(dataStaffDariMemori);
                   } 
                   else {
@@ -12210,6 +12211,7 @@
           if (typeof muatManajemenKas === "function") muatManajemenKas();
           if (typeof inisialisasiRealtime === "function") inisialisasiRealtime();
           if (typeof muatDataProfilUser === "function") muatDataProfilUser();
+          if (typeof tampilkanNamaUser === "function") tampilkanNamaUser();
       }
 
       function inisialisasiRealtime() {
@@ -12372,6 +12374,7 @@
                   if (typeof muatDaftarUsers === 'function') await muatDaftarUsers();
                   if (typeof muatPengaturanData === 'function') await muatPengaturanData();
                   if (typeof muatDataProfilUser === 'function') await muatDataProfilUser();
+                  if (typeof tampilkanNamaUser === "function") await tampilkanNamaUser();
               } catch (err) {
                   console.error("Gagal melakukan pull-to-refresh:", err);
               }
@@ -12383,12 +12386,8 @@
           let usernameAktif = localStorage.getItem('pos_aktif_user');
           let klienId = localStorage.getItem('klien_id');
           
-          if (!usernameAktif || !klienId) {
-              console.log("Sesi user atau klien_id belum siap.");
-              return;
-          }
+          if (!usernameAktif || !klienId) return;
       
-          // Ambil data dari tabel staff_toko berdasarkan klien_id dan username yang aktif
           let { data, error } = await window.supabaseClient
               .from('staff_toko')
               .select('*')
@@ -12402,20 +12401,27 @@
           }
       
           if (data) {
-              // Masukkan data ke kolom-kolom HTML form pengaturan profil
               document.getElementById('inputProfilNama').value = data.nama || '';
               document.getElementById('inputProfilAlamat').value = data.alamat || '';
               document.getElementById('inputProfilTelp').value = data.no_telp || '';
               document.getElementById('inputProfilUsername').value = data.username || '';
               
-              // Tampilkan foto profil
               let avatarImg = document.getElementById('profilUserAvatarImg');
+              
+              // Cek dan tampilkan foto profil
               if (data.foto_profil && data.foto_profil.trim() !== "" && data.foto_profil !== "null") {
                   avatarImg.src = data.foto_profil;
+                  // ✨ SINKRONKAN JUGA KE LOCAL STORAGE
+                  localStorage.setItem('pos_aktif_foto', data.foto_profil); 
               } else {
                   let inisial = (data.nama || 'User').substring(0, 2).toUpperCase();
                   avatarImg.src = `https://ui-avatars.com/api/?name=${inisial}&background=3b82f6&color=fff`;
+                  // ✨ BERSIHKAN LOCAL STORAGE JIKA FOTO TIDAK ADA
+                  localStorage.removeItem('pos_aktif_foto');
               }
+      
+              // ✨ PAKSA SIDEBAR UNTUK UPDATE MENGIKUTI DATA SUPABASE TERBARU
+              if (typeof tampilkanNamaUser === "function") tampilkanNamaUser();
           }
       }
       
