@@ -8783,27 +8783,28 @@
     function tampilkanNamaUser() {
         let namaTampil = localStorage.getItem('pos_aktif_nama') || localStorage.getItem('pos_aktif_user') || 'User';
         let roleTampil = localStorage.getItem('pos_aktif_role') || 'Staff';
-        let fotoAktifUser = localStorage.getItem('pos_aktif_foto'); // Hanya foto milik user aktif
+        let fotoAktifUser = localStorage.getItem('pos_aktif_foto'); // Mengambil foto dari memori lokal user aktif
         
-        // 1. Update elemen Nama User
+        // 1. Update elemen Nama User di Sidebar
         let elNama = document.getElementById('sidebarUserName');
         if (elNama) {
             elNama.innerHTML = `Hi, <b>${namaTampil}</b>`;
         }
     
-        // 2. Update elemen Role/Jabatan
+        // 2. Update elemen Role/Jabatan di Sidebar
         let elRole = document.getElementById('sidebarUserRole');
         if (elRole) {
             elRole.innerText = `(${roleTampil})`;
         }
     
-        // 3. Update Foto Avatar (Murni milik user tersebut atau Inisial)
+        // 3. Update Foto Avatar di Sidebar
         let elAvatar = document.getElementById('sidebarUserAvatar');
         if (elAvatar) {
             if (fotoAktifUser && fotoAktifUser.trim() !== "" && fotoAktifUser !== "null") {
+                // Jika user punya foto profil (baik upload atau google), tampilkan fotonya
                 elAvatar.src = fotoAktifUser;
             } else {
-                // Jika user tidak punya foto profil tersendiri, buat inisial huruf dari namanya
+                // Jika kosong, gunakan inisial huruf dari nama
                 let inisial = namaTampil.substring(0, 2).toUpperCase();
                 elAvatar.src = `https://ui-avatars.com/api/?name=${inisial}&background=3b82f6&color=fff`;
             }
