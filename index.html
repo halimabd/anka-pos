@@ -3942,96 +3942,91 @@
                 Pengaturan Profil Pengguna
             </h3>
             
-            <div class="form-panel" style="width: 100%; display:block; position:relative; transform:none; left:0; top:0; box-shadow:var(--shadow-1); padding: 24px; background: var(--surface, #ffffff); border-radius: 8px; box-sizing: border-box;">
-            
-                <!-- ==========================================
-                     BAGIAN 1: INFORMASI PROFIL PENGGUNA
-                 ========================================== -->
-                <div style="margin-bottom: 32px;">
-                    <h4 style="margin-top: 0; margin-bottom: 16px; font-size: 15px; color: var(--text-dark, #1e293b); font-weight: 600; border-bottom: 1px solid var(--border-color, #e2e8f0); padding-bottom: 8px;">
-                        Informasi Personal
-                    </h4>
+            <!-- ==========================================
+                 KOTAK PANEL 1: INFORMASI PERSONAL
+             ========================================== -->
+            <div class="form-panel" style="width: 100%; display:block; position:relative; transform:none; left:0; top:0; box-shadow:var(--shadow-1); padding: 24px; background: var(--surface, #ffffff); border-radius: 8px; box-sizing: border-box; margin-bottom: 24px;">
+                
+                <h4 style="margin-top: 0; margin-bottom: 16px; font-size: 15px; color: var(--text-dark, #1e293b); font-weight: 600; border-bottom: 1px solid var(--border-color, #e2e8f0); padding-bottom: 8px;">
+                    Informasi Personal
+                </h4>
         
-                    <!-- Foto Profil Bulat -->
-                    <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 20px;">
-                        <img id="profilUserAvatarImg" src="" alt="Foto Profil" style="width: 64px; height: 64px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary, #1a73e8); flex-shrink: 0; background: var(--bg-main, #f8fafc);">
-                        <div>
-                            <div style="font-size: 14px; font-weight: 600; color: var(--text-dark);">Foto Profil Google / Akun</div>
-                            <div style="font-size: 12px; color: var(--text-muted, #64748b); margin-top: 2px;">Foto diambil secara otomatis dari sesi akun Anda.</div>
-                        </div>
+                <!-- Foto Profil Bulat -->
+                <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 20px;">
+                    <img id="profilUserAvatarImg" src="" alt="Foto Profil" style="width: 64px; height: 64px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary, #1a73e8); flex-shrink: 0; background: var(--bg-main, #f8fafc);">
+                    <div>
+                        <div style="font-size: 14px; font-weight: 600; color: var(--text-dark);">Foto Profil Google / Akun</div>
+                        <div style="font-size: 12px; color: var(--text-muted, #64748b); margin-top: 2px;">Foto diambil secara otomatis dari sesi akun Anda.</div>
                     </div>
-        
-                    <div style="display: flex; flex-direction: column; gap: 16px;">
-                        <!-- Nama Lengkap -->
-                        <div style="display: flex; flex-direction: column; gap: 6px;">
-                            <label style="font-size: 13px; font-weight: 500; color: var(--text-dark);">Nama Lengkap</label>
-                            <input type="text" id="inputProfilNama" placeholder="Masukkan nama lengkap..." style="padding: 10px 12px; border: 1px solid var(--border-color, #e2e8f0); border-radius: 6px; font-size: 13px; width: 100%; box-sizing: border-box; background: var(--bg-main, #ffffff); color: var(--text-dark, #1e293b); outline: none;">
-                        </div>
-        
-                        <!-- Alamat -->
-                        <div style="display: flex; flex-direction: column; gap: 6px;">
-                            <label style="font-size: 13px; font-weight: 500; color: var(--text-dark);">Alamat</label>
-                            <textarea id="inputProfilAlamat" rows="2" placeholder="Masukkan alamat tempat tinggal..." style="padding: 10px 12px; border: 1px solid var(--border-color, #e2e8f0); border-radius: 6px; font-size: 13px; width: 100%; box-sizing: border-box; background: var(--bg-main, #ffffff); color: var(--text-dark, #1e293b); outline: none; resize: vertical;"></textarea>
-                        </div>
-        
-                        <!-- No. Telp -->
-                        <div style="display: flex; flex-direction: column; gap: 6px;">
-                            <label style="font-size: 13px; font-weight: 500; color: var(--text-dark);">No. Telp</label>
-                            <input type="tel" id="inputProfilTelp" placeholder="Contoh: 081234567890" style="padding: 10px 12px; border: 1px solid var(--border-color, #e2e8f0); border-radius: 6px; font-size: 13px; width: 100%; box-sizing: border-box; background: var(--bg-main, #ffffff); color: var(--text-dark, #1e293b); outline: none;">
-                        </div>
-                    </div>
-        
-                    <!-- Tombol Simpan Bagian 1 (Gaya Pil Kapsul Warna Biru) -->
-                    <button type="button" onclick="simpanProfilPengguna()" style="width: 100%; background-color: var(--primary, #1a73e8); color: white; padding: 12px 15px; border: none; border-radius: 100px; cursor: pointer; font-weight: 600; font-size: 13px; box-shadow: 0 4px 12px rgba(26, 115, 232, 0.2); margin-top: 20px; transition: opacity 0.2s;">
-                        Simpan Perubahan Profil
-                    </button>
                 </div>
         
-                <hr style="border: none; border-top: 1px dashed var(--border-color, #e2e8f0); margin: 32px 0;">
-        
-                <!-- ==========================================
-                     BAGIAN 2: KREDENSIAL & UBAH PASSWORD
-                 ========================================== -->
-                <div>
-                    <h4 style="margin-top: 0; margin-bottom: 16px; font-size: 15px; color: var(--text-dark, #1e293b); font-weight: 600; border-bottom: 1px solid var(--border-color, #e2e8f0); padding-bottom: 8px;">
-                        Keamanan & Password
-                    </h4>
-        
-                    <div style="display: flex; flex-direction: column; gap: 16px;">
-                        <!-- Username (Tidak bisa diedit / Read-only) -->
-                        <div style="display: flex; flex-direction: column; gap: 6px;">
-                            <label style="font-size: 13px; font-weight: 500; color: var(--text-dark);">Username (Tidak dapat diubah)</label>
-                            <input type="text" id="inputProfilUsername" readonly disabled placeholder="Username aktif..." style="padding: 10px 12px; border: 1px solid var(--border-color, #e2e8f0); border-radius: 6px; font-size: 13px; width: 100%; box-sizing: border-box; background: var(--border-color, #e2e8f0); color: var(--text-muted, #64748b); cursor: not-allowed; outline: none;">
-                        </div>
-        
-                        <div style="font-size: 13px; font-weight: 600; color: var(--text-dark); margin-top: 4px;">Ubah Password</div>
-        
-                        <!-- Password Saat Ini -->
-                        <div style="display: flex; flex-direction: column; gap: 6px;">
-                            <label style="font-size: 13px; font-weight: 500; color: var(--text-dark);">Password Saat Ini</label>
-                            <input type="password" id="inputPasswordLama" placeholder="Masukkan password lama..." style="padding: 10px 12px; border: 1px solid var(--border-color, #e2e8f0); border-radius: 6px; font-size: 13px; width: 100%; box-sizing: border-box; background: var(--bg-main, #ffffff); color: var(--text-dark, #1e293b); outline: none;">
-                        </div>
-        
-                        <!-- Password Baru -->
-                        <div style="display: flex; flex-direction: column; gap: 6px;">
-                            <label style="font-size: 13px; font-weight: 500; color: var(--text-dark);">Password Baru</label>
-                            <input type="password" id="inputPasswordBaru" placeholder="Masukkan password baru..." style="padding: 10px 12px; border: 1px solid var(--border-color, #e2e8f0); border-radius: 6px; font-size: 13px; width: 100%; box-sizing: border-box; background: var(--bg-main, #ffffff); color: var(--text-dark, #1e293b); outline: none;">
-                        </div>
-        
-                        <!-- Konfirmasi Password -->
-                        <div style="display: flex; flex-direction: column; gap: 6px;">
-                            <label style="font-size: 13px; font-weight: 500; color: var(--text-dark);">Konfirmasi Password Baru</label>
-                            <input type="password" id="inputPasswordKonfirmasi" placeholder="Ulangi password baru..." style="padding: 10px 12px; border: 1px solid var(--border-color, #e2e8f0); border-radius: 6px; font-size: 13px; width: 100%; box-sizing: border-box; background: var(--bg-main, #ffffff); color: var(--text-dark, #1e293b); outline: none;">
-                        </div>
+                <div style="display: flex; flex-direction: column; gap: 16px;">
+                    <!-- Nama Lengkap -->
+                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                        <label style="font-size: 13px; font-weight: 500; color: var(--text-dark);">Nama Lengkap</label>
+                        <input type="text" id="inputProfilNama" placeholder="Masukkan nama lengkap..." style="padding: 10px 12px; border: 1px solid var(--border-color, #e2e8f0); border-radius: 6px; font-size: 13px; width: 100%; box-sizing: border-box; background: var(--bg-main, #ffffff); color: var(--text-dark, #1e293b); outline: none;">
                     </div>
         
-                    <!-- Tombol Simpan Bagian 2 (Gaya Pil Kapsul Warna Biru) -->
-                    <button type="button" onclick="simpanPasswordBaru()" style="width: 100%; background-color: var(--primary, #1a73e8); color: white; padding: 12px 15px; border: none; border-radius: 100px; cursor: pointer; font-weight: 600; font-size: 13px; box-shadow: 0 4px 12px rgba(26, 115, 232, 0.2); margin-top: 20px; transition: opacity 0.2s;">
-                        Perbarui Password
-                    </button>
+                    <!-- Alamat -->
+                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                        <label style="font-size: 13px; font-weight: 500; color: var(--text-dark);">Alamat</label>
+                        <textarea id="inputProfilAlamat" rows="2" placeholder="Masukkan alamat tempat tinggal..." style="padding: 10px 12px; border: 1px solid var(--border-color, #e2e8f0); border-radius: 6px; font-size: 13px; width: 100%; box-sizing: border-box; background: var(--bg-main, #ffffff); color: var(--text-dark, #1e293b); outline: none; resize: vertical;"></textarea>
+                    </div>
+        
+                    <!-- No. Telp -->
+                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                        <label style="font-size: 13px; font-weight: 500; color: var(--text-dark);">No. Telp</label>
+                        <input type="tel" id="inputProfilTelp" placeholder="Contoh: 081234567890" style="padding: 10px 12px; border: 1px solid var(--border-color, #e2e8f0); border-radius: 6px; font-size: 13px; width: 100%; box-sizing: border-box; background: var(--bg-main, #ffffff); color: var(--text-dark, #1e293b); outline: none;">
+                    </div>
                 </div>
         
+                <!-- Tombol Simpan Profil (Pil Kapsul Biru) -->
+                <button type="button" onclick="simpanProfilPengguna()" style="width: 100%; background-color: var(--primary, #1a73e8); color: white; padding: 12px 15px; border: none; border-radius: 100px; cursor: pointer; font-weight: 600; font-size: 13px; box-shadow: 0 4px 12px rgba(26, 115, 232, 0.2); margin-top: 20px; transition: opacity 0.2s;">
+                    Simpan Perubahan Profil
+                </button>
             </div>
+        
+            <!-- ==========================================
+                 KOTAK PANEL 2: UBAH PASSWORD
+             ========================================== -->
+            <div class="form-panel" style="width: 100%; display:block; position:relative; transform:none; left:0; top:0; box-shadow:var(--shadow-1); padding: 24px; background: var(--surface, #ffffff); border-radius: 8px; box-sizing: border-box;">
+                
+                <h4 style="margin-top: 0; margin-bottom: 16px; font-size: 15px; color: var(--text-dark, #1e293b); font-weight: 600; border-bottom: 1px solid var(--border-color, #e2e8f0); padding-bottom: 8px;">
+                    Ubah Password
+                </h4>
+        
+                <div style="display: flex; flex-direction: column; gap: 16px;">
+                    <!-- Username (Read-only / Tidak bisa diedit) -->
+                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                        <label style="font-size: 13px; font-weight: 500; color: var(--text-dark);">Username (Tidak dapat diubah)</label>
+                        <input type="text" id="inputProfilUsername" readonly disabled placeholder="Username aktif..." style="padding: 10px 12px; border: 1px solid var(--border-color, #e2e8f0); border-radius: 6px; font-size: 13px; width: 100%; box-sizing: border-box; background: var(--border-color, #e2e8f0); color: var(--text-muted, #64748b); cursor: not-allowed; outline: none;">
+                    </div>
+        
+                    <!-- Password Saat Ini -->
+                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                        <label style="font-size: 13px; font-weight: 500; color: var(--text-dark);">Password Saat Ini</label>
+                        <input type="password" id="inputPasswordLama" placeholder="Masukkan password lama..." style="padding: 10px 12px; border: 1px solid var(--border-color, #e2e8f0); border-radius: 6px; font-size: 13px; width: 100%; box-sizing: border-box; background: var(--bg-main, #ffffff); color: var(--text-dark, #1e293b); outline: none;">
+                    </div>
+        
+                    <!-- Password Baru -->
+                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                        <label style="font-size: 13px; font-weight: 500; color: var(--text-dark);">Password Baru</label>
+                        <input type="password" id="inputPasswordBaru" placeholder="Masukkan password baru..." style="padding: 10px 12px; border: 1px solid var(--border-color, #e2e8f0); border-radius: 6px; font-size: 13px; width: 100%; box-sizing: border-box; background: var(--bg-main, #ffffff); color: var(--text-dark, #1e293b); outline: none;">
+                    </div>
+        
+                    <!-- Konfirmasi Password -->
+                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                        <label style="font-size: 13px; font-weight: 500; color: var(--text-dark);">Konfirmasi Password Baru</label>
+                        <input type="password" id="inputPasswordKonfirmasi" placeholder="Ulangi password baru..." style="padding: 10px 12px; border: 1px solid var(--border-color, #e2e8f0); border-radius: 6px; font-size: 13px; width: 100%; box-sizing: border-box; background: var(--bg-main, #ffffff); color: var(--text-dark, #1e293b); outline: none;">
+                    </div>
+                </div>
+        
+                <!-- Tombol Perbarui Password (Pil Kapsul Biru) -->
+                <button type="button" onclick="simpanPasswordBaru()" style="width: 100%; background-color: var(--primary, #1a73e8); color: white; padding: 12px 15px; border: none; border-radius: 100px; cursor: pointer; font-weight: 600; font-size: 13px; box-shadow: 0 4px 12px rgba(26, 115, 232, 0.2); margin-top: 20px; transition: opacity 0.2s;">
+                    Perbarui Password
+                </button>
+            </div>
+        
         </div>
 
         <div id="tabUsers" class="tab-content">
