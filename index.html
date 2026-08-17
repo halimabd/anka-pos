@@ -4922,58 +4922,79 @@
       async function login() { 
           let u = document.getElementById('username').value; 
           let p = document.getElementById('password').value; 
+          
+          if (!u || !p) {
+              document.getElementById('loginStatus').innerText = "Username dan Password wajib diisi!";
+              return;
+          }
+          
           document.getElementById('loginStatus').innerText = "Memeriksa..."; 
           
           try {
-              // 1. Ambil ID Toko dari perangkat ini
-              const klienId = localStorage.getItem('klien_id');
-              
-              if (!klienId) {
-                  document.getElementById('loginStatus').innerText = "Perangkat belum diotorisasi oleh Owner (Google Login).";
-                  return; // Hentikan proses jika belum ada koneksi toko
-              }
-      
-              // 2. Panggil Supabase dengan filter klien_id dan maybeSingle()
+              // 1. Panggil Supabase HANYA berdasarkan username (Pencarian Global)
+              // 💡 PENTING: Kita tidak lagi memfilter klien_id di sini agar perangkat baru bisa login
               const { data, error } = await window.supabaseClient
                   .from('staff_toko')
                   .select('*')
-                  .eq('klien_id', klienId) // 💡 PENTING: Pastikan login di toko yang tepat
                   .eq('username', u)
-                  .eq('password', p)
-                  .maybeSingle(); // 💡 PENTING: Gunakan maybeSingle agar tidak error saat salah password
+                  .maybeSingle(); // Cari 1 data yang cocok
       
-              // 3. Evaluasi Hasil
-              if (data) { 
-                  // Login Berhasil!
+              if (error) {
+                  console.error("Error dari Supabase:", error.message);
+                  document.getElementById('loginStatus').innerText = "Terjadi kesalahan sistem.";
+                  return;
+              }
+      
+              // 2. Evaluasi Hasil: Cek apakah username ada
+              if (!data) {
+                  document.getElementById('loginStatus').innerText = "Username tidak ditemukan!";
+                  return;
+              }
+      
+              // 3. Verifikasi Password
+              if (data.password === p) {
+                  // LOGIN BERHASIL!
+                  
+                  // ✨ OTORISASI OTOMATIS: Simpan klien_id dari data staf ini ke perangkat
+                  if (data.klien_id) {
+                      localStorage.setItem('klien_id', data.klien_id);
+                  }
+                  
                   currentUser = data.username; 
                   currentRole = data.role; 
                   currentNama = data.nama || data.username; 
+                  
+                  // Tangkap foto profil jika ada
+                  if (data.foto_profil && data.foto_profil !== "null" && data.foto_profil.trim() !== "") {
+                      localStorage.setItem('pos_aktif_foto', data.foto_profil);
+                  } else {
+                      localStorage.removeItem('pos_aktif_foto');
+                  }
                   
                   localStorage.setItem('pos_aktif_user', currentUser); 
                   localStorage.setItem('pos_aktif_role', currentRole); 
                   localStorage.setItem('pos_aktif_nama', currentNama); 
                   
                   document.getElementById('namaKasir').innerText = currentNama; 
-                  if (typeof tampilkanNamaUser === "function") tampilkanNamaUser(); 
                   
                   document.getElementById('loginView').style.display = 'none'; 
                   document.getElementById('appView').style.display = 'flex'; 
                   
+                  // Panggil inisialisasi aplikasi
                   if (typeof aturHakAkses === "function") aturHakAkses(currentRole); 
                   if (typeof muatDataKatalog === "function") muatDataKatalog(); 
                   if (typeof muatPengaturanData === "function") muatPengaturanData();
                   if (typeof tampilkanNamaUser === "function") tampilkanNamaUser();
                   if (typeof muatDataProfilUser === "function") muatDataProfilUser();
+                  if (typeof muatManajemenKas === "function") muatManajemenKas();
+                  if (typeof renderFotoProfilGlobal === "function") renderFotoProfilGlobal();
                   
-                  if (typeof muatManajemenKas === "function") {
-                      muatManajemenKas();
-                  }
+                  document.getElementById('loginStatus').innerText = ""; // Bersihkan teks status
                   
-              } else { 
-                  // Jika salah password atau username
-                  document.getElementById('loginStatus').innerText = "Username atau Password salah!"; 
-                  if(error) console.error("Error dari Supabase:", error.message);
-              } 
+              } else {
+                  // Jika password tidak cocok dengan database
+                  document.getElementById('loginStatus').innerText = "Password salah!"; 
+              }
       
           } catch (err) {
               document.getElementById('loginStatus').innerText = "Gagal terhubung ke database.";
