@@ -12310,45 +12310,72 @@
                   const userEmail = session.user.email;
                   const namaGoogle = session.user.user_metadata?.full_name || userEmail.split('@')[0];
                   const fotoGoogle = session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture || null;
-      
+          
                   localStorage.setItem('klien_id', klienId);
                   localStorage.setItem('user_email', userEmail);
                   
                   const statusEl = document.getElementById('loginStatus');
-      
+          
                   // ✨ PERBAIKAN UTAMA: Cari berdasarkan EMAIL agar kebal terhadap hapus data browser (local storage)
                   const { data: staffData, error: errStaff } = await window.supabaseClient
                       .from('staff_toko')
                       .select('*')
                       .eq('email', userEmail)
                       .maybeSingle();
-      
+          
                   let dataOwner;
                   
                   if (!staffData) {
                       // PENGGUNA BARU: Email belum ada sama sekali di database, buat profil baru
-                      console.log("Akun baru terdeteksi, menyiapkan profil Owner otomatis...");
-                      const sandiAcak = Math.floor(1000 + Math.random() * 9000).toString(); 
+                      console.log("Akun baru terdeteksi, menyiapkan profil Owner dan Masa Trial otomatis...");
                       
-                      // ✨ PERBAIKAN USERNAME: Buat username dinamis & unik berdasarkan email
+                      // 1. BUAT USERNAME UNIK
                       let baseUsername = userEmail.split('@')[0].replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
                       let angkaAcak = Math.floor(100 + Math.random() * 900).toString();
                       let usernameBaru = baseUsername + angkaAcak;
-      
+                      const sandiAcak = Math.floor(1000 + Math.random() * 9000).toString(); 
+          
+                      // 2. HITUNG MASA TRIAL (14 Hari dari sekarang)
+                      let tanggalTrialHabis = new Date();
+                      tanggalTrialHabis.setDate(tanggalTrialHabis.getDate() + 14);
+                      let isoMasaAktif = tanggalTrialHabis.toISOString(); // Format waktu standar database
+          
+                      // 3. SIAPKAN DATA UNTUK TABEL 'data_klien' (Pendaftaran Toko)
+                      let dataKlienBaru = {
+                          klien_id: klienId,
+                          nama: namaGoogle + " (Toko)", 
+                          email: userEmail,
+                          status_langganan: 'Trial',
+                          masa_aktif: isoMasaAktif
+                      };
+          
+                      // 4. SIAPKAN DATA UNTUK TABEL 'staff_toko' (Profil Akun Owner)
                       dataOwner = {
                           klien_id: klienId,
                           email: userEmail,
-                          username: usernameBaru, // Tidak lagi menggunakan 'admin'
+                          username: usernameBaru,
                           password: sandiAcak,
                           role: 'Owner',
                           nama: namaGoogle,
                           foto_profil: fotoGoogle
                       };
                       
-                      // Insert ke database
-                      const { error: errInsert } = await window.supabaseClient.from('staff_toko').insert([dataOwner]);
-                      if (errInsert) console.error("Gagal membuat profil owner baru:", errInsert.message);
-      
+                      // 5. SIMPAN KE KEDUA TABEL SECARA BERSAMAAN
+                      try {
+                          // Masukkan ke data_klien dulu
+                          const { error: errKlien } = await window.supabaseClient.from('data_klien').insert([dataKlienBaru]);
+                          if (errKlien) throw errKlien;
+          
+                          // Setelah berhasil, masukkan ke staff_toko
+                          const { error: errInsert } = await window.supabaseClient.from('staff_toko').insert([dataOwner]);
+                          if (errInsert) throw errInsert;
+          
+                          console.log("Berhasil mendaftarkan toko baru dengan masa trial 14 hari!");
+                      } catch (errMode) {
+                          console.error("Gagal membuat profil / masa trial baru:", errMode.message);
+                          if (statusEl) statusEl.innerText = "Gagal menyiapkan lisensi toko. Hubungi Admin.";
+                      }
+          
                   } else {
                       // PENGGUNA LAMA: Email sudah terdaftar, gunakan data lama
                       dataOwner = staffData;
@@ -12367,15 +12394,15 @@
                           dataOwner = { ...dataOwner, ...updates };
                       }
                   }
-      
+          
                   // Cek memori browser
                   let savedUser = localStorage.getItem('pos_aktif_user');
                   let savedRole = localStorage.getItem('pos_aktif_role');
                   let savedNama = localStorage.getItem('pos_aktif_nama');
                   let savedFoto = localStorage.getItem('pos_aktif_foto');
-      
+          
                   let baruLoginGoogle = localStorage.getItem('baru_login_google');
-      
+          
                   if (baruLoginGoogle === 'ya') {
                       // SKENARIO A: Masuk dari Google Login
                       console.log("Masuk otomatis dari Google Login.");
@@ -12406,7 +12433,7 @@
                       document.getElementById('loginView').style.display = 'flex';
                       document.getElementById('appView').style.display = 'none';
                   }
-      
+          
               } else {
                   console.log("Menunggu pengguna melakukan login Google...");
                   document.getElementById('loginView').style.display = 'flex';
