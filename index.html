@@ -5012,7 +5012,8 @@
           // Hapus sesi kasir dari Local Storage (Tapi biarkan klien_id dan user_email tetap ada)
           localStorage.removeItem('pos_aktif_user'); 
           localStorage.removeItem('pos_aktif_role'); 
-          localStorage.removeItem('pos_aktif_nama'); // 💡 Tambahan: bersihkan nama juga
+          localStorage.removeItem('pos_aktif_nama'); 
+          localStorage.removeItem('pos_aktif_foto'); // ✨ TAMBAHAN: Bersihkan foto profil agar tidak tertukar
           
           // Bersihkan formulir login
           document.getElementById('username').value = ""; 
@@ -5028,9 +5029,13 @@
               userDisplay.innerText = ""; 
           }
           
+          // Jika Anda punya elemen gambar profil di UI (misal ID 'fotoProfilKasir'), 
+          // Anda bisa mengosongkannya di sini juga. Contoh:
+          // let imgProfil = document.getElementById('fotoProfilKasir');
+          // if (imgProfil) imgProfil.src = 'default-avatar.png';
+          
           if (typeof closeMobileSidebar === "function") closeMobileSidebar(); 
       }
-
       document.addEventListener('DOMContentLoaded', () => {
           // 1. Ambil elemen input
           const inputUsername = document.getElementById('username'); 
