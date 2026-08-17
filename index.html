@@ -2188,6 +2188,15 @@
                 Masuk dengan Google
             </button>
         </div>
+        <!-- Tombol Install Aplikasi (Secara default disembunyikan) -->
+        <button id="btnInstallApp" style="display: none; width: 100%; background-color: var(--surface, #ffffff); color: var(--primary, #1a73e8); border: 2px solid var(--primary, #1a73e8); padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; margin-top: 16px; align-items: center; justify-content: center; gap: 8px; transition: 0.2s;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Install ANKA POS
+        </button>
       </div>
     </div>
 
@@ -12548,6 +12557,62 @@
               document.getElementById('inputPasswordKonfirmasi').value = '';
           }
       }
+
+      let deferredPrompt;
+      const btnInstallApp = document.getElementById('btnInstallApp');
+      
+      // 1. Cek apakah aplikasi sedang dibuka dari Layar Utama (sudah terinstal)
+      function cekStatusAplikasi() {
+          // Jika dibuka di mode standalone (aplikasi terinstal), sembunyikan tombol
+          if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+              if (btnInstallApp) btnInstallApp.style.display = 'none';
+          }
+      }
+      cekStatusAplikasi();
+      
+      // 2. Tangkap event 'beforeinstallprompt' yang dikirim browser jika app belum diinstal
+      window.addEventListener('beforeinstallprompt', (e) => {
+          // Cegah banner install bawaan browser muncul secara otomatis
+          e.preventDefault();
+          // Simpan event untuk dipanggil nanti saat tombol diklik
+          deferredPrompt = e;
+          
+          // Munculkan tombol kustom kita
+          if (btnInstallApp) {
+              btnInstallApp.style.display = 'flex';
+          }
+      });
+      
+      // 3. Logika ketika tombol diklik
+      if (btnInstallApp) {
+          btnInstallApp.addEventListener('click', async () => {
+              if (deferredPrompt) {
+                  // Tampilkan popup install bawaan browser
+                  deferredPrompt.prompt();
+                  
+                  // Tunggu pilihan user (Apakah mereka klik Install atau Batal)
+                  const { outcome } = await deferredPrompt.userChoice;
+                  if (outcome === 'accepted') {
+                      console.log('User menyetujui instalasi PWA');
+                  } else {
+                      console.log('User membatalkan instalasi PWA');
+                  }
+                  
+                  // Event prompt hanya bisa dipakai sekali, kosongkan lagi
+                  deferredPrompt = null;
+                  // Sembunyikan tombol setelah diklik
+                  btnInstallApp.style.display = 'none';
+              }
+          });
+      }
+      
+      // 4. Deteksi otomatis saat instalasi berhasil dilakukan
+      window.addEventListener('appinstalled', () => {
+          // Sembunyikan tombol jika instalasi berhasil
+          if (btnInstallApp) btnInstallApp.style.display = 'none';
+          deferredPrompt = null;
+          console.log('ANKA POS berhasil diinstal!');
+      });
                         
     </script>
   </body>
