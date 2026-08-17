@@ -12037,8 +12037,8 @@
               barisArusKas.push({
                   klien_id: klienId,
                   tanggal: waktuSekarang,
-                  tipe: 'Pemasukan',
-                  akun_asal: 'Penjualan Toko', // Sumber dana
+                  tipe: 'Penjualan',
+                  //akun_asal: 'Penjualan Toko', // Sumber dana
                   akun_tujuan: akunMasuk,      // Tempat uang masuk (Laci Kasir, QRIS, dll)
                   nominal: omsetPenuh,
                   keterangan: "Penjualan Struk: " + data.noStruk,
@@ -12053,7 +12053,7 @@
                       tanggal: waktuSekarang,
                       tipe: 'Pengeluaran', // Beban dicatat sebagai pengeluaran
                       akun_asal: 'Laci Kasir', // Uang diambil dari laci
-                      akun_tujuan: 'Beban Pembulatan', // Atau '-' sesuai standar Anda
+                      akun_tujuan: 'Selisih Kas', // Atau '-' sesuai standar Anda
                       nominal: nilaiPembulatan,
                       keterangan: "Beban Pembulatan Transaksi: " + data.noStruk,
                       kasir: namaKasir,
