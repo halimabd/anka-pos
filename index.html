@@ -12226,7 +12226,6 @@
                   const klienId = session.user.id;
                   const userEmail = session.user.email;
                   const namaGoogle = session.user.user_metadata?.full_name || userEmail.split('@')[0];
-                  // Tangkap foto dari Google Account
                   const fotoGoogle = session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture || null;
           
                   localStorage.setItem('klien_id', klienId);
@@ -12234,44 +12233,49 @@
                   
                   const statusEl = document.getElementById('loginStatus');
           
-                  // Cek apakah akun Google ini sudah punya profil 'Owner' di staff_toko
-                  const { data: staffData } = await window.supabaseClient
+                  // ✨ PERBAIKAN UTAMA: Cari berdasarkan EMAIL agar kebal terhadap hapus data browser (local storage)
+                  const { data: staffData, error: errStaff } = await window.supabaseClient
                       .from('staff_toko')
                       .select('*')
-                      .eq('klien_id', klienId)
-                      .eq('role', 'Owner')
-                      .limit(1);
+                      .eq('email', userEmail)
+                      .maybeSingle();
           
                   let dataOwner;
-                  if (!staffData || staffData.length === 0) {
-                      // PENGGUNA BARU: Buat profil otomatis
+                  
+                  if (!staffData) {
+                      // PENGGUNA BARU: Email belum ada sama sekali di database, buat profil baru
                       console.log("Akun baru terdeteksi, menyiapkan profil Owner otomatis...");
                       const sandiAcak = Math.floor(1000 + Math.random() * 9000).toString(); 
                       dataOwner = {
+                          klien_id: klienId,
+                          email: userEmail, // Simpan email di database
                           username: 'admin',
                           password: sandiAcak,
                           role: 'Owner',
                           nama: namaGoogle,
-                          foto_profil: fotoGoogle // ✨ PERBAIKAN 1: Masukkan foto Google ke dalam database
+                          foto_profil: fotoGoogle
                       };
                       
                       // Insert ke database
-                      await window.supabaseClient.from('staff_toko').insert([{ ...dataOwner, klien_id: klienId }]);
-                      
+                      const { error: errInsert } = await window.supabaseClient.from('staff_toko').insert([dataOwner]);
+                      if (errInsert) console.error("Gagal membuat profil owner baru:", errInsert.message);
+          
                   } else {
-                      // PENGGUNA LAMA
-                      dataOwner = staffData[0];
+                      // PENGGUNA LAMA: Email sudah terdaftar, gunakan data lama
+                      dataOwner = staffData;
                       
-                      // ✨ PERBAIKAN 2: Jika di database fotonya masih kosong (misal karena error sblmnya), 
-                      // tapi akun Google punya foto, kita tambahkan fotonya lalu update ke DB!
-                      if ((!dataOwner.foto_profil || dataOwner.foto_profil === "null") && fotoGoogle) {
-                          dataOwner.foto_profil = fotoGoogle;
-                          // Update ke database di background agar sinkron
+                      // Perbarui klien_id atau foto profil jika ada perubahan/kosong
+                      let updates = {};
+                      if (dataOwner.klien_id !== klienId) updates.klien_id = klienId;
+                      if ((!dataOwner.foto_profil || dataOwner.foto_profil === "null") && fotoGoogle) updates.foto_profil = fotoGoogle;
+                      
+                      if (Object.keys(updates).length > 0) {
                           window.supabaseClient.from('staff_toko')
-                              .update({ foto_profil: fotoGoogle })
-                              .eq('klien_id', klienId)
-                              .eq('username', dataOwner.username)
-                              .then(); // Biarkan berjalan tanpa await agar tidak memperlambat login
+                              .update(updates)
+                              .eq('email', userEmail)
+                              .then(); // Jalankan di background
+                          
+                          dataOwner = { ...dataOwner, ...updates };
                       }
                   }
           
@@ -12279,9 +12283,8 @@
                   let savedUser = localStorage.getItem('pos_aktif_user');
                   let savedRole = localStorage.getItem('pos_aktif_role');
                   let savedNama = localStorage.getItem('pos_aktif_nama');
-                  let savedFoto = localStorage.getItem('pos_aktif_foto'); // Ambil foto dari memori
+                  let savedFoto = localStorage.getItem('pos_aktif_foto');
           
-                  // ✨ CEK TANDA GOOGLE
                   let baruLoginGoogle = localStorage.getItem('baru_login_google');
           
                   if (baruLoginGoogle === 'ya') {
@@ -12291,7 +12294,6 @@
                       
                       if (statusEl) statusEl.innerText = "Membuka aplikasi...";
                       
-                      // Langsung masukkan ke aplikasi dengan data dari database (yang sudah ada fotoGoogle-nya)
                       masukKeAplikasi(dataOwner); 
                   } 
                   else if (savedUser && savedRole) {
@@ -12303,12 +12305,12 @@
                           username: savedUser, 
                           role: savedRole, 
                           nama: savedNama || savedUser,
-                          foto_profil: savedFoto // Berikan foto dari memori agar masukKeAplikasi tidak meresetnya
+                          foto_profil: savedFoto 
                       };
                       masukKeAplikasi(dataStaffDariMemori);
                   } 
                   else {
-                      // SKENARIO C: Halaman di-refresh setelah LOGOUT ditekan
+                      // SKENARIO C: Halaman di-refresh setelah LOGOUT
                       console.log("Sistem terkunci. Menunggu staff login...");
                       if (statusEl) statusEl.innerText = ""; 
                       
