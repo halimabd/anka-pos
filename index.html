@@ -10400,6 +10400,7 @@
               if (masukWaktuKas) {
                   if (!isVoid) {
                       let ketLower = keterangan.toLowerCase();
+                      let adalahPenjualanDariTrx = ketLower.includes("penjualan") || ketLower.includes("struk");
                       if (tipe === "Pemasukan" && !ketLower.includes("penyesuaian plus")) totalPemasukanLain += nominal;
                       else if (tipe === "Pengeluaran" && !ketLower.includes("penyesuaian minus")) totalPengeluaran += nominal;
                   }
