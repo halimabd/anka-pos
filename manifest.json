@@ -1,6 +1,6 @@
 {
   "name": "ANKA POS",
-  "short_name": "ANKAPOS",
+  "short_name": "ANKA POS",
   "start_url": "/index.html",
   "display": "standalone",
   "background_color": "#ffffff",
