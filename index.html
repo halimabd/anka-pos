@@ -7987,27 +7987,52 @@
           let role = document.getElementById('userRole').value;
           let noTelp = document.getElementById('userNoTelp').value; 
           let alamat = document.getElementById('userAlamat').value;
-
+      
           if(!nama || !username || !password) {
               alert("Nama, Username, dan Password wajib diisi!");
               return;
           }
-
+      
           const klienId = localStorage.getItem('klien_id');
           if (!klienId) return;
-
-          let dataUser = {
-              klien_id: klienId,
-              nama: nama,
-              username: username,
-              password: password,
-              role: role,
-              alamat: alamat,
-              no_telp: noTelp // Sesuai dengan nama kolom di gambar
-          };
-
+      
           try {
+              // ✨ PENYESUAIAN PENTING: Cek duplikasi username sebelum menyimpan
+              let queryCek = window.supabaseClient
+                  .from('staff_toko')
+                  .select('id')
+                  .eq('username', username);
+                  
+              // Jika sedang dalam Mode Edit, abaikan pengecekan pada ID staf itu sendiri.
+              // (Supaya dia bisa menyimpan datanya sendiri jika dia tidak mengubah username-nya)
+              if (userId) {
+                  queryCek = queryCek.neq('id', userId);
+              }
+      
+              const { data: userAda, error: errCek } = await queryCek.maybeSingle();
+      
+              if (errCek) throw errCek;
+      
+              if (userAda) {
+                  // Jika menemukan ID lain dengan username yang sama
+                  alert(`Gagal! Username "${username}" sudah digunakan. Silakan pilih username lain.`);
+                  document.getElementById('userUsername').focus(); // Arahkan kursor ke input username
+                  return; // Hentikan proses simpan
+              }
+              // --- Akhir dari pengecekan duplikasi ---
+      
+              let dataUser = {
+                  klien_id: klienId,
+                  nama: nama,
+                  username: username,
+                  password: password,
+                  role: role,
+                  alamat: alamat,
+                  no_telp: noTelp
+              };
+      
               let pesanSukses = "";
+              
               if (userId) {
                   // Mode Edit
                   let { error } = await window.supabaseClient
@@ -8029,10 +8054,15 @@
               resetFormUser();
               muatDaftarUsers(); 
               tutupSemuaFormMobile();
-
+      
           } catch (error) {
-              console.error("Gagal menyimpan data staf:", error);
-              alert("Terjadi kesalahan koneksi saat menyimpan data ke server.");
+              // Jika error dari Supabase terkait aturan UNIQUE (kode 23505) lolos dari pengecekan manual
+              if (error.code === '23505') {
+                  alert(`Gagal! Username "${username}" sudah digunakan di database pusat.`);
+              } else {
+                  console.error("Gagal menyimpan data staf:", error);
+                  alert("Terjadi kesalahan koneksi saat menyimpan data ke server: " + error.message);
+              }
           }
       }
 
