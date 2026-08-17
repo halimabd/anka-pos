@@ -5851,6 +5851,22 @@
                               console.error("Gagal memperbarui poin pelanggan:", errPoin);
                           }
                       }
+
+                      // ✨ [TAMBAHAN BARU]: CATAT KE ARUS KAS OTOMATIS ✨
+                      try {
+                          let dataPenjualanKas = {
+                              total: payloadDB.total_akhir,
+                              pembulatan: payloadDB.pembulatan,
+                              metodeBayar: payloadDB.metode_pembayaran,
+                              noStruk: payloadDB.no_struk,
+                              statusTransaksi: payloadDB.status_transaksi,
+                              kasir: payloadDB.kasir
+                          };
+                          // Panggil fungsi arus kas (Berjalan di background tanpa menghentikan loading kasir)
+                          catatArusKasPenjualan(dataPenjualanKas);
+                      } catch (errKas) {
+                          console.error("Gagal memanggil fungsi arus kas otomatis:", errKas);
+                      }
                   
                       // ✨ 4. SELESAIKAN TRANSAKSI DI FRONTEND
                       let payloadFrontend = { 
@@ -8958,6 +8974,23 @@
               throw error; 
           }
           
+          // ✨ CATAT KE ARUS KAS UNTUK SETIAP TRANSAKSI YANG BERHASIL DISINKRON
+          antrianBersih.forEach(trx => {
+              try {
+                  let dataPenjualanKas = {
+                      total: trx.total_akhir,
+                      pembulatan: trx.pembulatan,
+                      metodeBayar: trx.metode_pembayaran,
+                      noStruk: trx.no_struk,
+                      statusTransaksi: trx.status_transaksi,
+                      kasir: trx.kasir
+                  };
+                  catatArusKasPenjualan(dataPenjualanKas);
+              } catch (errKas) {
+                  console.error(`Gagal mencatat arus kas sinkronisasi untuk struk ${trx.no_struk}:`, errKas);
+              }
+          });
+          
           // Hapus data di memori HANYA jika sukses terkirim
           localStorage.removeItem('antrianTransaksi');
           console.log("Sinkronisasi Sukses!");
@@ -11965,6 +11998,82 @@
               } else {
                   dangerZone.style.display = 'none';
               }
+          }
+      }
+
+      async function catatArusKasPenjualan(data) {
+          // data diharapkan berisi: { total, pembulatan, metodeBayar, noStruk, statusTransaksi, kasir }
+          let klienId = localStorage.getItem('klien_id');
+      
+          if (!klienId) {
+              console.error("Klien ID tidak ditemukan, kas tidak tercatat.");
+              return;
+          }
+      
+          // ✨ PERUBAHAN 3: Jangan catat uang masuk jika statusnya masih Pending!
+          if (data.statusTransaksi === "Pending") {
+              console.log("Transaksi masih pending, arus kas ditunda.");
+              return;
+          }
+      
+          try {
+              let akunMasuk = "Laci Kasir"; // Default jika Tunai
+              if (data.metodeBayar === "QRIS") akunMasuk = "QRIS";
+              else if (data.metodeBayar === "Midtrans") akunMasuk = "Midtrans";
+              else if (data.metodeBayar === "Transfer") akunMasuk = "BANK"; 
+      
+              // Ambil nilai pembulatan
+              let nilaiPembulatan = parseFloat(data.pembulatan) || 0;
+              let omsetPenuh = parseFloat(data.total) + nilaiPembulatan;
+              
+              let namaKasir = data.kasir || localStorage.getItem('pos_aktif_nama') || 'Sistem';
+              let waktuSekarang = new Date().toISOString();
+              
+              // Array untuk menampung data yang akan di-insert sekaligus
+              let barisArusKas = [];
+      
+              // 1. Catat Pemasukan Utama (Penjualan) secara Penuh
+              barisArusKas.push({
+                  klien_id: klienId,
+                  tanggal: waktuSekarang,
+                  tipe: 'Pemasukan',
+                  akun_asal: 'Penjualan Toko', // Sumber dana
+                  akun_tujuan: akunMasuk,      // Tempat uang masuk (Laci Kasir, QRIS, dll)
+                  nominal: omsetPenuh,
+                  keterangan: "Penjualan Struk: " + data.noStruk,
+                  kasir: namaKasir,
+                  status: 'Selesai'
+              });
+      
+              // 2. ✨ CATAT BEBAN PEMBULATAN (Jika ada dan metode bayarnya tunai)
+              if (nilaiPembulatan > 0 && (data.metodeBayar === 'Tunai' || data.metodeBayar === 'Laci Kasir')) {
+                  barisArusKas.push({
+                      klien_id: klienId,
+                      tanggal: waktuSekarang,
+                      tipe: 'Pengeluaran', // Beban dicatat sebagai pengeluaran
+                      akun_asal: 'Laci Kasir', // Uang diambil dari laci
+                      akun_tujuan: 'Beban Pembulatan', // Atau '-' sesuai standar Anda
+                      nominal: nilaiPembulatan,
+                      keterangan: "Beban Pembulatan Transaksi: " + data.noStruk,
+                      kasir: namaKasir,
+                      status: 'Selesai'
+                  });
+              }
+      
+              // Tembak kedua data tersebut sekaligus ke tabel arus_kas
+              const { error } = await window.supabaseClient
+                  .from('arus_kas')
+                  .insert(barisArusKas); // <-- Memasukkan Array secara langsung
+      
+              if (error) throw error;
+      
+              console.log("Arus kas utama dan beban pembulatan berhasil dicatat!");
+              
+              // Perbarui tampilan Manajemen Kas jika diperlukan
+              if (typeof muatManajemenKas === "function") muatManajemenKas();
+      
+          } catch (err) {
+              console.error("Gagal mencatat arus kas otomatis:", err.message);
           }
       }
 
