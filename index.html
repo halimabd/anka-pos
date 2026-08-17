@@ -5010,6 +5010,29 @@
           if (typeof closeMobileSidebar === "function") closeMobileSidebar(); 
       }
 
+      document.addEventListener('DOMContentLoaded', () => {
+          // 1. Ambil elemen input
+          const inputUsername = document.getElementById('username'); 
+          const inputPassword = document.getElementById('password'); 
+      
+          // 2. Buat fungsi pendeteksi tombol Enter
+          function eksekusiEnter(event) {
+              if (event.key === 'Enter') {
+                  event.preventDefault(); // Mencegah halaman me-refresh
+                  
+                  // Karena tombol Masuk Anda menggunakan onclick="login()",
+                  // kita panggil langsung fungsi login() tersebut jika tersedia.
+                  if (typeof login === 'function') {
+                      login();
+                  }
+              }
+          }
+      
+          // 3. Pasang pendeteksi ke kedua kotak input
+          if (inputUsername) inputUsername.addEventListener('keydown', eksekusiEnter);
+          if (inputPassword) inputPassword.addEventListener('keydown', eksekusiEnter);
+      });
+
       async function muatDataKatalog() { 
           try {
               const klienId = localStorage.getItem('klien_id');
