@@ -12247,7 +12247,11 @@
                   const { data, error } = await window.supabaseClient.auth.signInWithOAuth({
                       provider: 'google',
                       options: {
-                          redirectTo: window.location.origin 
+                          redirectTo: window.location.origin,
+                          // ✨ PERBAIKAN KEAMANAN: Paksa muncul pop-up pilih akun agar sesi tertinggal tidak otomatis masuk
+                          queryParams: {
+                              prompt: 'select_account' 
+                          }
                       }
                   });
       
@@ -12271,29 +12275,35 @@
                   const userEmail = session.user.email;
                   const namaGoogle = session.user.user_metadata?.full_name || userEmail.split('@')[0];
                   const fotoGoogle = session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture || null;
-          
+      
                   localStorage.setItem('klien_id', klienId);
                   localStorage.setItem('user_email', userEmail);
                   
                   const statusEl = document.getElementById('loginStatus');
-          
+      
                   // ✨ PERBAIKAN UTAMA: Cari berdasarkan EMAIL agar kebal terhadap hapus data browser (local storage)
                   const { data: staffData, error: errStaff } = await window.supabaseClient
                       .from('staff_toko')
                       .select('*')
                       .eq('email', userEmail)
                       .maybeSingle();
-          
+      
                   let dataOwner;
                   
                   if (!staffData) {
                       // PENGGUNA BARU: Email belum ada sama sekali di database, buat profil baru
                       console.log("Akun baru terdeteksi, menyiapkan profil Owner otomatis...");
                       const sandiAcak = Math.floor(1000 + Math.random() * 9000).toString(); 
+                      
+                      // ✨ PERBAIKAN USERNAME: Buat username dinamis & unik berdasarkan email
+                      let baseUsername = userEmail.split('@')[0].replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+                      let angkaAcak = Math.floor(100 + Math.random() * 900).toString();
+                      let usernameBaru = baseUsername + angkaAcak;
+      
                       dataOwner = {
                           klien_id: klienId,
-                          email: userEmail, // Simpan email di database
-                          username: 'admin',
+                          email: userEmail,
+                          username: usernameBaru, // Tidak lagi menggunakan 'admin'
                           password: sandiAcak,
                           role: 'Owner',
                           nama: namaGoogle,
@@ -12303,7 +12313,7 @@
                       // Insert ke database
                       const { error: errInsert } = await window.supabaseClient.from('staff_toko').insert([dataOwner]);
                       if (errInsert) console.error("Gagal membuat profil owner baru:", errInsert.message);
-          
+      
                   } else {
                       // PENGGUNA LAMA: Email sudah terdaftar, gunakan data lama
                       dataOwner = staffData;
@@ -12322,15 +12332,15 @@
                           dataOwner = { ...dataOwner, ...updates };
                       }
                   }
-          
+      
                   // Cek memori browser
                   let savedUser = localStorage.getItem('pos_aktif_user');
                   let savedRole = localStorage.getItem('pos_aktif_role');
                   let savedNama = localStorage.getItem('pos_aktif_nama');
                   let savedFoto = localStorage.getItem('pos_aktif_foto');
-          
+      
                   let baruLoginGoogle = localStorage.getItem('baru_login_google');
-          
+      
                   if (baruLoginGoogle === 'ya') {
                       // SKENARIO A: Masuk dari Google Login
                       console.log("Masuk otomatis dari Google Login.");
@@ -12361,7 +12371,7 @@
                       document.getElementById('loginView').style.display = 'flex';
                       document.getElementById('appView').style.display = 'none';
                   }
-          
+      
               } else {
                   console.log("Menunggu pengguna melakukan login Google...");
                   document.getElementById('loginView').style.display = 'flex';
