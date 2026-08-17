@@ -2170,34 +2170,44 @@
 
     <div class="sidebar-overlay" id="modalOverlayGlobal" style="z-index: 1000;" onclick="tutupSemuaFormMobile()"></div>
 
-    <div id="loginView" class="view" style="display: flex;">
-      <div class="card-login">
-        <h2>POS MASUK</h2>
-        <input type="text" id="username" placeholder="Username" autocomplete="off">
-        <input type="password" id="password" placeholder="Password">
-        <button class="btn-primary" onclick="login()">Masuk</button>
-        <div id="loginStatus" style="color:var(--danger); margin-top:16px; font-size:13px; font-weight:500;"></div>
-        <div style="display: flex; justify-content: center; margin-top: 50px;">
-            <button id="btnGoogleLogin" style="display: flex; align-items: center; justify-content: center; gap: 10px; padding: 10px 20px; font-family: sans-serif; font-weight: bold; background-color: white; border: 1px solid #dadce0; border-radius: 4px; cursor: pointer; color: #3c4043; width: 100%; max-width: 300px;">
-                <svg width="18" height="18" viewBox="0 0 18 18">
-                    <path fill="#4285F4" d="M17.64 9.2c0-.63-.06-1.25-.16-1.84H9v3.49h4.84c-.21 1.12-.84 2.07-1.78 2.71v2.26h2.87c1.68-1.55 2.76-3.83 2.76-6.62z"/>
-                    <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.87-2.26c-.81.54-1.84.86-3.09.86-2.37 0-4.38-1.6-5.1-3.75H.95v2.33C2.43 15.98 5.48 18 9 18z"/>
-                    <path fill="#FBBC05" d="M3.9 10.67c-.19-.54-.3-1.12-.3-1.72s.11-1.18.3-1.72V4.9H.95C.34 6.11 0 7.5 0 9s.34 2.89.95 4.1l2.95-2.33z"/>
-                    <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0 5.48 0 2.43 2.02.95 4.9l2.95 2.33c.72-2.15 2.73-3.75 5.1-3.75z"/>
-                </svg>
-                Masuk dengan Google
-            </button>
+    <div id="loginView" class="view" style="display: flex; align-items: center; justify-content: center;">
+        <div class="card-login" style="text-align: center;">
+            
+            <!-- 1. Ganti Teks "POS MASUK" dengan Ikon Aplikasi -->
+            <img src="ANKA-192.png" alt="Logo ANKA POS" style="width: 80px; height: 80px; margin-bottom: 24px; border-radius: 16px; object-fit: cover; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+            
+            <input type="text" id="username" placeholder="Username" autocomplete="off">
+            <input type="password" id="password" placeholder="Password">
+            <button class="btn-primary" onclick="login()">Masuk</button>
+            
+            <div id="loginStatus" style="color:var(--danger); margin-top:16px; font-size:13px; font-weight:500;"></div>
+            
+            <!-- 2. Pembungkus Tombol Bawah agar Jarak dan Lebarnya Seragam -->
+            <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 32px;">
+                
+                <!-- Tombol Masuk dengan Google -->
+                <button id="btnGoogleLogin" style="display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 12px; font-family: inherit; font-size: 14px; font-weight: 600; background-color: var(--surface, #ffffff); border: 1px solid #cbd5e1; border-radius: 8px; cursor: pointer; color: #334155; transition: 0.2s; box-sizing: border-box;">
+                    <svg width="18" height="18" viewBox="0 0 18 18">
+                        <path fill="#4285F4" d="M17.64 9.2c0-.63-.06-1.25-.16-1.84H9v3.49h4.84c-.21 1.12-.84 2.07-1.78 2.71v2.26h2.87c1.68-1.55 2.76-3.83 2.76-6.62z"/>
+                        <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.87-2.26c-.81.54-1.84.86-3.09.86-2.37 0-4.38-1.6-5.1-3.75H.95v2.33C2.43 15.98 5.48 18 9 18z"/>
+                        <path fill="#FBBC05" d="M3.9 10.67c-.19-.54-.3-1.12-.3-1.72s.11-1.18.3-1.72V4.9H.95C.34 6.11 0 7.5 0 9s.34 2.89.95 4.1l2.95-2.33z"/>
+                        <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0 5.48 0 2.43 2.02.95 4.9l2.95 2.33c.72-2.15 2.73-3.75 5.1-3.75z"/>
+                    </svg>
+                    Masuk dengan Google
+                </button>
+    
+                <!-- Tombol Install Aplikasi -->
+                <button id="btnInstallApp" style="display: none; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 12px; font-family: inherit; font-size: 14px; font-weight: 600; background-color: var(--surface, #ffffff); color: var(--primary, #1a73e8); border: 2px solid var(--primary, #1a73e8); border-radius: 8px; cursor: pointer; transition: 0.2s; box-sizing: border-box;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Install ANKA POS
+                </button>
+    
+            </div>
         </div>
-        <!-- Tombol Install Aplikasi (Secara default disembunyikan) -->
-        <button id="btnInstallApp" style="display: none; width: 100%; background-color: var(--surface, #ffffff); color: var(--primary, #1a73e8); border: 2px solid var(--primary, #1a73e8); padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; margin-top: 16px; align-items: center; justify-content: center; gap: 8px; transition: 0.2s;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="7 10 12 15 17 10"></polyline>
-                <line x1="12" y1="15" x2="12" y2="3"></line>
-            </svg>
-            Install ANKA POS
-        </button>
-      </div>
     </div>
 
     <div id="appView" class="view" style="display: none;">
