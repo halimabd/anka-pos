@@ -4991,32 +4991,57 @@
       
       // --- FUNGSI LOGOUT ---
       async function logout() { 
-          // Bersihkan variabel lokal
+          // 1. KOSONGKAN SEMUA VARIABEL GLOBAL DI MEMORI APLIKASI
           currentUser = ""; 
           currentRole = ""; 
           currentNama = "";
+          if (typeof masterDataBarang !== 'undefined') masterDataBarang = [];
+          if (typeof keranjang !== 'undefined') keranjang = [];
+          if (typeof riwayatTransaksiGlobal !== 'undefined') riwayatTransaksiGlobal = [];
+          if (typeof dataPenjualanGlobal !== 'undefined') dataPenjualanGlobal = {};
           
-          // Hapus sesi kasir dari Local Storage
+          // 2. HAPUS SEMUA LOCAL STORAGE TERKAIT SESI
           localStorage.removeItem('pos_aktif_user'); 
           localStorage.removeItem('pos_aktif_role'); 
           localStorage.removeItem('pos_aktif_nama'); 
           localStorage.removeItem('pos_aktif_foto'); 
+          localStorage.removeItem('klien_id');
+          localStorage.removeItem('user_email');
+          localStorage.removeItem('baru_login_google');
       
-          // ✨ PERBAIKAN 1: Wajib hapus sesi Google dari memori latar belakang Supabase
+          // 3. Wajib hapus sesi Google dari memori latar belakang Supabase
           try {
               await window.supabaseClient.auth.signOut();
           } catch (e) {
               console.error("Gagal sign out Supabase:", e);
           }
           
-          // Bersihkan formulir login
-          document.getElementById('username').value = ""; 
-          document.getElementById('password').value = ""; 
-          document.getElementById('loginStatus').innerText = ""; 
+          // 4. RESET TAMPILAN UI / SIDEBAR & GRID SECARA PAKSA
+          let elNama = document.getElementById('sidebarUserName');
+          let elRole = document.getElementById('sidebarUserRole');
+          let elAvatar = document.getElementById('sidebarUserAvatar');
+          let productGrid = document.getElementById('productGrid');
+      
+          if (elNama) elNama.innerText = "Memuat..."; 
+          if (elRole) elRole.innerText = "(Role)";
+          if (elAvatar) elAvatar.src = "";
+          if (productGrid) productGrid.innerHTML = ""; // Kosongkan produk lama
           
-          // Ganti tampilan
-          document.getElementById('appView').style.display = 'none'; 
-          document.getElementById('loginView').style.display = 'flex';
+          // 5. Bersihkan formulir login
+          let inputUser = document.getElementById('username');
+          let inputPass = document.getElementById('password');
+          let statusLogin = document.getElementById('loginStatus');
+          
+          if (inputUser) inputUser.value = ""; 
+          if (inputPass) inputPass.value = ""; 
+          if (statusLogin) statusLogin.innerText = ""; 
+          
+          // 6. Ganti Tampilan Layar
+          let appView = document.getElementById('appView');
+          let loginView = document.getElementById('loginView');
+          
+          if (appView) appView.style.display = 'none'; 
+          if (loginView) loginView.style.display = 'flex';
           
           let userDisplay = document.getElementById('userDisplay');
           if (userDisplay) {
@@ -5024,6 +5049,8 @@
           }
           
           if (typeof closeMobileSidebar === "function") closeMobileSidebar(); 
+      
+          console.log("Logout bersih: Seluruh data sesi dan memori lokal telah dikosongkan.");
       }
       
       document.addEventListener('DOMContentLoaded', () => {
@@ -8930,9 +8957,6 @@
         let elRole = document.getElementById('sidebarUserRole');
         let elAvatar = document.getElementById('sidebarUserAvatar');
     
-        // Berikan log agar kita tahu fungsi ini benar-benar jalan
-        console.log("TampilkanNamaUser dijalankan. Elemen ditemukan:", !!elNama);
-    
         if (elNama) elNama.innerHTML = `Hi, <b>${namaTampil}</b>`;
         if (elRole) elRole.innerText = `(${roleTampil})`;
         
@@ -12479,12 +12503,7 @@
           if (typeof inisialisasiRealtime === "function") inisialisasiRealtime();
           if (typeof muatDataProfilUser === "function") muatDataProfilUser();
           if (typeof muatDaftarPelanggan === "function") muatDaftarPelanggan();
-          setTimeout(() => {
-              if (typeof tampilkanNamaUser === "function") {
-                  console.log("Memperbarui Sidebar UI...");
-                  tampilkanNamaUser();
-              }
-          }, 50); 
+          if (typeof tampilkanNamaUser === "function") tampilkanNamaUser();
           //if (typeof renderFotoProfilGlobal === "function") renderFotoProfilGlobal();
       
           setTimeout(() => {
