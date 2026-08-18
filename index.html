@@ -4958,7 +4958,17 @@
                   if (data.klien_id) {
                       localStorage.setItem('klien_id', data.klien_id);
                   }
+                
+                  localStorage.setItem('pos_aktif_user', data.username);
+                  localStorage.setItem('pos_aktif_role', data.role);
+                  localStorage.setItem('pos_aktif_nama', data.nama || data.username);
                   
+                  if (data.foto_profil && data.foto_profil !== "null" && data.foto_profil.trim() !== "") {
+                      localStorage.setItem('pos_aktif_foto', data.foto_profil);
+                  } else {
+                      localStorage.removeItem('pos_aktif_foto');
+                  }
+                
                   document.getElementById('loginStatus').innerText = ""; // Bersihkan teks status
                   
                   // ✨ PERBAIKAN: Langsung oper data ke fungsi utama agar tidak ada data yang terlewat
