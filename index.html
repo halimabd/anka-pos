@@ -5002,18 +5002,25 @@
           }
       }
       
-      // --- FUNGSI LOGOUT (Berfungsi sebagai "Lock Screen" Kasir) ---
-      function logout() { 
+      // --- FUNGSI LOGOUT ---
+      async function logout() { 
           // Bersihkan variabel lokal
           currentUser = ""; 
           currentRole = ""; 
           currentNama = "";
           
-          // Hapus sesi kasir dari Local Storage (Tapi biarkan klien_id dan user_email tetap ada)
+          // Hapus sesi kasir dari Local Storage
           localStorage.removeItem('pos_aktif_user'); 
           localStorage.removeItem('pos_aktif_role'); 
           localStorage.removeItem('pos_aktif_nama'); 
-          localStorage.removeItem('pos_aktif_foto'); // ✨ TAMBAHAN: Bersihkan foto profil agar tidak tertukar
+          localStorage.removeItem('pos_aktif_foto'); 
+      
+          // ✨ PERBAIKAN 1: Wajib hapus sesi Google dari memori latar belakang Supabase
+          try {
+              await window.supabaseClient.auth.signOut();
+          } catch (e) {
+              console.error("Gagal sign out Supabase:", e);
+          }
           
           // Bersihkan formulir login
           document.getElementById('username').value = ""; 
@@ -5029,13 +5036,9 @@
               userDisplay.innerText = ""; 
           }
           
-          // Jika Anda punya elemen gambar profil di UI (misal ID 'fotoProfilKasir'), 
-          // Anda bisa mengosongkannya di sini juga. Contoh:
-          // let imgProfil = document.getElementById('fotoProfilKasir');
-          // if (imgProfil) imgProfil.src = 'default-avatar.png';
-          
           if (typeof closeMobileSidebar === "function") closeMobileSidebar(); 
       }
+      
       document.addEventListener('DOMContentLoaded', () => {
           // 1. Ambil elemen input
           const inputUsername = document.getElementById('username'); 
@@ -12303,6 +12306,34 @@
       
           // 3. Pengecekan Sesi Otomatis & Pendaftaran Otomatis (Onboarding)
           window.supabaseClient.auth.getSession().then(async ({ data: { session } }) => {
+              const statusEl = document.getElementById('loginStatus');
+          
+              // Ambil data dari memori browser
+              let savedUser = localStorage.getItem('pos_aktif_user');
+              let savedRole = localStorage.getItem('pos_aktif_role');
+              let savedNama = localStorage.getItem('pos_aktif_nama');
+              let savedFoto = localStorage.getItem('pos_aktif_foto');
+              let baruLoginGoogle = localStorage.getItem('baru_login_google');
+          
+              // ✨ PERBAIKAN 2: UTAMAKAN SESI MANUAL SAAT REFRESH
+              // Jika ada staf yang sedang bekerja (login manual) DAN dia tidak sedang dalam proses klik tombol Google,
+              // langsung pulihkan datanya dan HENTIKAN pengecekan Google agar tidak terjadi "Session Bleed".
+              if (savedUser && savedRole && baruLoginGoogle !== 'ya') {
+                  console.log("Memulihkan sesi kerja manual:", savedRole);
+                  if (statusEl) statusEl.innerText = "Memulihkan sesi...";
+                  
+                  let dataStaffDariMemori = { 
+                      username: savedUser, 
+                      role: savedRole, 
+                      nama: savedNama || savedUser,
+                      foto_profil: savedFoto 
+                  };
+                  masukKeAplikasi(dataStaffDariMemori);
+                  return; // 🛑 Hentikan kode di sini! Jangan lanjut baca sesi Google di bawah.
+              }
+          
+          
+              // --- JIKA TIDAK ADA SESI MANUAL, BARU CEK GOOGLE LOGIN ---
               if (session) {
                   console.log("Autentikasi Berhasil! Email:", session.user.email);
                   
@@ -12314,9 +12345,6 @@
                   localStorage.setItem('klien_id', klienId);
                   localStorage.setItem('user_email', userEmail);
                   
-                  const statusEl = document.getElementById('loginStatus');
-          
-                  // ✨ PERBAIKAN UTAMA: Cari berdasarkan EMAIL agar kebal terhadap hapus data browser (local storage)
                   const { data: staffData, error: errStaff } = await window.supabaseClient
                       .from('staff_toko')
                       .select('*')
@@ -12326,21 +12354,17 @@
                   let dataOwner;
                   
                   if (!staffData) {
-                      // PENGGUNA BARU: Email belum ada sama sekali di database, buat profil baru
                       console.log("Akun baru terdeteksi, menyiapkan profil Owner dan Masa Trial otomatis...");
                       
-                      // 1. BUAT USERNAME UNIK
                       let baseUsername = userEmail.split('@')[0].replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
                       let angkaAcak = Math.floor(100 + Math.random() * 900).toString();
                       let usernameBaru = baseUsername + angkaAcak;
                       const sandiAcak = Math.floor(1000 + Math.random() * 9000).toString(); 
           
-                      // 2. HITUNG MASA TRIAL (14 Hari dari sekarang)
                       let tanggalTrialHabis = new Date();
                       tanggalTrialHabis.setDate(tanggalTrialHabis.getDate() + 14);
-                      let isoMasaAktif = tanggalTrialHabis.toISOString(); // Format waktu standar database
+                      let isoMasaAktif = tanggalTrialHabis.toISOString();
           
-                      // 3. SIAPKAN DATA UNTUK TABEL 'data_klien' (Pendaftaran Toko)
                       let dataKlienBaru = {
                           id: klienId,
                           klien_id: klienId,
@@ -12350,7 +12374,6 @@
                           masa_aktif: isoMasaAktif
                       };
           
-                      // 4. SIAPKAN DATA UNTUK TABEL 'staff_toko' (Profil Akun Owner)
                       dataOwner = {
                           klien_id: klienId,
                           email: userEmail,
@@ -12361,13 +12384,10 @@
                           foto_profil: fotoGoogle
                       };
                       
-                      // 5. SIMPAN KE KEDUA TABEL SECARA BERSAMAAN
                       try {
-                          // Masukkan ke data_klien dulu
                           const { error: errKlien } = await window.supabaseClient.from('data_klien').insert([dataKlienBaru]);
                           if (errKlien) throw errKlien;
           
-                          // Setelah berhasil, masukkan ke staff_toko
                           const { error: errInsert } = await window.supabaseClient.from('staff_toko').insert([dataOwner]);
                           if (errInsert) throw errInsert;
           
@@ -12378,65 +12398,30 @@
                       }
           
                   } else {
-                      // PENGGUNA LAMA: Email sudah terdaftar, gunakan data lama
                       dataOwner = staffData;
                       
-                      // Perbarui klien_id atau foto profil jika ada perubahan/kosong
                       let updates = {};
                       if (dataOwner.klien_id !== klienId) updates.klien_id = klienId;
                       if ((!dataOwner.foto_profil || dataOwner.foto_profil === "null") && fotoGoogle) updates.foto_profil = fotoGoogle;
                       
                       if (Object.keys(updates).length > 0) {
-                          window.supabaseClient.from('staff_toko')
-                              .update(updates)
-                              .eq('email', userEmail)
-                              .then(); // Jalankan di background
-                          
+                          window.supabaseClient.from('staff_toko').update(updates).eq('email', userEmail).then();
                           dataOwner = { ...dataOwner, ...updates };
                       }
                   }
           
-                  // Cek memori browser
-                  let savedUser = localStorage.getItem('pos_aktif_user');
-                  let savedRole = localStorage.getItem('pos_aktif_role');
-                  let savedNama = localStorage.getItem('pos_aktif_nama');
-                  let savedFoto = localStorage.getItem('pos_aktif_foto');
-          
-                  let baruLoginGoogle = localStorage.getItem('baru_login_google');
-          
+                  // Jika benar-benar baru menekan tombol "Masuk dengan Google"
                   if (baruLoginGoogle === 'ya') {
-                      // SKENARIO A: Masuk dari Google Login
                       console.log("Masuk otomatis dari Google Login.");
                       localStorage.removeItem('baru_login_google'); 
-                      
                       if (statusEl) statusEl.innerText = "Membuka aplikasi...";
-                      
                       masukKeAplikasi(dataOwner); 
                   } 
-                  else if (savedUser && savedRole) {
-                      // SKENARIO B: Halaman di-refresh
-                      console.log("Memulihkan sesi kerja:", savedRole);
-                      if (statusEl) statusEl.innerText = "Memulihkan sesi...";
-                      
-                      let dataStaffDariMemori = { 
-                          username: savedUser, 
-                          role: savedRole, 
-                          nama: savedNama || savedUser,
-                          foto_profil: savedFoto 
-                      };
-                      masukKeAplikasi(dataStaffDariMemori);
-                  } 
-                  else {
-                      // SKENARIO C: Halaman di-refresh setelah LOGOUT
-                      console.log("Sistem terkunci. Menunggu staff login...");
-                      if (statusEl) statusEl.innerText = ""; 
-                      
-                      document.getElementById('loginView').style.display = 'flex';
-                      document.getElementById('appView').style.display = 'none';
-                  }
           
               } else {
-                  console.log("Menunggu pengguna melakukan login Google...");
+                  // Jika tidak ada sesi sama sekali
+                  console.log("Sistem terkunci. Menunggu staff login...");
+                  if (statusEl) statusEl.innerText = ""; 
                   document.getElementById('loginView').style.display = 'flex';
                   document.getElementById('appView').style.display = 'none';
               }
