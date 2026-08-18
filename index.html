@@ -5046,7 +5046,7 @@
                   console.error("Klien ID tidak ditemukan. Hentikan pemuatan data.");
                   return;
               }
-      
+       
               // Mengambil data Produk dan Transaksi secara bersamaan (Paralel) agar loading super cepat
               const [resProduk, resTransaksi] = await Promise.all([
                   window.supabaseClient
@@ -5054,42 +5054,71 @@
                       .select('*')
                       .eq('klien_id', klienId)
                       .order('created_at', { ascending: false }), // Otomatis diurutkan terbaru
-                      
+                       
                   window.supabaseClient
                       .from('transaksi')
                       .select('*')
                       .eq('klien_id', klienId)
                       .order('tanggal', { ascending: false }) // Urutkan riwayat dari yang terbaru
               ]);
-      
+       
               // Cek jika ada error dari server Supabase
               if (resProduk.error) throw resProduk.error;
               if (resTransaksi.error) throw resTransaksi.error;
-      
+       
               // --- 1. EKSEKUSI HASIL DATA BARANG (KATALOG) ---
               masterDataBarang = resProduk.data || []; 
-              
+               
               // Mengekstrak daftar kategori unik secara otomatis dari masterDataBarang
-              // Menggunakan Set() untuk menghilangkan nama kategori yang duplikat, dan filter(Boolean) untuk membuang yang kosong
               const daftarKategori = [...new Set(masterDataBarang.map(item => item.kategori).filter(Boolean))];
-              
+               
               if (typeof renderKategori === "function") renderKategori(daftarKategori); 
               if (typeof renderProdukGrid === "function") renderProdukGrid("Semua"); 
               if (typeof renderManajemenTabel === "function") renderManajemenTabel(); 
               if (typeof segarkanDropdownPelangganKasir === "function") segarkanDropdownPelangganKasir(); 
-      
+       
               // --- 2. EKSEKUSI HASIL DATA DASHBOARD (TRANSAKSI) ---
               riwayatTransaksiGlobal = resTransaksi.data || []; 
+               
+              // ✨ PERBAIKAN: Hitung jumlah barang terjual dari riwayat transaksi
+              let rekapanPenjualan = {};
               
-              // Jika dataPenjualanGlobal sebelumnya adalah versi lengkap dari transaksi, 
-              // kita bisa langsung arahkan ke data yang sama. 
-              // Jika membutuhkan format spesifik, Anda bisa melakukan mapping/reduce di sini.
-              dataPenjualanGlobal = resTransaksi.data || {}; 
+              riwayatTransaksiGlobal.forEach(trx => {
+                  let keranjang = [];
+                  // Ambil data keranjang, pastikan formatnya array (bisa JSON string atau array object langsung)
+                  try {
+                      if (typeof trx.keranjang === 'string') {
+                          keranjang = JSON.parse(trx.keranjang);
+                      } else if (Array.isArray(trx.keranjang)) {
+                          keranjang = trx.keranjang;
+                      } else if (trx.items) { // Jika kolom Anda bernama 'items' bukan 'keranjang'
+                          keranjang = typeof trx.items === 'string' ? JSON.parse(trx.items) : trx.items;
+                      }
+                  } catch (e) {
+                      console.warn("Gagal mem-parse keranjang pada transaksi:", trx.id);
+                  }
       
+                  // Hitung setiap item di dalam keranjang
+                  keranjang.forEach(item => {
+                      let nama = item.nama_barang || item.nama; // Antisipasi perbedaan key
+                      let id = item.id_produk || item.id;
+                      let qty = parseInt(item.qty || item.jumlah || 1);
+      
+                      // Tambahkan poin penjualan ke dictionary berdasarkan Nama dan ID
+                      if (nama) {
+                          rekapanPenjualan[nama] = (rekapanPenjualan[nama] || 0) + qty;
+                      }
+                      if (id) {
+                          rekapanPenjualan[id] = (rekapanPenjualan[id] || 0) + qty;
+                      }
+                  });
+              });
+      
+              // Simpan hasil rekapan (contoh: {"Kopi Susu": 15, "Teh Obeng": 8}) ke variabel global
+              dataPenjualanGlobal = rekapanPenjualan; 
+       
           } catch (error) {
               console.error("Gagal memuat data katalog atau dashboard:", error.message);
-              // Alert opsional untuk kasir
-              // alert("Gagal memuat data toko. Silakan periksa koneksi internet Anda.");
           }
       }
 
