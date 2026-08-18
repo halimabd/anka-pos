@@ -4970,7 +4970,9 @@
                   }
                 
                   document.getElementById('loginStatus').innerText = ""; // Bersihkan teks status
-                  
+                  if (typeof tampilkanNamaUser === "function") {
+                      tampilkanNamaUser();
+                  }
                   // ✨ PERBAIKAN: Langsung oper data ke fungsi utama agar tidak ada data yang terlewat
                   if (typeof masukKeAplikasi === "function") {
                       masukKeAplikasi(data);
