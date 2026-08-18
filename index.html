@@ -8923,34 +8923,28 @@
     function tampilkanNamaUser() {
         let namaTampil = localStorage.getItem('pos_aktif_nama') || localStorage.getItem('pos_aktif_user') || 'User';
         let roleTampil = localStorage.getItem('pos_aktif_role') || 'Staff';
-        let fotoAktifUser = localStorage.getItem('pos_aktif_foto'); // Mengambil foto dari memori lokal user aktif
-        console.log("TampilkanNamaUser dijalankan. Elemen ditemukan:", !!elNama);
-        // 1. Update elemen Nama User di Sidebar
+        let fotoAktifUser = localStorage.getItem('pos_aktif_foto');
+        
+        // Gunakan querySelector agar lebih kuat dalam menemukan elemen
         let elNama = document.getElementById('sidebarUserName');
-        if (elNama) {
-            elNama.innerHTML = `Hi, <b>${namaTampil}</b>`;
-        }
-    
-        // 2. Update elemen Role/Jabatan di Sidebar
         let elRole = document.getElementById('sidebarUserRole');
-        if (elRole) {
-            elRole.innerText = `(${roleTampil})`;
-        }
-    
-        // 3. Update Foto Avatar di Sidebar
         let elAvatar = document.getElementById('sidebarUserAvatar');
+    
+        // Berikan log agar kita tahu fungsi ini benar-benar jalan
+        console.log("TampilkanNamaUser dijalankan. Elemen ditemukan:", !!elNama);
+    
+        if (elNama) elNama.innerHTML = `Hi, <b>${namaTampil}</b>`;
+        if (elRole) elRole.innerText = `(${roleTampil})`;
+        
         if (elAvatar) {
-            if (fotoAktifUser && fotoAktifUser.trim() !== "" && fotoAktifUser !== "null") {
-                // Jika user punya foto profil (baik upload atau google), tampilkan fotonya
+            if (fotoAktifUser && fotoAktifUser !== "null" && fotoAktifUser.trim() !== "") {
                 elAvatar.src = fotoAktifUser;
             } else {
-                // Jika kosong, gunakan inisial huruf dari nama
                 let inisial = namaTampil.substring(0, 2).toUpperCase();
                 elAvatar.src = `https://ui-avatars.com/api/?name=${inisial}&background=3b82f6&color=fff`;
             }
         }
-    }
-
+}
     // Fungsi untuk menyembunyikan/menampilkan detail form di keranjang
     function toggleCartFooter() {
       let content = document.getElementById('collapsibleCartContent');
