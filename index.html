@@ -8924,7 +8924,7 @@
         let namaTampil = localStorage.getItem('pos_aktif_nama') || localStorage.getItem('pos_aktif_user') || 'User';
         let roleTampil = localStorage.getItem('pos_aktif_role') || 'Staff';
         let fotoAktifUser = localStorage.getItem('pos_aktif_foto'); // Mengambil foto dari memori lokal user aktif
-        
+        console.log("Debugging Sidebar: Mengupdate UI dengan:", namaTampil, roleTampil);
         // 1. Update elemen Nama User di Sidebar
         let elNama = document.getElementById('sidebarUserName');
         if (elNama) {
