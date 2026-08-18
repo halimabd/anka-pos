@@ -4932,7 +4932,6 @@
           
           try {
               // 1. Panggil Supabase HANYA berdasarkan username (Pencarian Global)
-              // 💡 PENTING: Kita tidak lagi memfilter klien_id di sini agar perangkat baru bisa login
               const { data, error } = await window.supabaseClient
                   .from('staff_toko')
                   .select('*')
@@ -4955,41 +4954,19 @@
               if (data.password === p) {
                   // LOGIN BERHASIL!
                   
-                  // ✨ OTORISASI OTOMATIS: Simpan klien_id dari data staf ini ke perangkat
+                  // Simpan klien_id dari data staf ini ke perangkat
                   if (data.klien_id) {
                       localStorage.setItem('klien_id', data.klien_id);
                   }
                   
-                  currentUser = data.username; 
-                  currentRole = data.role; 
-                  currentNama = data.nama || data.username; 
-                  
-                  // Tangkap foto profil jika ada
-                  if (data.foto_profil && data.foto_profil !== "null" && data.foto_profil.trim() !== "") {
-                      localStorage.setItem('pos_aktif_foto', data.foto_profil);
-                  } else {
-                      localStorage.removeItem('pos_aktif_foto');
-                  }
-                  
-                  localStorage.setItem('pos_aktif_user', currentUser); 
-                  localStorage.setItem('pos_aktif_role', currentRole); 
-                  localStorage.setItem('pos_aktif_nama', currentNama); 
-                  
-                  document.getElementById('namaKasir').innerText = currentNama; 
-                  
-                  document.getElementById('loginView').style.display = 'none'; 
-                  document.getElementById('appView').style.display = 'flex'; 
-                  
-                  // Panggil inisialisasi aplikasi
-                  if (typeof aturHakAkses === "function") aturHakAkses(currentRole); 
-                  if (typeof muatDataKatalog === "function") muatDataKatalog(); 
-                  if (typeof muatPengaturanData === "function") muatPengaturanData();
-                  if (typeof tampilkanNamaUser === "function") tampilkanNamaUser();
-                  if (typeof muatDataProfilUser === "function") muatDataProfilUser();
-                  if (typeof muatManajemenKas === "function") muatManajemenKas();
-                  if (typeof renderFotoProfilGlobal === "function") renderFotoProfilGlobal();
-                  
                   document.getElementById('loginStatus').innerText = ""; // Bersihkan teks status
+                  
+                  // ✨ PERBAIKAN: Langsung oper data ke fungsi utama agar tidak ada data yang terlewat
+                  if (typeof masukKeAplikasi === "function") {
+                      masukKeAplikasi(data);
+                  } else {
+                      console.error("Fungsi masukKeAplikasi tidak ditemukan!");
+                  }
                   
               } else {
                   // Jika password tidak cocok dengan database
@@ -12441,7 +12418,7 @@
           // Set variabel lokal/global aplikasi
           currentUser = dataStaff.username; 
           currentRole = dataStaff.role; 
-          currentNama = dataStaff.nama; 
+          currentNama = dataStaff.nama || dataStaff.username; // Pastikan nama tidak kosong
           
           // Ambil foto spesifik dari database staff_toko, jika kosong/null jadikan string kosong
           let currentFoto = (dataStaff.foto_profil && dataStaff.foto_profil !== "null" && dataStaff.foto_profil.trim() !== "") ? dataStaff.foto_profil : ""; 
@@ -12462,8 +12439,6 @@
           const namaKasirEl = document.getElementById('namaKasir');
           if (namaKasirEl) namaKasirEl.innerText = currentNama; 
           
-          if (typeof tampilkanNamaUser === "function") tampilkanNamaUser(); 
-          
           // Sembunyikan form login, tampilkan layar utama aplikasi
           const loginView = document.getElementById('loginView');
           const appView = document.getElementById('appView');
@@ -12471,17 +12446,19 @@
           if (loginView) loginView.style.display = 'none'; 
           if (appView) appView.style.display = 'flex'; 
           
-          // Panggil fungsi inisialisasi aplikasi kasir
+          // ✨ PANGGIL SEMUA FUNGSI INISIALISASI DI SINI (Terpusat)
           if (typeof aturHakAkses === "function") aturHakAkses(currentRole); 
           if (typeof muatDataKatalog === "function") muatDataKatalog(); 
           if (typeof muatPengaturanData === "function") muatPengaturanData(); 
           if (typeof muatManajemenKas === "function") muatManajemenKas();
           if (typeof inisialisasiRealtime === "function") inisialisasiRealtime();
           if (typeof muatDataProfilUser === "function") muatDataProfilUser();
-          if (typeof tampilkanNamaUser === "function") tampilkanNamaUser();
-
+          if (typeof muatDaftarPelanggan === "function") muatDaftarPelanggan();
+          if (typeof tampilkanNamaUser === "function") tampilkanNamaUser(); 
+          if (typeof renderFotoProfilGlobal === "function") renderFotoProfilGlobal();
+      
           setTimeout(() => {
-              cekDanTawarkanInstall();
+              if (typeof cekDanTawarkanInstall === "function") cekDanTawarkanInstall();
           }, 1000);
       }
 
@@ -12504,7 +12481,7 @@
                       }
                       
                       if (namaTabel === 'pelanggan') {
-                          if (typeof segarkanDropdownPelangganKasir === 'function') segarkanDropdownPelangganKasir();
+                          if (typeof muatDaftarPelanggan === 'function') muatDaftarPelanggan();
                       }
       
                       if (namaTabel === 'pengaturan') {
