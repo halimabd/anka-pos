@@ -4991,57 +4991,32 @@
       
       // --- FUNGSI LOGOUT ---
       async function logout() { 
-          // 1. KOSONGKAN SEMUA VARIABEL GLOBAL DI MEMORI APLIKASI
+          // Bersihkan variabel lokal
           currentUser = ""; 
           currentRole = ""; 
           currentNama = "";
-          if (typeof masterDataBarang !== 'undefined') masterDataBarang = [];
-          if (typeof keranjang !== 'undefined') keranjang = [];
-          if (typeof riwayatTransaksiGlobal !== 'undefined') riwayatTransaksiGlobal = [];
-          if (typeof dataPenjualanGlobal !== 'undefined') dataPenjualanGlobal = {};
           
-          // 2. HAPUS SEMUA LOCAL STORAGE TERKAIT SESI
+          // Hapus sesi kasir dari Local Storage
           localStorage.removeItem('pos_aktif_user'); 
           localStorage.removeItem('pos_aktif_role'); 
           localStorage.removeItem('pos_aktif_nama'); 
           localStorage.removeItem('pos_aktif_foto'); 
-          localStorage.removeItem('klien_id');
-          localStorage.removeItem('user_email');
-          localStorage.removeItem('baru_login_google');
       
-          // 3. Wajib hapus sesi Google dari memori latar belakang Supabase
+          // ✨ PERBAIKAN 1: Wajib hapus sesi Google dari memori latar belakang Supabase
           try {
               await window.supabaseClient.auth.signOut();
           } catch (e) {
               console.error("Gagal sign out Supabase:", e);
           }
           
-          // 4. RESET TAMPILAN UI / SIDEBAR & GRID SECARA PAKSA
-          let elNama = document.getElementById('sidebarUserName');
-          let elRole = document.getElementById('sidebarUserRole');
-          let elAvatar = document.getElementById('sidebarUserAvatar');
-          let productGrid = document.getElementById('productGrid');
-      
-          if (elNama) elNama.innerText = "Memuat..."; 
-          if (elRole) elRole.innerText = "(Role)";
-          if (elAvatar) elAvatar.src = "";
-          if (productGrid) productGrid.innerHTML = ""; // Kosongkan produk lama
+          // Bersihkan formulir login
+          document.getElementById('username').value = ""; 
+          document.getElementById('password').value = ""; 
+          document.getElementById('loginStatus').innerText = ""; 
           
-          // 5. Bersihkan formulir login
-          let inputUser = document.getElementById('username');
-          let inputPass = document.getElementById('password');
-          let statusLogin = document.getElementById('loginStatus');
-          
-          if (inputUser) inputUser.value = ""; 
-          if (inputPass) inputPass.value = ""; 
-          if (statusLogin) statusLogin.innerText = ""; 
-          
-          // 6. Ganti Tampilan Layar
-          let appView = document.getElementById('appView');
-          let loginView = document.getElementById('loginView');
-          
-          if (appView) appView.style.display = 'none'; 
-          if (loginView) loginView.style.display = 'flex';
+          // Ganti tampilan
+          document.getElementById('appView').style.display = 'none'; 
+          document.getElementById('loginView').style.display = 'flex';
           
           let userDisplay = document.getElementById('userDisplay');
           if (userDisplay) {
@@ -5049,8 +5024,6 @@
           }
           
           if (typeof closeMobileSidebar === "function") closeMobileSidebar(); 
-      
-          console.log("Logout bersih: Seluruh data sesi dan memori lokal telah dikosongkan.");
       }
       
       document.addEventListener('DOMContentLoaded', () => {
@@ -8948,27 +8921,47 @@
 
     // Fungsi untuk menampilkan nama user saat halaman dimuat
     function tampilkanNamaUser() {
-        let namaTampil = localStorage.getItem('pos_aktif_nama') || localStorage.getItem('pos_aktif_user') || 'User';
-        let roleTampil = localStorage.getItem('pos_aktif_role') || 'Staff';
-        let fotoAktifUser = localStorage.getItem('pos_aktif_foto');
-        
-        // Gunakan querySelector agar lebih kuat dalam menemukan elemen
-        let elNama = document.getElementById('sidebarUserName');
-        let elRole = document.getElementById('sidebarUserRole');
-        let elAvatar = document.getElementById('sidebarUserAvatar');
-    
-        if (elNama) elNama.innerHTML = `Hi, <b>${namaTampil}</b>`;
-        if (elRole) elRole.innerText = `(${roleTampil})`;
-        
-        if (elAvatar) {
-            if (fotoAktifUser && fotoAktifUser !== "null" && fotoAktifUser.trim() !== "") {
-                elAvatar.src = fotoAktifUser;
+        try {
+            // Ambil data dari Local Storage dengan aman
+            let namaTampil = localStorage.getItem('pos_aktif_nama') || localStorage.getItem('pos_aktif_user') || 'User';
+            let roleTampil = localStorage.getItem('pos_aktif_role') || 'Staff';
+            let fotoAktifUser = localStorage.getItem('pos_aktif_foto');
+            
+            // 1. Update elemen Nama User di Sidebar
+            let elNama = document.getElementById('sidebarUserName');
+            if (elNama) {
+                elNama.innerHTML = `Hi, <b>${namaTampil}</b>`;
             } else {
-                let inisial = namaTampil.substring(0, 2).toUpperCase();
-                elAvatar.src = `https://ui-avatars.com/api/?name=${inisial}&background=3b82f6&color=fff`;
+                console.warn("Elemen sidebarUserName tidak ditemukan.");
             }
+        
+            // 2. Update elemen Role/Jabatan di Sidebar
+            let elRole = document.getElementById('sidebarUserRole');
+            if (elRole) {
+                elRole.innerText = `(${roleTampil})`;
+            }
+        
+            // 3. Update Foto Avatar di Sidebar (Aman dari error null/undefined)
+            let elAvatar = document.getElementById('sidebarUserAvatar');
+            if (elAvatar) {
+                let isValidFoto = fotoAktifUser && 
+                                  fotoAktifUser !== "null" && 
+                                  fotoAktifUser !== "undefined" && 
+                                  String(fotoAktifUser).trim() !== "";
+                                  
+                if (isValidFoto) {
+                    elAvatar.src = fotoAktifUser;
+                } else {
+                    // Jika tidak ada foto, buat avatar inisial otomatis
+                    let safeNama = String(namaTampil || 'User');
+                    let inisial = safeNama.substring(0, 2).toUpperCase();
+                    elAvatar.src = `https://ui-avatars.com/api/?name=${inisial}&background=3b82f6&color=fff`;
+                }
+            }
+        } catch (err) {
+            console.error("Terjadi kesalahan pada tampilkanNamaUser:", err);
         }
-}
+    }
     // Fungsi untuk menyembunyikan/menampilkan detail form di keranjang
     function toggleCartFooter() {
       let content = document.getElementById('collapsibleCartContent');
@@ -12503,8 +12496,13 @@
           if (typeof inisialisasiRealtime === "function") inisialisasiRealtime();
           if (typeof muatDataProfilUser === "function") muatDataProfilUser();
           if (typeof muatDaftarPelanggan === "function") muatDaftarPelanggan();
-          if (typeof tampilkanNamaUser === "function") tampilkanNamaUser();
+          //if (typeof tampilkanNamaUser === "function") tampilkanNamaUser();
           //if (typeof renderFotoProfilGlobal === "function") renderFotoProfilGlobal();
+          setTimeout(() => {
+              if (typeof tampilkanNamaUser === "function") {
+                  tampilkanNamaUser();
+              }
+          }, 50);
       
           setTimeout(() => {
               if (typeof cekDanTawarkanInstall === "function") cekDanTawarkanInstall();
