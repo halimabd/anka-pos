@@ -5282,8 +5282,12 @@
           } 
           else if(sortBy === 'terlaris') {
               filtered.sort((a,b) => {
-                  let terjualA = dataPenjualanGlobal[a.nama_barang] || 0;
-                  let terjualB = dataPenjualanGlobal[b.nama_barang] || 0;
+                  // Mencegah error fatal jika dataPenjualanGlobal belum ada atau belum dimuat
+                  let globalData = typeof dataPenjualanGlobal !== 'undefined' ? dataPenjualanGlobal : {};                  
+                  // Mengambil jumlah terjual dari global data (berdasarkan nama / ID), 
+                  // atau langsung dari kolom 'terjual' di tabel barang (jika Anda punya)
+                  let terjualA = globalData[a.nama_barang] || globalData[a.id] || a.terjual || 0;
+                  let terjualB = globalData[b.nama_barang] || globalData[b.id] || b.terjual || 0;                  
                   return terjualB - terjualA; 
               });
           } 
