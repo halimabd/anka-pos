@@ -12107,7 +12107,7 @@
               let nilaiPembulatan = parseFloat(data.pembulatan) || 0;
               let omsetPenuh = parseFloat(data.total) + nilaiPembulatan;
               
-              let namaKasir = data.kasir || localStorage.getItem('pos_aktif_nama') || localStorage.getItem('pos_aktif_user') || window.currentNama || 'Owner' || 'Sistem';
+              let namaKasir = data.kasir || localStorage.getItem('pos_aktif_nama') || window.currentNama || 'Owner' || 'Sistem';
               let waktuSekarang = new Date().toISOString();
               
               // Array untuk menampung data yang akan di-insert sekaligus
