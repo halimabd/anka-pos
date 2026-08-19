@@ -4990,10 +4990,27 @@
                   } else {
                       console.error("Fungsi masukKeAplikasi tidak ditemukan!");
                   }
-                  let btnKasir = document.getElementById('btnNavKasir');
-                      if (btnKasir) {
-                          btnKasir.click();
+                  // ✨ PERBAIKAN: Langsung oper data ke fungsi utama agar tidak ada data yang terlewat
+                  if (typeof masukKeAplikasi === "function") {
+                      masukKeAplikasi(data);
+                  } else {
+                      console.error("Fungsi masukKeAplikasi tidak ditemukan!");
+                  }
+                  
+                  // ✨ SOLUSI LAYAR KOSONG: Beri jeda agar DOM (layar utama) siap sebelum pindah tab
+                  setTimeout(() => {
+                      let btnKasir = document.getElementById('btnNavKasir');
+                      if (btnKasir && typeof gantiTab === "function") {
+                          btnKasir.click(); // Otomatis klik tombol Buka Kasir
+                      } else {
+                          // Fallback manual jika gagal terklik
+                          let tabKasirLayar = document.getElementById('tabKasir');
+                          if (tabKasirLayar) {
+                              document.querySelectorAll('.tab-content, .page-section').forEach(el => el.style.display = 'none');
+                              tabKasirLayar.style.display = 'block';
+                          }
                       }
+                  }, 150);
                
               } else {
                   // Jika password tidak cocok dengan database
