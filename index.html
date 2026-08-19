@@ -5008,10 +5008,13 @@
       
       // --- FUNGSI LOGOUT ---
       async function logout() { 
-          // Bersihkan variabel lokal
+          // Bersihkan variabel lokal & global
           currentUser = ""; 
           currentRole = ""; 
           currentNama = "";
+          
+          if (typeof keranjang !== 'undefined') keranjang = [];
+          if (typeof masterDataBarang !== 'undefined') masterDataBarang = [];
           
           // Hapus sesi kasir dari Local Storage
           localStorage.removeItem('pos_aktif_user'); 
@@ -5019,22 +5022,43 @@
           localStorage.removeItem('pos_aktif_nama'); 
           localStorage.removeItem('pos_aktif_foto'); 
       
-          // ✨ PERBAIKAN 1: Wajib hapus sesi Google dari memori latar belakang Supabase
+          // Wajib hapus sesi Google dari memori latar belakang Supabase
           try {
               await window.supabaseClient.auth.signOut();
           } catch (e) {
               console.error("Gagal sign out Supabase:", e);
           }
+
+          // ✨ PERBAIKAN UTAMA: TUTUP SEMUA TAB DAN KOSONGKAN TABEL
+          // 1. Sembunyikan semua konten tab agar layar kembali kosong
+          document.querySelectorAll('.tab-content, .page-section').forEach(tab => {
+              tab.style.display = 'none';
+          });
+
+          // 2. Kosongkan data sensitif di tabel agar tidak terlihat oleh user berikutnya
+          let tabelPelanggan = document.getElementById('tbodyPelanggan') || document.querySelector('#tabPelanggan tbody');
+          let tabelUser = document.getElementById('tbodyUsers') || document.querySelector('#tabUsers tbody');
+          let gridProduk = document.getElementById('productGrid');
+          
+          if (tabelPelanggan) tabelPelanggan.innerHTML = "";
+          if (tabelUser) tabelUser.innerHTML = "";
+          if (gridProduk) gridProduk.innerHTML = ""; // Bersihkan juga grid kasir
           
           // Bersihkan formulir login
           document.getElementById('username').value = ""; 
           document.getElementById('password').value = ""; 
           document.getElementById('loginStatus').innerText = ""; 
           
-          // Ganti tampilan
+          // Ganti tampilan ke layar login
           document.getElementById('appView').style.display = 'none'; 
           document.getElementById('loginView').style.display = 'flex';
           
+          // Reset UI Nama di sidebar (opsional tapi disarankan)
+          let namaSidebar = document.getElementById('sidebarUserName');
+          let fotoSidebar = document.getElementById('sidebarUserAvatar');
+          if (namaSidebar) namaSidebar.innerText = "Memuat...";
+          if (fotoSidebar) fotoSidebar.src = "";
+
           let userDisplay = document.getElementById('userDisplay');
           if (userDisplay) {
               userDisplay.innerText = ""; 
