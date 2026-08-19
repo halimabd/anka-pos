@@ -1,46 +1,66 @@
-// Follow this setup guide to integrate the Deno language server with your editor:
-// https://deno.land/manual/getting_started/setup_your_environment
-// This enables autocomplete, go to definition, etc.
-
-// Setup type definitions for built-in Supabase Runtime APIs
 import "@supabase/functions-js/edge-runtime.d.ts";
-import { withSupabase } from "@supabase/server";
+import { createClient } from "npm:@supabase/supabase-js@2.7.1";
 
-console.log("Hello from Functions!");
-
-// This endpoint uses 'publishable' | 'secret' access, apiKey is required.
-// Use publishable for Client-facing, key-validated endpoints
-// Use secret for Server-to-server, internal calls
 export default {
-  fetch: withSupabase({ auth: ["publishable", "secret"] }, async (req, ctx) => {
-    // Called by another service with a secret key
-    // ctx.supabaseAdmin bypasses RLS — use for privileged operations
-    /*
-    if (ctx.authMode === "secret") {
-      const { user_id } = await req.json();
-      const { data } = await ctx.supabaseAdmin.auth.admin.getUserById(user_id);
-
-      return Response.json({
-        email: data?.user?.email,
-      });
+  async fetch(req: Request) {
+    // Tolak jika bukan POST (Midtrans selalu mengirim POST)
+    if (req.method !== 'POST') {
+      return new Response("Method not allowed", { status: 405 });
     }
-    */
 
-    const { name } = await req.json();
+    try {
+      const midtransData = await req.json();
+      const { order_id, transaction_status, fraud_status } = midtransData;
+      
+      let statusAkhir = "Pending";
+      if (transaction_status == 'capture') {
+        statusAkhir = (fraud_status == 'challenge') ? "Menunggu Validasi" : "Lunas";
+      } else if (transaction_status == 'settlement') {
+        statusAkhir = "Lunas";
+      } else if (transaction_status == 'cancel' || transaction_status == 'deny' || transaction_status == 'expire') {
+        statusAkhir = "Batal";
+      }
 
-    return Response.json({
-      message: `Hello ${name}!`,
-    });
-  }),
+      // Hubungkan ke Supabase secara manual dengan Service Key agar punya hak tulis (Update/Insert)
+      const supabase = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      );
+
+      // 1. Cari transaksi di tabel berdasarkan no_struk
+      const { data: trxData } = await supabase
+        .from('transaksi')
+        .select('*')
+        .eq('no_struk', order_id)
+        .single();
+
+      if (!trxData) return new Response("Transaksi tidak ditemukan", { status: 200 });
+
+      const statusLama = trxData.status_pembayaran;
+
+      // 2. Update Status Pembayaran Transaksi
+      await supabase
+        .from('transaksi')
+        .update({ status_pembayaran: statusAkhir })
+        .eq('no_struk', order_id);
+
+      // 3. Catat ke Arus Kas jika status baru menjadi Lunas
+      if (statusAkhir === "Lunas" && statusLama !== "Lunas" && statusLama !== "Sukses") {
+        await supabase.from('arus_kas').insert([{
+          klien_id: trxData.klien_id,
+          tipe: "Penjualan",
+          akun_asal: "Midtrans", 
+          nominal: trxData.total_akhir, // Sesuaikan dengan nama kolom total di tabel Anda (uang_bayar/total_akhir)
+          keterangan: "Penjualan Struk: " + order_id,
+          kasir: trxData.kasir || "Sistem"
+        }]);
+      }
+
+      return new Response("OK", { status: 200 });
+
+    } catch (error: any) {
+      console.error("Webhook Error:", error);
+      return new Response("Error: " + error.message, { status: 500 });
+    }
+  }
 };
-
-/* To invoke locally:
-
-  1. Run `supabase start` (see: https://supabase.com/docs/reference/cli/supabase-start)
-  2. Make an HTTP request:
-
-  curl -i --location --request POST 'http://127.0.0.1:54321/functions/v1/midtrans-webhook' \
-    --header 'apiKey: sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH' \
-    --data '{"name":"Functions"}'
-
-*/
