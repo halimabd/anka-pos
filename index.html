@@ -2273,7 +2273,25 @@
             Pengaturan
           </button>
 
-          <div class="user-wrapper">  
+          <div class="user-wrapper">
+            <!-- ✨ BARIS BARU: Status Langganan & Tagihan -->
+            <div style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-light, #f1f5f9); padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border-color, #e2e8f0);">
+              <div style="display: flex; flex-direction: column; line-height: 1.3;">
+                <div style="display: flex; align-items: center; gap: 5px;">
+                  <span style="font-size: 11px; color: var(--text-muted, #64748b); font-weight: 500;">Status:</span>
+                  <span id="sidebarStatusLangganan" style="font-size: 11px; font-weight: 700; color: #10b981;">Memuat...</span>
+                </div>
+                <span id="sidebarMasaAktif" style="font-size: 10px; color: var(--text-muted, #94a3b8); margin-top: 2px;">s.d -- --- ----</span>
+              </div>        
+              <!-- Tombol Menuju Halaman Tagihan/Pembayaran -->
+              <!-- Catatan: Sesuaikan 'tabTagihan' dengan ID halaman pembayaran/langganan Anda -->
+              <button onclick="gantiTab('tabTagihan', this)" style="background: #3b82f6; color: white; border: none; border-radius: 6px; padding: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: 0.2s;" title="Kelola Langganan" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="2" y="5" width="20" height="14" rx="2"></rect>
+                  <line x1="2" y1="10" x2="22" y2="10"></line>
+                </svg>
+              </button>
+            </div>
             <!-- Baris Profil & Pengaturan -->
             <div style="display: flex; align-items: center; justify-content: space-between;">              
               <div style="display: flex; align-items: center; gap: 10px; overflow: hidden;">
@@ -12541,7 +12559,8 @@
           if (appView) appView.style.display = 'flex'; 
           
           // ✨ PANGGIL SEMUA FUNGSI INISIALISASI DI SINI (Terpusat)
-          if (typeof aturHakAkses === "function") aturHakAkses(currentRole); 
+          if (typeof aturHakAkses === "function") aturHakAkses(currentRole);
+          if (typeof muatInfoLangganan === "function") muatInfoLangganan();
           if (typeof muatDataKatalog === "function") muatDataKatalog(); 
           if (typeof muatPengaturanData === "function") muatPengaturanData(); 
           if (typeof muatManajemenKas === "function") muatManajemenKas();
@@ -12958,6 +12977,48 @@
           if (!isStandalone && deferredPrompt) {
               // Tampilkan modal kita
               document.getElementById('modalInstallApp').style.display = 'flex';
+          }
+      }
+
+      async function muatInfoLangganan() {
+          let klienId = localStorage.getItem('klien_id');
+          let elStatus = document.getElementById('sidebarStatusLangganan');
+          let elMasaAktif = document.getElementById('sidebarMasaAktif');
+          
+          if (!klienId || !elStatus || !elMasaAktif) return;
+          
+          try {
+              const { data, error } = await window.supabaseClient
+                  .from('data_klien')
+                  .select('status_langganan, masa_aktif')
+                  .eq('id', klienId)
+                  .single();
+                  
+              if (data && !error) {
+                  // 1. Set Status Teks
+                  let status = data.status_langganan || 'Free';
+                  elStatus.innerText = status;
+                  
+                  // 2. Warnai teks berdasarkan status
+                  if (status.toLowerCase().includes('trial')) {
+                      elStatus.style.color = '#f59e0b'; // Kuning (Trial)
+                  } else if (status.toLowerCase().includes('expired') || status.toLowerCase().includes('habis')) {
+                      elStatus.style.color = '#ef4444'; // Merah (Expired)
+                  } else {
+                      elStatus.style.color = '#10b981'; // Hijau (Aktif/Pro)
+                  }
+                  
+                  // 3. Format Tanggal Masa Aktif
+                  if (data.masa_aktif) {
+                      let tgl = new Date(data.masa_aktif);
+                      let formatTgl = tgl.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+                      elMasaAktif.innerText = "s.d " + formatTgl;
+                  } else {
+                      elMasaAktif.innerText = "Lifetime / Selamanya";
+                  }
+              }
+          } catch (err) {
+              console.error("Gagal memuat info langganan:", err);
           }
       }
                         
