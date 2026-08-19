@@ -5941,87 +5941,107 @@
                       if (data.token) {
                           window.snap.pay(data.token, {
                               onSuccess: async function(result){
-                                  console.log("Pembayaran Midtrans Sukses:", result);
-                                  
-                                  // 1. Kurangi stok produk di Supabase
-                                  try {
-                                      for (let item of keranjang) {
-                                          const { data: currentProduct, error: errGet } = await window.supabaseClient
-                                              .from('produk')
-                                              .select('stok')
-                                              .eq('id', item.id)
-                                              .single();
-                                              
-                                          if (!errGet && currentProduct) {
-                                              let stokBaru = currentProduct.stok - item.jumlah;
-                                              await window.supabaseClient
-                                                  .from('produk')
-                                                  .update({ stok: stokBaru })
-                                                  .eq('id', item.id);
-                                          }
-                                      }
-                                  } catch (errStok) {
-                                      console.error("Gagal mengurangi stok:", errStok);
-                                  }
-
-                                  // 2. ✨ UPDATE POIN PELANGGAN DI SUPABASE (Ditambahkan di sini)
-                                  if (typeof pelangganRowIndexAktif !== 'undefined' && pelangganRowIndexAktif && pelangganTerpilihValue !== "Umum / Cash") {
+                                      console.log("Pembayaran Midtrans Sukses:", result);
+                                      
+                                      // 1. Kurangi stok produk di Supabase
                                       try {
-                                          let totalTrx = parseFloat(totalAkhirGlobal) || 0;
-                                          let poinDidapat = Math.floor(totalTrx / 10000); 
-                              
-                                          const { data: currentPlg, error: errPlgGet } = await window.supabaseClient
-                                              .from('pelanggan')
-                                              .select('total_poin')
-                                              .eq('id', pelangganRowIndexAktif)
-                                              .single();
-                              
-                                          if (!errPlgGet && currentPlg) {
-                                              let poinSekarang = parseInt(currentPlg.total_poin) || 0;
-                                              let poinDipakai = typeof poinDipakaiGlobal !== 'undefined' ? (parseInt(poinDipakaiGlobal) || 0) : (parseInt(document.getElementById('inputPakaiPoin')?.value) || 0);
-                              
-                                              let poinBaru = poinSekarang - poinDipakai + poinDidapat;
-                                              if (poinBaru < 0) poinBaru = 0;
-                              
-                                              await window.supabaseClient
-                                                  .from('pelanggan')
-                                                  .update({ total_poin: poinBaru })
-                                                  .eq('id', pelangganRowIndexAktif);
-                                              
-                                              console.log(`Poin berhasil diperbarui: Poin Lama(${poinSekarang}) - Dipakai(${poinDipakai}) + Didapat(${poinDidapat}) = Total (${poinBaru})`);
+                                          for (let item of keranjang) {
+                                              const { data: currentProduct, error: errGet } = await window.supabaseClient
+                                                  .from('produk')
+                                                  .select('stok')
+                                                  .eq('id', item.id)
+                                                  .single();
+                                                  
+                                              if (!errGet && currentProduct) {
+                                                  let stokBaru = currentProduct.stok - item.jumlah;
+                                                  await window.supabaseClient
+                                                      .from('produk')
+                                                      .update({ stok: stokBaru })
+                                                      .eq('id', item.id);
+                                              }
                                           }
-                                      } catch (errPoin) {
-                                          console.error("Gagal memperbarui poin pelanggan:", errPoin);
+                                      } catch (errStok) {
+                                          console.error("Gagal mengurangi stok:", errStok);
                                       }
-                                  }
 
-                                  // 3. Siapkan data frontend untuk cetak struk & WhatsApp
-                                  payloadDB.status_transaksi = "Lunas";
+                                      // 2. Update poin pelanggan di Supabase
+                                      if (typeof pelangganRowIndexAktif !== 'undefined' && pelangganRowIndexAktif && pelangganTerpilihValue !== "Umum / Cash") {
+                                          try {
+                                              let totalTrx = parseFloat(totalAkhirGlobal) || 0;
+                                              let poinDidapat = Math.floor(totalTrx / 10000); 
                                   
-                                  let payloadFrontend = { 
-                                      ...payloadDB, 
-                                      id: dataTransaksi.id, 
-                                      keranjang: keranjang,
-                                      pelanggan: namaPlg,
-                                      ppn: ppnGlobal,
-                                      pph: pphGlobal,
-                                      bayar: totalAkhirGlobal, 
-                                      diskon_poin: diskonPoinGlobal,
-                                      poin_dipakai: poinDipakaiGlobal,
-                                      pembulatan: window.pembulatanGlobal || 0,
-                                      metode_bayar: metode
-                                  }; 
+                                              const { data: currentPlg, error: errPlgGet } = await window.supabaseClient
+                                                  .from('pelanggan')
+                                                  .select('total_poin')
+                                                  .eq('id', pelangganRowIndexAktif)
+                                                  .single();
                                   
-                                  // 4. Selesaikan transaksi frontend (membersihkan keranjang & membuka form struk)
-                                  selesaikanTransaksiFrontend(dataTransaksi, payloadFrontend, btnPay);
-
-                                  // 5. Picu pop-up WhatsApp jika aktif
-                                  setTimeout(() => {
-                                      if (typeof kirimStrukWhatsApp === 'function') {
-                                          kirimStrukWhatsApp(payloadFrontend);
+                                              if (!errPlgGet && currentPlg) {
+                                                  let poinSekarang = parseInt(currentPlg.total_poin) || 0;
+                                                  let poinDipakai = typeof poinDipakaiGlobal !== 'undefined' ? (parseInt(poinDipakaiGlobal) || 0) : (parseInt(document.getElementById('inputPakaiPoin')?.value) || 0);
+                                  
+                                                  let poinBaru = poinSekarang - poinDipakai + poinDidapat;
+                                                  if (poinBaru < 0) poinBaru = 0;
+                                  
+                                                  await window.supabaseClient
+                                                      .from('pelanggan')
+                                                      .update({ total_poin: poinBaru })
+                                                      .eq('id', pelangganRowIndexAktif);
+                                              }
+                                          } catch (errPoin) {
+                                              console.error("Gagal memperbarui poin:", errPoin);
+                                          }
                                       }
-                                  }, 500);
-                              },
+
+                                      // 3. Update status transaksi di database menjadi Lunas
+                                      payloadDB.status_transaksi = "Lunas";
+                                      await window.supabaseClient
+                                          .from('transaksi')
+                                          .update({ status_transaksi: "Lunas" })
+                                          .eq('no_struk', payloadDB.no_struk);
+
+                                      // 4. ✨ CATAT KE ARUS KAS OTOMATIS (Ditambahkan di sini agar tercatat)
+                                      try {
+                                          let dataPenjualanKas = {
+                                              total: payloadDB.total_akhir,
+                                              pembulatan: payloadDB.pembulatan,
+                                              metodeBayar: "Midtrans",
+                                              noStruk: payloadDB.no_struk,
+                                              statusTransaksi: "Lunas",
+                                              kasir: payloadDB.kasir
+                                          };
+                                          if (typeof catatArusKasPenjualan === 'function') {
+                                              catatArusKasPenjualan(dataPenjualanKas);
+                                          }
+                                      } catch (errKas) {
+                                          console.error("Gagal mencatat arus kas Midtrans:", errKas);
+                                      }
+
+                                      // 5. ✨ PAKSA CEKLIST WA SEBELUM KELAR (Agar pop-up WA pasti muncul jika nomor terisi)
+                                      let cbWa = document.getElementById('cbKirimWa');
+                                      let elNoWa = document.getElementById('noWaPelanggan');
+                                      if (cbWa && elNoWa && elNoWa.value.trim() !== "") {
+                                          cbWa.checked = true; // Paksa aktifkan centang WA agar fungsi pembantu membaca kondisinya
+                                      }
+
+                                      // 6. Siapkan payload untuk frontend & fungsi pembantu
+                                      let payloadFrontend = { 
+                                          ...payloadDB, 
+                                          id: dataTransaksi.id, 
+                                          keranjang: keranjang,
+                                          pelanggan: namaPlg,
+                                          ppn: ppnGlobal,
+                                          pph: pphGlobal,
+                                          bayar: totalAkhirGlobal, 
+                                          diskon_poin: diskonPoinGlobal,
+                                          poin_dipakai: poinDipakaiGlobal,
+                                          pembulatan: window.pembulatanGlobal || 0,
+                                          metode_bayar: metode
+                                      }; 
+                                      
+                                      // 7. Eksekusi fungsi pembantu (otomatis cetak struk, buka WA, & kosongkan keranjang)
+                                      selesaikanTransaksiFrontend(dataTransaksi, payloadFrontend, btnPay);
+                                  },
                               onPending: function(result){
                                   alert("Transaksi tersimpan sebagai PENDING. Menunggu pelanggan melakukan pembayaran...");
                                   // Kosongkan keranjang karena transaksi sudah menggantung menunggu dibayar
