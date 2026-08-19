@@ -2151,8 +2151,8 @@
     <!-- Library Qrious untuk merender kode QRIS Dinamis -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 
-    <!-- Library Midtrans Snap -->
-    <script src="https://app.sandbox.midtrans.com/snap/snap.js"></script>
+    <!-- Library Midtrans Snap
+    <script src="https://app.sandbox.midtrans.com/snap/snap.js"></script> -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   </head>
   <body>
@@ -4876,7 +4876,7 @@
       // ========================================================
       // 🔥 AUTO-LOAD SCRIPT MIDTRANS DARI DATABASE
       // ========================================================
-      function muatScriptMidtransOtomatis() {
+      /*function muatScriptMidtransOtomatis() {
           if (typeof appSettings === 'undefined') return;
 
           let isAktif = appSettings.midtransAktif;
@@ -4912,7 +4912,7 @@
           script.setAttribute('data-client-key', clientKey);
           
           document.head.appendChild(script);
-      }
+      }*/
 
       function toggleSidebar() { const sidebar = document.getElementById('sidebarNav'); const overlay = document.getElementById('sidebarOverlay'); sidebar.classList.toggle('open'); overlay.style.display = sidebar.classList.contains('open') ? 'block' : 'none'; }
       function closeMobileSidebar() { if(window.innerWidth <= 768) { document.getElementById('sidebarNav').classList.remove('open'); document.getElementById('sidebarOverlay').style.display = 'none'; } }
@@ -5938,14 +5938,18 @@
                 
                       // 4. Buka Popup Pembayaran Midtrans Snap
                       if (data.token) {
+                          
+                          // ✨ TAMBAHAN: Cegah browser melakukan refresh tidak sengaja
+                          window.onbeforeunload = function() {
+                              return "Transaksi sedang diproses, jangan tutup halaman ini!";
+                          };
+
                           window.snap.pay(data.token, {
                               onSuccess: function(result){
                                   console.log("Pembayaran Midtrans Sukses:", result);
                                   
-                                  // BUNGKUS DENGAN FUNGSI ASYNC INTERNAL AGAR AMAN DARI REFRESH
                                   (async function() {
                                       try {
-                                          // Tahan layar agar kasir tidak klik apa-apa & halaman tidak tertutup
                                           Swal.fire({
                                               title: '<strong style="font-size: 16px;">Sinkronisasi Data...</strong>',
                                               html: '<span style="font-size: 13px;">Menyimpan transaksi dan memotong stok.</span>',
@@ -5953,7 +5957,7 @@
                                               didOpen: () => { Swal.showLoading(); }
                                           });
 
-                                          // ✨ A. POTONG STOK PRODUK
+                                          // A. POTONG STOK PRODUK
                                           for (let item of keranjang) {
                                               const { data: currentProduct } = await window.supabaseClient
                                                   .from('produk').select('stok').eq('id', item.id).single();
@@ -5965,7 +5969,7 @@
                                               }
                                           }
 
-                                          // ✨ B. TAMBAH/UPDATE POIN PELANGGAN
+                                          // B. TAMBAH/UPDATE POIN PELANGGAN
                                           if (typeof pelangganRowIndexAktif !== 'undefined' && pelangganRowIndexAktif && pelangganTerpilihValue !== "Umum / Cash") {
                                               let totalTrx = parseFloat(totalAkhirGlobal) || 0;
                                               let poinDidapat = Math.floor(totalTrx / 10000); 
@@ -5985,12 +5989,12 @@
                                               }
                                           }
 
-                                          // ✨ C. UPDATE STATUS TRANSAKSI JADI LUNAS
+                                          // C. UPDATE STATUS TRANSAKSI JADI LUNAS
                                           payloadDB.status_transaksi = "Lunas";
                                           await window.supabaseClient.from('transaksi')
                                               .update({ status_transaksi: "Lunas" }).eq('no_struk', payloadDB.no_struk);
 
-                                          // ✨ D. CATAT KE ARUS KAS
+                                          // D. CATAT KE ARUS KAS
                                           let dataPenjualanKas = {
                                               total: payloadDB.total_akhir,
                                               pembulatan: payloadDB.pembulatan,
@@ -6003,14 +6007,14 @@
                                               catatArusKasPenjualan(dataPenjualanKas);
                                           }
 
-                                          // ✨ E. PAKSA POP-UP WA (Jika nomor WA diisi)
+                                          // E. PAKSA POP-UP WA
                                           let cbWa = document.getElementById('cbKirimWa');
                                           let elNoWa = document.getElementById('noWaPelanggan');
                                           if (cbWa && elNoWa && elNoWa.value.trim() !== "") {
                                               cbWa.checked = true; 
                                           }
 
-                                          // ✨ F. SELESAIKAN FRONTEND
+                                          // F. SELESAIKAN FRONTEND
                                           let payloadFrontend = { 
                                               ...payloadDB, 
                                               id: dataTransaksi.id, 
@@ -6025,29 +6029,35 @@
                                               metode_bayar: metode
                                           }; 
                                           
-                                          // Tutup loading sebelum memanggil form struk
+                                          // Lepaskan kunci anti-refresh sebelum membuka struk
+                                          window.onbeforeunload = null;
+
                                           Swal.close();
                                           selesaikanTransaksiFrontend(dataTransaksi, payloadFrontend, btnPay);
 
                                       } catch (errBackground) {
+                                          window.onbeforeunload = null;
                                           Swal.close();
                                           console.error("Gagal sinkronisasi data background:", errBackground);
-                                          alert("Pembayaran berhasil, tetapi terjadi kendala saat mencatat ke database. Harap hubungi admin.");
+                                          alert("Pembayaran berhasil, tetapi terjadi kendala saat mencatat ke database.");
                                       }
-                                  })(); // <-- Menjalankan fungsi async secara langsung
+                                  })(); 
                               },
                               onPending: function(result){
-                                  alert("Transaksi tersimpan sebagai PENDING. Menunggu pelanggan melakukan pembayaran...");
+                                  window.onbeforeunload = null;
+                                  alert("Transaksi tersimpan sebagai PENDING.");
                                   keranjang = [];
                                   if(typeof renderKeranjang === 'function') renderKeranjang();
                                   if(btnPay) { btnPay.disabled = false; btnPay.innerHTML = "Konfirmasi Pembayaran"; }
                               },
                               onError: function(result){
+                                  window.onbeforeunload = null;
                                   alert("Pembayaran gagal atau kedaluwarsa!");
                                   if(btnPay) { btnPay.disabled = false; btnPay.innerHTML = "Konfirmasi Pembayaran"; }
                               },
                               onClose: function(){
-                                  console.log('Popup ditutup oleh kasir/pelanggan sebelum selesai dibayar');
+                                  window.onbeforeunload = null;
+                                  console.log('Popup ditutup');
                                   if(btnPay) { btnPay.disabled = false; btnPay.innerHTML = "Konfirmasi Pembayaran"; }
                               }
                           });
