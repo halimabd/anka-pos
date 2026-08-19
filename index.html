@@ -4990,16 +4990,10 @@
                   } else {
                       console.error("Fungsi masukKeAplikasi tidak ditemukan!");
                   }
-                  if (typeof gantiTab === "function") {
-                      gantiTab('tabKasir', document.querySelector('[onclick*="tabKasir"]'));
-                  } else {
-                      // Fallback manual jika tidak pakai fungsi gantiTab
-                      let sectionKasir = document.getElementById('tabKasir');
-                      if (sectionKasir) {
-                          document.querySelectorAll('.tab-content, .page-section').forEach(el => el.style.display = 'none');
-                          sectionKasir.style.display = 'block';
+                  let btnKasir = document.getElementById('btnNavKasir');
+                      if (btnKasir) {
+                          btnKasir.click();
                       }
-                  }
                
               } else {
                   // Jika password tidak cocok dengan database
