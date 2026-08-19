@@ -34,7 +34,7 @@ export default {
         ? "https://app.midtrans.com/snap/v1/transactions" 
         : "https://app.sandbox.midtrans.com/snap/v1/transactions";
 
-      const orderId = "TRX-" + new Date().getTime();
+      const orderId = "INV-" + new Date().getTime();
       
       const payload = {
         transaction_details: { order_id: orderId, gross_amount: Math.round(total) },
