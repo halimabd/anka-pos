@@ -5935,91 +5935,106 @@
 
                       Swal.close();
 
+                
                       // 4. Buka Popup Pembayaran Midtrans Snap
                       if (data.token) {
                           window.snap.pay(data.token, {
-                              // ✨ WAJIB TAMBAHKAN ASYNC DI SINI ✨
-                              onSuccess: async function(result){
+                              onSuccess: function(result){
                                   console.log("Pembayaran Midtrans Sukses:", result);
                                   
-                                  try {
-                                      // ✨ A. POTONG STOK PRODUK
-                                      for (let item of keranjang) {
-                                          const { data: currentProduct } = await window.supabaseClient
-                                              .from('produk').select('stok').eq('id', item.id).single();
-                                              
-                                          if (currentProduct) {
-                                              let stokBaru = currentProduct.stok - item.jumlah;
-                                              await window.supabaseClient.from('produk')
-                                                  .update({ stok: stokBaru }).eq('id', item.id);
+                                  // BUNGKUS DENGAN FUNGSI ASYNC INTERNAL AGAR AMAN DARI REFRESH
+                                  (async function() {
+                                      try {
+                                          // Tahan layar agar kasir tidak klik apa-apa & halaman tidak tertutup
+                                          Swal.fire({
+                                              title: '<strong style="font-size: 16px;">Sinkronisasi Data...</strong>',
+                                              html: '<span style="font-size: 13px;">Menyimpan transaksi dan memotong stok.</span>',
+                                              allowOutsideClick: false,
+                                              didOpen: () => { Swal.showLoading(); }
+                                          });
+
+                                          // ✨ A. POTONG STOK PRODUK
+                                          for (let item of keranjang) {
+                                              const { data: currentProduct } = await window.supabaseClient
+                                                  .from('produk').select('stok').eq('id', item.id).single();
+                                                  
+                                              if (currentProduct) {
+                                                  let stokBaru = currentProduct.stok - item.jumlah;
+                                                  await window.supabaseClient.from('produk')
+                                                      .update({ stok: stokBaru }).eq('id', item.id);
+                                              }
                                           }
-                                      }
 
-                                      // ✨ B. TAMBAH/UPDATE POIN PELANGGAN
-                                      if (typeof pelangganRowIndexAktif !== 'undefined' && pelangganRowIndexAktif && pelangganTerpilihValue !== "Umum / Cash") {
-                                          let totalTrx = parseFloat(totalAkhirGlobal) || 0;
-                                          let poinDidapat = Math.floor(totalTrx / 10000); 
-                                          
-                                          const { data: currentPlg } = await window.supabaseClient
-                                              .from('pelanggan').select('total_poin').eq('id', pelangganRowIndexAktif).single();
-                                          
-                                          if (currentPlg) {
-                                              let poinSekarang = parseInt(currentPlg.total_poin) || 0;
-                                              let poinDipakai = typeof poinDipakaiGlobal !== 'undefined' ? (parseInt(poinDipakaiGlobal) || 0) : (parseInt(document.getElementById('inputPakaiPoin')?.value) || 0);
+                                          // ✨ B. TAMBAH/UPDATE POIN PELANGGAN
+                                          if (typeof pelangganRowIndexAktif !== 'undefined' && pelangganRowIndexAktif && pelangganTerpilihValue !== "Umum / Cash") {
+                                              let totalTrx = parseFloat(totalAkhirGlobal) || 0;
+                                              let poinDidapat = Math.floor(totalTrx / 10000); 
                                               
-                                              let poinBaru = poinSekarang - poinDipakai + poinDidapat;
-                                              if (poinBaru < 0) poinBaru = 0;
+                                              const { data: currentPlg } = await window.supabaseClient
+                                                  .from('pelanggan').select('total_poin').eq('id', pelangganRowIndexAktif).single();
                                               
-                                              await window.supabaseClient.from('pelanggan')
-                                                  .update({ total_poin: poinBaru }).eq('id', pelangganRowIndexAktif);
+                                              if (currentPlg) {
+                                                  let poinSekarang = parseInt(currentPlg.total_poin) || 0;
+                                                  let poinDipakai = typeof poinDipakaiGlobal !== 'undefined' ? (parseInt(poinDipakaiGlobal) || 0) : (parseInt(document.getElementById('inputPakaiPoin')?.value) || 0);
+                                                  
+                                                  let poinBaru = poinSekarang - poinDipakai + poinDidapat;
+                                                  if (poinBaru < 0) poinBaru = 0;
+                                                  
+                                                  await window.supabaseClient.from('pelanggan')
+                                                      .update({ total_poin: poinBaru }).eq('id', pelangganRowIndexAktif);
+                                              }
                                           }
+
+                                          // ✨ C. UPDATE STATUS TRANSAKSI JADI LUNAS
+                                          payloadDB.status_transaksi = "Lunas";
+                                          await window.supabaseClient.from('transaksi')
+                                              .update({ status_transaksi: "Lunas" }).eq('no_struk', payloadDB.no_struk);
+
+                                          // ✨ D. CATAT KE ARUS KAS
+                                          let dataPenjualanKas = {
+                                              total: payloadDB.total_akhir,
+                                              pembulatan: payloadDB.pembulatan,
+                                              metodeBayar: "Midtrans",
+                                              noStruk: payloadDB.no_struk,
+                                              statusTransaksi: "Lunas",
+                                              kasir: payloadDB.kasir
+                                          };
+                                          if (typeof catatArusKasPenjualan === 'function') {
+                                              catatArusKasPenjualan(dataPenjualanKas);
+                                          }
+
+                                          // ✨ E. PAKSA POP-UP WA (Jika nomor WA diisi)
+                                          let cbWa = document.getElementById('cbKirimWa');
+                                          let elNoWa = document.getElementById('noWaPelanggan');
+                                          if (cbWa && elNoWa && elNoWa.value.trim() !== "") {
+                                              cbWa.checked = true; 
+                                          }
+
+                                          // ✨ F. SELESAIKAN FRONTEND
+                                          let payloadFrontend = { 
+                                              ...payloadDB, 
+                                              id: dataTransaksi.id, 
+                                              keranjang: keranjang,
+                                              pelanggan: namaPlg,
+                                              ppn: ppnGlobal,
+                                              pph: pphGlobal,
+                                              bayar: totalAkhirGlobal, 
+                                              diskon_poin: diskonPoinGlobal,
+                                              poin_dipakai: poinDipakaiGlobal,
+                                              pembulatan: window.pembulatanGlobal || 0,
+                                              metode_bayar: metode
+                                          }; 
+                                          
+                                          // Tutup loading sebelum memanggil form struk
+                                          Swal.close();
+                                          selesaikanTransaksiFrontend(dataTransaksi, payloadFrontend, btnPay);
+
+                                      } catch (errBackground) {
+                                          Swal.close();
+                                          console.error("Gagal sinkronisasi data background:", errBackground);
+                                          alert("Pembayaran berhasil, tetapi terjadi kendala saat mencatat ke database. Harap hubungi admin.");
                                       }
-
-                                      // ✨ C. UPDATE STATUS TRANSAKSI JADI LUNAS
-                                      payloadDB.status_transaksi = "Lunas";
-                                      await window.supabaseClient.from('transaksi')
-                                          .update({ status_transaksi: "Lunas" }).eq('no_struk', payloadDB.no_struk);
-
-                                      // ✨ D. CATAT KE ARUS KAS
-                                      let dataPenjualanKas = {
-                                          total: payloadDB.total_akhir,
-                                          pembulatan: payloadDB.pembulatan,
-                                          metodeBayar: "Midtrans",
-                                          noStruk: payloadDB.no_struk,
-                                          statusTransaksi: "Lunas",
-                                          kasir: payloadDB.kasir
-                                      };
-                                      if (typeof catatArusKasPenjualan === 'function') {
-                                          catatArusKasPenjualan(dataPenjualanKas);
-                                      }
-
-                                      // ✨ E. PAKSA POP-UP WA (Jika nomor WA diisi)
-                                      let cbWa = document.getElementById('cbKirimWa');
-                                      let elNoWa = document.getElementById('noWaPelanggan');
-                                      if (cbWa && elNoWa && elNoWa.value.trim() !== "") {
-                                          cbWa.checked = true; 
-                                      }
-
-                                      // ✨ F. SELESAIKAN FRONTEND (Buka Struk & Kosongkan Keranjang)
-                                      let payloadFrontend = { 
-                                          ...payloadDB, 
-                                          id: dataTransaksi.id, 
-                                          keranjang: keranjang,
-                                          pelanggan: namaPlg,
-                                          ppn: ppnGlobal,
-                                          pph: pphGlobal,
-                                          bayar: totalAkhirGlobal, 
-                                          diskon_poin: diskonPoinGlobal,
-                                          poin_dipakai: poinDipakaiGlobal,
-                                          pembulatan: window.pembulatanGlobal || 0,
-                                          metode_bayar: metode
-                                      }; 
-                                      selesaikanTransaksiFrontend(dataTransaksi, payloadFrontend, btnPay);
-
-                                  } catch (errBackground) {
-                                      console.error("Gagal sinkronisasi data background:", errBackground);
-                                      alert("Pembayaran berhasil, tetapi terjadi kendala saat memotong stok/mencatat kas. Harap cek database.");
-                                  }
+                                  })(); // <-- Menjalankan fungsi async secara langsung
                               },
                               onPending: function(result){
                                   alert("Transaksi tersimpan sebagai PENDING. Menunggu pelanggan melakukan pembayaran...");
@@ -6037,6 +6052,7 @@
                               }
                           });
                       }
+
 
                   } catch (err) {
                       Swal.close();
