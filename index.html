@@ -5907,10 +5907,90 @@
               // 🚀 JIKA METODE PEMBAYARAN ADALAH MIDTRANS 🚀
               // ========================================================
               if (metode === "Midtrans") {
-                  Swal.close();
-                  if(btnPay) { btnPay.disabled = false; btnPay.innerHTML = "Konfirmasi Pembayaran"; }
-                  alert("Metode Midtrans memerlukan setup Supabase Edge Functions. Fitur ini sementara dinonaktifkan hingga Backend siap.");
-                  return; 
+                  try {
+                      // 1. Panggil Supabase Edge Function 'midtrans-token'
+                      const { data, error } = await window.supabaseClient.functions.invoke('midtrans-token', {
+                          body: JSON.stringify({ 
+                              total: totalAkhirGlobal, 
+                              pelanggan: namaPlg,
+                              klien_id: klienId 
+                          })
+                      });
+
+                      if (error) throw error;
+                      if (data.error) throw new Error(data.error);
+
+                      // 2. Timpa no_struk dengan order_id resmi dari Midtrans
+                      // Ini WAJIB agar Webhook nanti bisa menemukan transaksi yang tepat
+                      payloadDB.no_struk = data.order_id; 
+                      payloadDB.status_transaksi = "Pending"; 
+
+                      // 3. Simpan transaksi ke Supabase dengan status PENDING
+                      const { data: dataTransaksi, error: errTransaksi } = await window.supabaseClient
+                          .from('transaksi')
+                          .insert([payloadDB])
+                          .select()
+                          .single(); 
+                  
+                      if (errTransaksi) throw errTransaksi;
+
+                      // Tutup loading Swal
+                      Swal.close();
+
+                      // 4. Buka Popup Pembayaran Midtrans Snap
+                      if (data.token) {
+                          window.snap.pay(data.token, {
+                              onSuccess: function(result){
+                                  // Update payload lokal untuk dicetak di struk
+                                  payloadDB.status_transaksi = "Lunas";
+                                  
+                                  let payloadFrontend = { 
+                                      ...payloadDB, 
+                                      id: dataTransaksi.id, 
+                                      keranjang: keranjang,
+                                      pelanggan: namaPlg,
+                                      ppn: ppnGlobal,
+                                      pph: pphGlobal,
+                                      bayar: totalAkhirGlobal, // Uang pas karena cashless
+                                      diskon_poin: diskonPoinGlobal,
+                                      poin_dipakai: poinDipakaiGlobal,
+                                      pembulatan: window.pembulatanGlobal || 0,
+                                      metode_bayar: metode
+                                  }; 
+                                  
+                                  // Selesaikan UI (Kosongkan keranjang & Buka Struk)
+                                  selesaikanTransaksiFrontend(dataTransaksi, payloadFrontend, btnPay);
+                              },
+                              onPending: function(result){
+                                  alert("Transaksi tersimpan sebagai PENDING. Menunggu pelanggan melakukan pembayaran...");
+                                  // Kosongkan keranjang karena transaksi sudah menggantung menunggu dibayar
+                                  keranjang = [];
+                                  if(typeof renderKeranjang === 'function') renderKeranjang();
+                                  if(btnPay) { btnPay.disabled = false; btnPay.innerHTML = "Konfirmasi Pembayaran"; }
+                              },
+                              onError: function(result){
+                                  alert("Pembayaran gagal atau kedaluwarsa!");
+                                  if(btnPay) { btnPay.disabled = false; btnPay.innerHTML = "Konfirmasi Pembayaran"; }
+                              },
+                              onClose: function(){
+                                  console.log('Popup ditutup oleh kasir/pelanggan sebelum selesai dibayar');
+                                  if(btnPay) { btnPay.disabled = false; btnPay.innerHTML = "Konfirmasi Pembayaran"; }
+                              }
+                          });
+                      }
+
+                  } catch (err) {
+                      Swal.close();
+                      console.error("Error Midtrans:", err);
+                      Swal.fire({
+                          title: '<strong style="font-size: 16px;">Gagal Memuat Pembayaran</strong>',
+                          html: '<span style="font-size: 13px;">' + err.message + '</span>',
+                          icon: 'error', width: '300px', padding: '15px'
+                      });
+                      if(btnPay) { btnPay.disabled = false; btnPay.innerHTML = "Konfirmasi Pembayaran"; }
+                  }
+                  
+                  return; // Hentikan fungsi di sini agar tidak mengeksekusi logika tunai di bawahnya
               }
       
               // ========================================================
