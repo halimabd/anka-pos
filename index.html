@@ -4876,7 +4876,7 @@
       // ========================================================
       // 🔥 AUTO-LOAD SCRIPT MIDTRANS DARI DATABASE
       // ========================================================
-      /*function muatScriptMidtransOtomatis() {
+      function muatScriptMidtransOtomatis() {
           if (typeof appSettings === 'undefined') return;
 
           let isAktif = appSettings.midtransAktif;
@@ -4912,7 +4912,7 @@
           script.setAttribute('data-client-key', clientKey);
           
           document.head.appendChild(script);
-      }*/
+      }
 
       function toggleSidebar() { const sidebar = document.getElementById('sidebarNav'); const overlay = document.getElementById('sidebarOverlay'); sidebar.classList.toggle('open'); overlay.style.display = sidebar.classList.contains('open') ? 'block' : 'none'; }
       function closeMobileSidebar() { if(window.innerWidth <= 768) { document.getElementById('sidebarNav').classList.remove('open'); document.getElementById('sidebarOverlay').style.display = 'none'; } }
