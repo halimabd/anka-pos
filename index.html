@@ -5963,8 +5963,8 @@
                                   } catch (errStok) {
                                       console.error("Gagal mengurangi stok:", errStok);
                                   }
-                              
-                                  // 2. Update poin pelanggan di Supabase
+
+                                  // 2. ✨ UPDATE POIN PELANGGAN DI SUPABASE (Ditambahkan di sini)
                                   if (typeof pelangganRowIndexAktif !== 'undefined' && pelangganRowIndexAktif && pelangganTerpilihValue !== "Umum / Cash") {
                                       try {
                                           let totalTrx = parseFloat(totalAkhirGlobal) || 0;
@@ -5987,20 +5987,17 @@
                                                   .from('pelanggan')
                                                   .update({ total_poin: poinBaru })
                                                   .eq('id', pelangganRowIndexAktif);
+                                              
+                                              console.log(`Poin berhasil diperbarui: Poin Lama(${poinSekarang}) - Dipakai(${poinDipakai}) + Didapat(${poinDidapat}) = Total (${poinBaru})`);
                                           }
                                       } catch (errPoin) {
-                                          console.error("Gagal memperbarui poin:", errPoin);
+                                          console.error("Gagal memperbarui poin pelanggan:", errPoin);
                                       }
                                   }
-                              
-                                  // 3. Ubah status transaksi di Supabase menjadi Lunas setelah dibayar sukses
-                                  await window.supabaseClient
-                                      .from('transaksi')
-                                      .update({ status_transaksi: "Lunas" })
-                                      .eq('no_struk', payloadDB.no_struk);
-                              
-                                  // 4. Siapkan payload yang akan dilempar ke fungsi pembantu Anda
+
+                                  // 3. Siapkan data frontend untuk cetak struk & WhatsApp
                                   payloadDB.status_transaksi = "Lunas";
+                                  
                                   let payloadFrontend = { 
                                       ...payloadDB, 
                                       id: dataTransaksi.id, 
@@ -6014,10 +6011,16 @@
                                       pembulatan: window.pembulatanGlobal || 0,
                                       metode_bayar: metode
                                   }; 
-                              
-                                  // 🚀 5. PANGGIL FUNGSI PEMBANTU ANDA DI SINI!
-                                  // Ini otomatis akan mengurus cetak struk, kirim WA, dan kosongkan keranjang
+                                  
+                                  // 4. Selesaikan transaksi frontend (membersihkan keranjang & membuka form struk)
                                   selesaikanTransaksiFrontend(dataTransaksi, payloadFrontend, btnPay);
+
+                                  // 5. Picu pop-up WhatsApp jika aktif
+                                  setTimeout(() => {
+                                      if (typeof kirimStrukWhatsApp === 'function') {
+                                          kirimStrukWhatsApp(payloadFrontend);
+                                      }
+                                  }, 500);
                               },
                               onPending: function(result){
                                   alert("Transaksi tersimpan sebagai PENDING. Menunggu pelanggan melakukan pembayaran...");
