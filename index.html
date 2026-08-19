@@ -4969,7 +4969,7 @@
                   if (data.klien_id) {
                       localStorage.setItem('klien_id', data.klien_id);
                   }
-                
+                  
                   localStorage.setItem('pos_aktif_user', data.username);
                   localStorage.setItem('pos_aktif_role', data.role);
                   localStorage.setItem('pos_aktif_nama', data.nama || data.username);
@@ -4979,29 +4979,25 @@
                   } else {
                       localStorage.removeItem('pos_aktif_foto');
                   }
-                
+                  
                   document.getElementById('loginStatus').innerText = ""; // Bersihkan teks status
+                  
                   if (typeof tampilkanNamaUser === "function") {
                       tampilkanNamaUser();
                   }
-                  // ✨ PERBAIKAN: Langsung oper data ke fungsi utama agar tidak ada data yang terlewat
-                  if (typeof masukKeAplikasi === "function") {
-                      masukKeAplikasi(data);
-                  } else {
-                      console.error("Fungsi masukKeAplikasi tidak ditemukan!");
-                  }
-                  // ✨ PERBAIKAN: Langsung oper data ke fungsi utama agar tidak ada data yang terlewat
+                  
+                  // Langsung oper data ke fungsi utama agar tidak ada data yang terlewat
                   if (typeof masukKeAplikasi === "function") {
                       masukKeAplikasi(data);
                   } else {
                       console.error("Fungsi masukKeAplikasi tidak ditemukan!");
                   }
                   
-                  // ✨ SOLUSI LAYAR KOSONG: Beri jeda agar DOM (layar utama) siap sebelum pindah tab
+                  // ✨ SOLUSI LAYAR KOSONG: Beri jeda 150ms agar DOM (layar utama) siap sebelum klik btnNavKasir
                   setTimeout(() => {
                       let btnKasir = document.getElementById('btnNavKasir');
                       if (btnKasir && typeof gantiTab === "function") {
-                          btnKasir.click(); // Otomatis klik tombol Buka Kasir
+                          btnKasir.click(); // Memaksa klik tombol secara otomatis
                       } else {
                           // Fallback manual jika gagal terklik
                           let tabKasirLayar = document.getElementById('tabKasir');
@@ -5011,7 +5007,7 @@
                           }
                       }
                   }, 150);
-               
+                  
               } else {
                   // Jika password tidak cocok dengan database
                   document.getElementById('loginStatus').innerText = "Password salah!"; 
