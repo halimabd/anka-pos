@@ -36,9 +36,25 @@ export default {
 
       const orderId = "INV-" + new Date().getTime();
       
+      // ✨ WAKTU LOKAL UNTUK KEDALUWARSA (WIB / +0700)
+      const d = new Date();
+      d.setUTCHours(d.getUTCHours() + 7);
+      const pad = (n: number) => n < 10 ? '0' + n : n;
+      const orderTime = `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())} +0700`;
+      
+      // ✨ PAYLOAD DENGAN ANTI-REFRESH & EXPIRY
       const payload = {
         transaction_details: { order_id: orderId, gross_amount: Math.round(total) },
-        customer_details: { first_name: pelanggan || "Pelanggan Umum" }
+        customer_details: { first_name: pelanggan || "Pelanggan Umum" },
+        custom_expiry: {
+            order_time: orderTime,
+            expiry_duration: 15, // Berlaku 15 Menit
+            unit: "minute"       
+        },
+        callbacks: {
+            // 👇 GANTI ALAMAT INI DENGAN ALAMAT WEB GITHUB PAGES ANDA + TANDA PAGAR 👇
+            finish: "https://anka-pos.vercel.app/#" 
+        }
       };
 
       // 4. Minta Token ke Midtrans
