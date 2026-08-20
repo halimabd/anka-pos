@@ -2334,6 +2334,57 @@
           </div>
         </div>
 
+        <!-- ✨ HALAMAN TAGIHAN (LANGGANAN APLIKASI) -->
+        <div id="tabTagihan" class="tab-content" style="display: none; padding: 20px;">
+        
+        <h2 style="font-size: 20px; font-weight: bold; margin-bottom: 20px; color: var(--text-color, #1e293b);">Kelola Langganan ANKA POS</h2>
+
+        <!-- Kartu Info Status Saat Ini -->
+        <div style="background: var(--bg-light, rgba(148, 163, 184, 0.1)); border: 1px solid var(--border-color, rgba(148, 163, 184, 0.25)); padding: 20px; border-radius: 12px; margin-bottom: 24px; display: flex; flex-direction: column; gap: 5px;">
+            <h3 style="font-size: 14px; color: var(--text-muted, #64748b); margin: 0;">Status Layanan Anda</h3>
+            <div style="display: flex; align-items: baseline; gap: 10px;">
+            <span id="halamanStatusLangganan" style="font-size: 18px; font-weight: 700; color: #f59e0b;">Memuat...</span>
+            <span id="halamanMasaAktif" style="font-size: 13px; color: var(--text-muted, #64748b);">Berlaku s.d -- --- ----</span>
+            </div>
+        </div>
+
+        <!-- Pilihan Paket Langganan -->
+        <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 15px; color: var(--text-color, #1e293b);">Pilih Paket Perpanjangan</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+            
+            <!-- Paket Bulanan -->
+            <div style="border: 1px solid var(--border-color, rgba(148, 163, 184, 0.3)); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; background: var(--bg-card, #ffffff);">
+            <h4 style="font-size: 16px; font-weight: bold; margin-bottom: 5px; color: var(--text-color, #1e293b);">Paket Bulanan</h4>
+            <p style="font-size: 13px; color: var(--text-muted, #64748b); margin-bottom: 15px;">Akses penuh seluruh fitur selama 30 hari.</p>
+            <div style="margin-bottom: 20px;">
+                <span style="font-size: 24px; font-weight: 800; color: var(--text-color, #1e293b);">Rp 50.000</span>
+                <span style="font-size: 12px; color: var(--text-muted, #64748b);">/ bulan</span>
+            </div>
+            <button onclick="bayarLangganan('bulanan')" style="margin-top: auto; width: 100%; background: var(--bg-light, #f1f5f9); color: var(--text-color, #0f172a); border: 1px solid var(--border-color, #cbd5e1); padding: 10px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='var(--bg-light, #f1f5f9)'">
+                Pilih Bulanan
+            </button>
+            </div>
+
+            <!-- Paket Tahunan (Rekomendasi) -->
+            <div style="border: 2px solid #3b82f6; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; position: relative; background: var(--bg-card, #ffffff);">
+            <!-- Badge Lebih Hemat -->
+            <span style="position: absolute; top: -12px; right: 20px; background: #3b82f6; color: white; font-size: 11px; font-weight: bold; padding: 4px 10px; border-radius: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                Lebih Hemat 2 Bulan
+            </span>
+            <h4 style="font-size: 16px; font-weight: bold; margin-bottom: 5px; color: var(--text-color, #1e293b);">Paket Tahunan</h4>
+            <p style="font-size: 13px; color: var(--text-muted, #64748b); margin-bottom: 15px;">Akses penuh seluruh fitur selama 365 hari.</p>
+            <div style="margin-bottom: 20px;">
+                <span style="font-size: 24px; font-weight: 800; color: var(--text-color, #1e293b);">Rp 500.000</span>
+                <span style="font-size: 12px; color: var(--text-muted, #64748b);">/ tahun</span>
+            </div>
+            <button onclick="bayarLangganan('tahunan')" style="margin-top: auto; width: 100%; background: #3b82f6; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 6px rgba(59, 130, 246, 0.2);" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">
+                Pilih Tahunan
+            </button>
+            </div>
+
+        </div>
+        </div>
+
         <div id="tabPengaturan" class="tab-content" style="display: none;">
           <h3 style="display: flex; align-items: center; gap: 10px; margin-top:0; margin-bottom:24px; font-weight:700;">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);">
@@ -13141,6 +13192,17 @@
               console.error("Gagal memuat info langganan:", err);
           }
       }
+
+      // Fungsi untuk dipanggil saat tombol paket dipilih
+        async function bayarLangganan(paket) {
+            if (paket === 'bulanan') {
+                console.log("Memproses pembayaran Rp 50.000 untuk 1 Bulan");
+                // Logika memanggil Midtrans akan diletakkan di sini
+            } else if (paket === 'tahunan') {
+                console.log("Memproses pembayaran Rp 500.000 untuk 1 Tahun");
+                // Logika memanggil Midtrans akan diletakkan di sini
+            }
+        }
                         
     </script>
   </body>
