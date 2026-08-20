@@ -13216,11 +13216,16 @@
       // Fungsi untuk dipanggil saat tombol paket dipilih
         async function bayarLangganan(paketPilihan) { 
             try {
-                // Ambil klien_id dari localStorage (pastikan key-nya sesuai dengan saat Anda login)
+                // Ambil klien_id dari localStorage
                 let klienIdAktif = localStorage.getItem('klien_id');
                 
                 if (!klienIdAktif) {
-                    alert("Sesi klien tidak ditemukan. Silakan login ulang.");
+                    Swal.fire({
+                        title: 'Sesi Berakhir',
+                        text: 'Sesi klien tidak ditemukan. Silakan login ulang.',
+                        icon: 'warning',
+                        customClass: { popup: 'swal-custom-small' }
+                    });
                     return;
                 }
 
@@ -13228,6 +13233,7 @@
                     title: 'Memproses...',
                     text: 'Menghubungkan ke server pembayaran',
                     allowOutsideClick: false,
+                    customClass: { popup: 'swal-custom-small' },
                     didOpen: () => { Swal.showLoading(); }
                 });
 
@@ -13256,19 +13262,30 @@
                                 text: 'Masa aktif langganan Anda akan segera diperbarui.',
                                 icon: 'success',
                                 timer: 3000,
-                                showConfirmButton: false
+                                showConfirmButton: false,
+                                customClass: { popup: 'swal-custom-small' }
                             }).then(() => {
                                 window.location.reload(); 
                             });
                         },
                         onPending: function(result){
-                            alert("Tagihan dibuat! Silakan selesaikan pembayaran.");
+                            Swal.fire({
+                                title: 'Menunggu Pembayaran',
+                                text: 'Tagihan dibuat! Silakan selesaikan pembayaran Anda.',
+                                icon: 'info',
+                                customClass: { popup: 'swal-custom-small' }
+                            });
                         },
                         onError: function(result){
-                            alert("Pembayaran langganan gagal atau dibatalkan.");
+                            Swal.fire({
+                                title: 'Pembayaran Gagal',
+                                text: 'Proses pembayaran langganan gagal atau dibatalkan.',
+                                icon: 'error',
+                                customClass: { popup: 'swal-custom-small' }
+                            });
                         },
                         onClose: function(){
-                            console.log('Pop-up ditutup');
+                            console.log('Pop-up Midtrans ditutup');
                         }
                     });
                 }
@@ -13277,15 +13294,24 @@
                 Swal.close();
                 console.error("Error Detail:", err);
                 
-                // ✨ Ambil pesan asli dari dalam Edge Function
+                const tampilkanError = (pesan) => {
+                    Swal.fire({
+                        title: 'Terjadi Kesalahan',
+                        text: pesan,
+                        icon: 'error',
+                        customClass: { popup: 'swal-custom-small' }
+                    });
+                };
+
+                // Ambil pesan asli dari dalam Edge Function
                 if (err.context && typeof err.context.json === 'function') {
                     err.context.json().then(errorData => {
-                        alert("Server Error: " + (errorData.error || JSON.stringify(errorData)));
+                        tampilkanError("Server Error: " + (errorData.error || JSON.stringify(errorData)));
                     }).catch(() => {
-                        alert("Terjadi kesalahan pada Edge Function: " + err.message);
+                        tampilkanError("Terjadi kesalahan pada Edge Function: " + err.message);
                     });
                 } else {
-                    alert("Terjadi kesalahan: " + err.message);
+                    tampilkanError(err.message);
                 }
             }
         }
