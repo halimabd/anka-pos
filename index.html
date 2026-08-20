@@ -5951,70 +5951,23 @@
                                   (async function() {
                                       try {
                                           Swal.fire({
-                                              title: '<strong style="font-size: 16px;">Sinkronisasi Data...</strong>',
-                                              html: '<span style="font-size: 13px;">Menyimpan transaksi dan memotong stok.</span>',
+                                              title: '<strong style="font-size: 16px;">Memproses Struk...</strong>',
+                                              html: '<span style="font-size: 13px;">Menyiapkan bukti transaksi.</span>',
                                               allowOutsideClick: false,
                                               didOpen: () => { Swal.showLoading(); }
                                           });
 
-                                          // A. POTONG STOK PRODUK
-                                          for (let item of keranjang) {
-                                              const { data: currentProduct } = await window.supabaseClient
-                                                  .from('produk').select('stok').eq('id', item.id).single();
-                                                  
-                                              if (currentProduct) {
-                                                  let stokBaru = currentProduct.stok - item.jumlah;
-                                                  await window.supabaseClient.from('produk')
-                                                      .update({ stok: stokBaru }).eq('id', item.id);
-                                              }
-                                          }
+                                          // ✨ KARENA DATABASE & ARUS KAS SUDAH DIURUS OLEH WEBHOOK DI SERVER,
+                                          // FRONTEND HANYA PERLU MENYIAPKAN DATA UNTUK MENCETAK STRUK & TAMPILAN.
 
-                                          // B. TAMBAH/UPDATE POIN PELANGGAN
-                                          if (typeof pelangganRowIndexAktif !== 'undefined' && pelangganRowIndexAktif && pelangganTerpilihValue !== "Umum / Cash") {
-                                              let totalTrx = parseFloat(totalAkhirGlobal) || 0;
-                                              let poinDidapat = Math.floor(totalTrx / 10000); 
-                                              
-                                              const { data: currentPlg } = await window.supabaseClient
-                                                  .from('pelanggan').select('total_poin').eq('id', pelangganRowIndexAktif).single();
-                                              
-                                              if (currentPlg) {
-                                                  let poinSekarang = parseInt(currentPlg.total_poin) || 0;
-                                                  let poinDipakai = typeof poinDipakaiGlobal !== 'undefined' ? (parseInt(poinDipakaiGlobal) || 0) : (parseInt(document.getElementById('inputPakaiPoin')?.value) || 0);
-                                                  
-                                                  let poinBaru = poinSekarang - poinDipakai + poinDidapat;
-                                                  if (poinBaru < 0) poinBaru = 0;
-                                                  
-                                                  await window.supabaseClient.from('pelanggan')
-                                                      .update({ total_poin: poinBaru }).eq('id', pelangganRowIndexAktif);
-                                              }
-                                          }
-
-                                          // C. UPDATE STATUS TRANSAKSI JADI LUNAS
-                                          payloadDB.status_transaksi = "Lunas";
-                                          await window.supabaseClient.from('transaksi')
-                                              .update({ status_transaksi: "Lunas" }).eq('no_struk', payloadDB.no_struk);
-
-                                          // D. CATAT KE ARUS KAS
-                                          let dataPenjualanKas = {
-                                              total: payloadDB.total_akhir,
-                                              pembulatan: payloadDB.pembulatan,
-                                              metodeBayar: "Midtrans",
-                                              noStruk: payloadDB.no_struk,
-                                              statusTransaksi: "Lunas",
-                                              kasir: payloadDB.kasir
-                                          };
-                                          if (typeof catatArusKasPenjualan === 'function') {
-                                              catatArusKasPenjualan(dataPenjualanKas);
-                                          }
-
-                                          // E. PAKSA POP-UP WA
+                                          // Paksa aktifkan centang WhatsApp jika nomor diisi
                                           let cbWa = document.getElementById('cbKirimWa');
                                           let elNoWa = document.getElementById('noWaPelanggan');
                                           if (cbWa && elNoWa && elNoWa.value.trim() !== "") {
                                               cbWa.checked = true; 
                                           }
 
-                                          // F. SELESAIKAN FRONTEND
+                                          // Siapkan data untuk cetak struk frontend
                                           let payloadFrontend = { 
                                               ...payloadDB, 
                                               id: dataTransaksi.id, 
@@ -6029,17 +5982,18 @@
                                               metode_bayar: metode
                                           }; 
                                           
-                                          // Lepaskan kunci anti-refresh sebelum membuka struk
+                                          // Lepaskan kunci anti-refresh
                                           window.onbeforeunload = null;
 
+                                          // Tutup loading dan langsung buka menu struk
                                           Swal.close();
                                           selesaikanTransaksiFrontend(dataTransaksi, payloadFrontend, btnPay);
 
                                       } catch (errBackground) {
                                           window.onbeforeunload = null;
                                           Swal.close();
-                                          console.error("Gagal sinkronisasi data background:", errBackground);
-                                          alert("Pembayaran berhasil, tetapi terjadi kendala saat mencatat ke database.");
+                                          console.error("Gagal membuka struk:", errBackground);
+                                          alert("Pembayaran berhasil, tetapi gagal memuat struk.");
                                       }
                                   })(); 
                               },
