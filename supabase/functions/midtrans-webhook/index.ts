@@ -14,7 +14,43 @@ serve(async (req) => {
     // 1. Hanya proses jika statusnya 'settlement' (Berhasil)
     if (transaction_status === 'settlement') {
       
-      // 2. Ambil data transaksi
+      // ✨ A. JIKA INI PEMBAYARAN LANGGANAN APLIKASI (AWALAN 'S-')
+      if (order_id && order_id.startsWith('S-')) {
+        const parts = order_id.split('-'); 
+        // Format order_id: S-[BLN/THN]-[singkatId]-[timestamp]
+        const tipePaket = parts[1]; // 'BLN' atau 'THN'
+        const targetSingkatId = parts[2]; // 6 karakter unik klien_id
+
+        // Ambil daftar klien untuk dicocokkan 6 karakter belakang klien_id-nya
+        const { data: daftarKlien, error: errCari } = await supabaseAdmin
+          .from('data_klien')
+          .select('klien_id, masa_aktif');
+
+        if (!errCari && daftarKlien) {
+          const klienDitemukan = daftarKlien.find(k => k.klien_id.replace(/-/g, '').slice(-6) === targetSingkatId);
+
+          if (klienDitemukan) {
+            let tglAktif = klienDitemukan.masa_aktif ? new Date(klienDitemukan.masa_aktif) : new Date();
+            if (tglAktif < new Date()) tglAktif = new Date(); 
+
+            if (tipePaket === 'BLN') {
+              tglAktif.setMonth(tglAktif.getMonth() + 1);
+            } else if (tipePaket === 'THN') {
+              tglAktif.setFullYear(tglAktif.getFullYear() + 1);
+            }
+
+            // Update status menjadi Aktif dan perpanjang masa aktifnya
+            await supabaseAdmin.from('data_klien').update({
+              status_langganan: 'Aktif',
+              masa_aktif: tglAktif.toISOString()
+            }).eq('klien_id', klienDitemukan.klien_id);
+          }
+        }
+        
+        return new Response('Webhook SAAS Berhasil Diproses', { status: 200 });
+      }
+
+      // 2. Ambil data transaksi (Untuk Transaksi Toko / Kasir)
       const { data: transaksi, error: errTrx } = await supabaseAdmin
         .from('transaksi')
         .select('*')
@@ -37,12 +73,10 @@ serve(async (req) => {
           }
         }
 
-        // --- B. PROSES POIN PELANGGAN (DIPERBAIKI) ---
-        // Mendukung kolom bernama 'pelanggan' atau 'nama_pelanggan'
+        // --- B. PROSES POIN PELANGGAN ---
         const namaPlg = transaksi.pelanggan || transaksi.nama_pelanggan; 
         
         if (namaPlg && namaPlg !== "Umum" && namaPlg !== "Umum / Cash") {
-          // Cari murni hanya berdasarkan kolom 'nama' agar tidak terjadi error tipe data
           const { data: plg } = await supabaseAdmin
             .from('pelanggan')
             .select('id, total_poin')
