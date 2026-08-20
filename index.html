@@ -13203,13 +13203,63 @@
         }
 
       // Fungsi untuk dipanggil saat tombol paket dipilih
-        async function bayarLangganan(paket) {
-            if (paket === 'bulanan') {
-                console.log("Memproses pembayaran Rp 50.000 untuk 1 Bulan");
-                // Logika memanggil Midtrans akan diletakkan di sini
-            } else if (paket === 'tahunan') {
-                console.log("Memproses pembayaran Rp 500.000 untuk 1 Tahun");
-                // Logika memanggil Midtrans akan diletakkan di sini
+        async function bayarLangganan(paketPilihan) { 
+            try {
+                // Tampilkan loading
+                Swal.fire({
+                    title: 'Memproses...',
+                    text: 'Menghubungkan ke server pembayaran',
+                    allowOutsideClick: false,
+                    didOpen: () => { Swal.showLoading(); }
+                });
+
+                // 1. Panggil Edge Function SaaS
+                const { data, error } = await window.supabaseClient.functions.invoke('midtrans-saas', {
+                    body: JSON.stringify({ 
+                        paket: paketPilihan, 
+                        klien_id: window.klienIdAktif, // Pastikan variabel global klien_id Anda tersedia di sini
+                        nama: "Nama Toko / Klien", // Bisa diambil dari data profil yang login
+                        email: "klien@email.com"   // Opsional
+                    })
+                });
+
+                if (error) throw error;
+                if (data.error) throw new Error(data.error);
+
+                Swal.close();
+
+                // 2. Buka Pop-up Pembayaran Midtrans Snap
+                if (data.token) {
+                    window.snap.pay(data.token, {
+                        onSuccess: function(result){
+                            console.log("Pembayaran SAAS Sukses:", result);
+                            // Webhook di server akan mengurus penambahan masa aktifnya.
+                            Swal.fire({
+                                title: 'Pembayaran Berhasil!',
+                                text: 'Terima kasih telah memperpanjang langganan. Memuat ulang sistem...',
+                                icon: 'success',
+                                timer: 3000,
+                                showConfirmButton: false
+                            }).then(() => {
+                                window.location.reload(); 
+                            });
+                        },
+                        onPending: function(result){
+                            alert("Tagihan dibuat! Silakan lakukan pembayaran melalui metode yang dipilih.");
+                        },
+                        onError: function(result){
+                            alert("Pembayaran langganan gagal atau dibatalkan.");
+                        },
+                        onClose: function(){
+                            console.log('Pop-up langganan ditutup oleh klien');
+                        }
+                    });
+                }
+
+            } catch (err) {
+                Swal.close();
+                console.error("Error SAAS:", err);
+                alert("Terjadi kesalahan: " + err.message);
             }
         }
                         
