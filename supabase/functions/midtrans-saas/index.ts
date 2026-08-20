@@ -48,8 +48,12 @@ Deno.serve(async (req) => {
       ? "https://app.midtrans.com/snap/v1/transactions" 
       : "https://app.sandbox.midtrans.com/snap/v1/transactions";
 
-    // Format Order ID: SAAS-BULAN-klien_id-timestamp
-    const orderId = `SAAS-${kodePaket}-${klien_id}-${new Date().getTime()}`;
+    // Ambil 6 karakter terakhir dari klien_id agar tetap unik tapi sangat singkat
+    let singkatId = klien_id.replace(/-/g, '').slice(-6);
+    let angkaUnik = Date.now().toString().slice(-6); // 6 digit terakhir timestamp
+
+    // Format baru: SAAS-BULAN-abc123-456789 (Total dijamin di bawah 36 karakter)
+    const orderId = `SAAS-${kodePaket}-${singkatId}-${angkaUnik}`;
 
     const payload = {
       transaction_details: { order_id: orderId, gross_amount: nominal },
