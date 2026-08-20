@@ -13264,8 +13264,18 @@
 
             } catch (err) {
                 Swal.close();
-                console.error("Error SAAS Lengkap:", err);
-                alert("Terjadi kesalahan: " + (err.message || "Gagal menghubungi server"));
+                console.error("Error Detail:", err);
+                
+                // ✨ Ambil pesan asli dari dalam Edge Function
+                if (err.context && typeof err.context.json === 'function') {
+                    err.context.json().then(errorData => {
+                        alert("Server Error: " + (errorData.error || JSON.stringify(errorData)));
+                    }).catch(() => {
+                        alert("Terjadi kesalahan pada Edge Function: " + err.message);
+                    });
+                } else {
+                    alert("Terjadi kesalahan: " + err.message);
+                }
             }
         }
                         
