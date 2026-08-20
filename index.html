@@ -39,67 +39,85 @@
       .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
 
       /* Memastikan SweetAlert selalu tampil di atas modal pop-up manapun */
-      .swal2-container {
-          z-index: 100000 !important;
-      }
-      /* Custom SweetAlert Ukuran Kecil */
-      .swal-custom-small {
-          border-radius: 10px !important; /* Lengkungan border lebih kecil */
-          padding: 12px !important;
-      }
-      .swal-custom-small .swal2-title {
-          font-size: 16px !important; /* Ukuran teks judul diperkecil */
-          margin-bottom: 5px !important;
-      }
-      .swal-custom-small .swal2-html-container {
-          font-size: 13px !important; /* Ukuran teks deskripsi diperkecil */
-          margin-top: 0 !important;
-      }
-      .swal-custom-small .swal2-icon {
-          transform: scale(0.65); /* Mengecilkan ukuran ikon warning/success */
-          margin: 5px auto 10px auto !important;
-      }
-      .swal-custom-small .swal2-confirm {
-          font-size: 13px !important;
-          padding: 6px 16px !important; /* Ukuran tombol diperkecil */
-          border-radius: 6px !important;
-      }
+        .swal2-container {
+            z-index: 100000 !important;
+        }
 
-      /* Custom SweetAlert - Memperkecil Kolom Input */
-      .swal-custom-small .swal2-input {
-          height: 36px !important; /* Mengurangi tinggi kolom */
-          padding: 8px 12px !important;
-          font-size: 13px !important;
-          border: 1px solid var(--border-color, #cbd5e1) !important;
-          border-radius: 6px !important;
-          box-shadow: none !important; /* Menghilangkan efek glow tebal bawaan */
-          margin: 15px auto !important;
-          width: 90% !important;
-          color: var(--text-dark, #333333) !important;
-          background: var(--surface, #ffffff) !important;
-      }
+        /* Custom SweetAlert Ukuran Kecil & Adaptif Dark Mode */
+        .swal-custom-small {
+            width: 300px !important; /* ✨ KUNCI: Mencegah kotak terlalu lebar */
+            padding: 20px 15px 15px 15px !important;
+            background-color: var(--surface, #ffffff) !important; /* ✨ Mengikuti tema */
+            border: 1px solid var(--border-color, rgba(128, 128, 128, 0.2)) !important; /* Border halus */
+            border-radius: 14px !important; /* Lengkungan border disesuaikan */
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1) !important;
+        }
 
-      /* Warna border saat kolom input di-klik (fokus) */
-      .swal-custom-small .swal2-input:focus {
-          border-color: #3b82f6 !important;
-          outline: none !important;
-      }
+        /* Warna dan Jarak Teks Judul */
+        .swal-custom-small .swal2-title {
+            color: var(--text-dark, #202124) !important; /* ✨ Mengikuti tema */
+            font-size: 16px !important;
+            margin-bottom: 4px !important;
+            padding: 0 !important;
+        }
 
-      /* Custom SweetAlert - Tombol Border Radius 100px (Pill Shape) */
-      .swal-custom-small .swal2-confirm,
-      .swal-custom-small .swal2-cancel {
-          border-radius: 100px !important; /* Membuat tombol melengkung penuh */
-          font-size: 13px !important;
-          padding: 8px 20px !important;
-          font-weight: 600 !important;
-          margin: 5px !important;
-      }
+        /* Warna dan Jarak Teks Deskripsi */
+        .swal-custom-small .swal2-html-container {
+            color: var(--text-muted, #5f6368) !important; /* ✨ Mengikuti tema */
+            font-size: 13px !important;
+            margin-top: 4px !important;
+            padding: 0 !important;
+        }
 
-      /* Kustomisasi khusus tombol Batal agar warnanya serasi dengan tema */
-      .swal-custom-small .swal2-cancel {
-          background-color: var(--bg-main, #e2e8f0) !important;
-          color: var(--text-dark, #333333) !important;
-      }
+        /* Mengecilkan ukuran ikon warning/success */
+        .swal-custom-small .swal2-icon {
+            transform: scale(0.6);
+            margin: 0 auto 10px auto !important;
+        }
+
+        /* Fix transparan untuk background ikon sukses bawaan SweetAlert di Dark Mode */
+        .swal-custom-small .swal2-success-circular-line-left,
+        .swal-custom-small .swal2-success-circular-line-right,
+        .swal-custom-small .swal2-success-fix {
+            background-color: transparent !important;
+        }
+
+        /* Custom SweetAlert - Memperkecil Kolom Input */
+        .swal-custom-small .swal2-input {
+            height: 36px !important; /* Mengurangi tinggi kolom */
+            padding: 8px 12px !important;
+            font-size: 13px !important;
+            border: 1px solid var(--border-color, #cbd5e1) !important;
+            border-radius: 6px !important;
+            box-shadow: none !important; /* Menghilangkan efek glow tebal bawaan */
+            margin: 15px auto !important;
+            width: 90% !important;
+            color: var(--text-dark, #333333) !important; /* ✨ Mengikuti tema */
+            background: var(--bg-main, #f8f9fa) !important; /* ✨ Mengikuti tema */
+        }
+
+        /* Warna border saat kolom input di-klik (fokus) */
+        .swal-custom-small .swal2-input:focus {
+            border-color: #3b82f6 !important;
+            outline: none !important;
+        }
+
+        /* Custom SweetAlert - Tombol Border Radius 100px (Pill Shape) */
+        .swal-custom-small .swal2-confirm,
+        .swal-custom-small .swal2-cancel {
+            border-radius: 100px !important; /* Membuat tombol melengkung penuh */
+            font-size: 13px !important;
+            padding: 8px 20px !important;
+            font-weight: 600 !important;
+            margin: 5px !important;
+        }
+
+        /* Kustomisasi khusus tombol Batal agar warnanya serasi dengan tema */
+        .swal-custom-small .swal2-cancel {
+            background-color: var(--bg-main, #e2e8f0) !important; /* ✨ Mengikuti tema */
+            color: var(--text-dark, #333333) !important; /* ✨ Mengikuti tema */
+            border: 1px solid var(--border-color, transparent) !important;
+        }
 
       /* Layout Utama */
       #appView { display: flex; flex-direction: row; height: 100vh; width: 100vw; }
