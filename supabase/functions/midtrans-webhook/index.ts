@@ -14,7 +14,7 @@ serve(async (req) => {
     // 1. Hanya proses jika statusnya 'settlement' (Berhasil)
     if (transaction_status === 'settlement') {
       
-      // 2. Cek transaksi di database
+      // 2. Ambil data transaksi
       const { data: transaksi, error: errTrx } = await supabaseAdmin
         .from('transaksi')
         .select('*')
@@ -37,18 +37,26 @@ serve(async (req) => {
           }
         }
 
-        // --- B. PROSES POIN PELANGGAN ---
-        if (transaksi.nama_pelanggan && transaksi.nama_pelanggan !== "Umum" && transaksi.nama_pelanggan !== "Umum / Cash") {
-          // Cari pelanggan berdasarkan nama atau ID
+        // --- B. PROSES POIN PELANGGAN (DIPERBAIKI) ---
+        // Mendukung kolom bernama 'pelanggan' atau 'nama_pelanggan'
+        const namaPlg = transaksi.pelanggan || transaksi.nama_pelanggan; 
+        
+        if (namaPlg && namaPlg !== "Umum" && namaPlg !== "Umum / Cash") {
+          // Cari murni hanya berdasarkan kolom 'nama' agar tidak terjadi error tipe data
           const { data: plg } = await supabaseAdmin
             .from('pelanggan')
             .select('id, total_poin')
-            .or(`nama.eq.${transaksi.nama_pelanggan},id.eq.${transaksi.nama_pelanggan}`)
+            .eq('nama', namaPlg)
             .maybeSingle();
 
           if (plg) {
-            let poinDidapat = Math.floor((transaksi.total_akhir || 0) / 10000);
-            let poinBaru = (plg.total_poin || 0) - (transaksi.poin_dipakai || 0) + poinDidapat;
+            let totalAkhir = parseFloat(transaksi.total_akhir) || 0;
+            let poinDidapat = Math.floor(totalAkhir / 10000);
+            
+            let poinLama = parseInt(plg.total_poin) || 0;
+            let poinDipakai = parseInt(transaksi.poin_dipakai) || 0;
+            
+            let poinBaru = poinLama - poinDipakai + poinDidapat;
             if (poinBaru < 0) poinBaru = 0;
 
             await supabaseAdmin.from('pelanggan').update({ total_poin: poinBaru }).eq('id', plg.id);
@@ -60,17 +68,16 @@ serve(async (req) => {
       }
 
       // --- D. CEGAH DUPLIKASI ARUS KAS ---
-      // Cek apakah arus kas dengan nomor order_id ini sudah pernah tercatat sebelumnya
       const { data: existingKas } = await supabaseAdmin
         .from('arus_kas')
         .select('id')
         .ilike('keterangan', `%${order_id}%`)
         .maybeSingle();
 
-      // Jika belum ada sama sekali di arus kas, catat sekarang (untuk kasus pending/bayar nanti)
       if (!existingKas) {
+        let totalAkhir = parseFloat(transaksi.total_akhir) || 0;
         let nilaiPembulatan = parseFloat(transaksi.pembulatan) || 0;
-        let omsetPenuh = parseFloat(transaksi.total_akhir) + nilaiPembulatan;
+        let omsetPenuh = totalAkhir + nilaiPembulatan;
 
         await supabaseAdmin.from('arus_kas').insert({
           klien_id: transaksi.klien_id,
@@ -79,7 +86,7 @@ serve(async (req) => {
           akun_asal: 'Midtrans',
           akun_tujuan: 'Midtrans',
           nominal: omsetPenuh,
-          keterangan: "Penjualan via Webhook: " + order_id,
+          keterangan: "Penjualan Struk: " + order_id,
           kasir: transaksi.kasir || 'Sistem',
           status: 'Selesai'
         });
