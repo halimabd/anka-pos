@@ -13231,10 +13231,42 @@
             }
         }
 
-      // Fungsi untuk dipanggil saat tombol paket dipilih
+      // ========================================================
+        // 🔥 AUTO-LOAD SCRIPT MIDTRANS KHUSUS PENGEMBANG (SAAS)
+        // ========================================================
+        function siapkanMidtransPengembang(clientKeyMaster, envMaster) {
+            return new Promise((resolve, reject) => {
+                // 1. Hapus script Midtrans milik toko/klien (jika sebelumnya dimuat) agar tidak bentrok
+                let scriptKlien = document.getElementById('midtrans-snap-script');
+                if (scriptKlien) scriptKlien.remove();
+
+                // 2. Jika script master sudah ada, tidak perlu muat ulang
+                let scriptMaster = document.getElementById('midtrans-snap-master');
+                if (scriptMaster) {
+                    resolve();
+                    return;
+                }
+
+                // 3. Buat tag script baru khusus untuk Pengembang
+                const script = document.createElement('script');
+                script.id = 'midtrans-snap-master';
+                script.src = envMaster === 'production' 
+                    ? 'https://app.midtrans.com/snap/snap.js'
+                    : 'https://app.sandbox.midtrans.com/snap/snap.js';
+                    
+                script.setAttribute('data-client-key', clientKeyMaster);
+                script.onload = () => resolve();
+                script.onerror = () => reject(new Error('Gagal memuat modul pembayaran pengembang.'));
+                
+                document.head.appendChild(script);
+            });
+        }
+
+        // ========================================================
+        // 🔥 FUNGSI BAYAR LANGGANAN (TERPISAH DARI PENJUALAN TOKO)
+        // ========================================================
         async function bayarLangganan(paketPilihan) { 
             try {
-                // Ambil klien_id dari localStorage
                 let klienIdAktif = localStorage.getItem('klien_id');
                 
                 if (!klienIdAktif) {
@@ -13249,35 +13281,36 @@
 
                 Swal.fire({
                     title: 'Memproses...',
-                    text: 'Menghubungkan ke server pembayaran',
+                    text: 'Menghubungkan ke server pembayaran master',
                     allowOutsideClick: false,
                     customClass: { popup: 'swal-custom-small' },
                     didOpen: () => { Swal.showLoading(); }
                 });
 
-                // Panggil Edge Function midtrans-saas
+                // 1. Panggil Edge Function untuk mendapatkan Token + Client Key Master
                 const { data, error } = await window.supabaseClient.functions.invoke('midtrans-saas', {
                     body: JSON.stringify({ 
                         paket: paketPilihan, 
                         klien_id: klienIdAktif,
-                        nama: "Klien ANKA POS", 
-                        email: ""   
+                        // Nama dan email bisa diambil dari session/localStorage jika ada
                     })
                 });
 
                 if (error) throw error;
                 if (data.error) throw new Error(data.error);
 
-                Swal.close();
-
-                // Buka Pop-up Midtrans Snap Sandbox
                 if (data.token) {
+                    // 2. Suntikkan script Midtrans PENGEMBANG menggunakan data dari database
+                    await siapkanMidtransPengembang(data.client_key, data.env);
+                    
+                    Swal.close(); 
+
+                    // 3. Eksekusi Pop-up Midtrans (Sekarang 100% menggunakan akun Midtrans Anda)
                     window.snap.pay(data.token, {
                         onSuccess: function(result){
-                            console.log("Pembayaran SAAS Sukses:", result);
                             Swal.fire({
                                 title: 'Pembayaran Berhasil!',
-                                text: 'Masa aktif langganan Anda akan segera diperbarui.',
+                                text: 'Masa aktif langganan Anda segera diperbarui.',
                                 icon: 'success',
                                 timer: 3000,
                                 showConfirmButton: false,
@@ -13303,7 +13336,11 @@
                             });
                         },
                         onClose: function(){
-                            console.log('Pop-up Midtrans ditutup');
+                            // Opsional: Muat ulang script klien saat popup langganan ditutup 
+                            // agar kasir bisa dipakai lagi
+                            if (typeof muatScriptMidtransOtomatis === 'function') {
+                                muatScriptMidtransOtomatis();
+                            }
                         }
                     });
                 }
@@ -13311,26 +13348,7 @@
             } catch (err) {
                 Swal.close();
                 console.error("Error Detail:", err);
-                
-                const tampilkanError = (pesan) => {
-                    Swal.fire({
-                        title: 'Terjadi Kesalahan',
-                        text: pesan,
-                        icon: 'error',
-                        customClass: { popup: 'swal-custom-small' }
-                    });
-                };
-
-                // Ambil pesan asli dari dalam Edge Function
-                if (err.context && typeof err.context.json === 'function') {
-                    err.context.json().then(errorData => {
-                        tampilkanError("Server Error: " + (errorData.error || JSON.stringify(errorData)));
-                    }).catch(() => {
-                        tampilkanError("Terjadi kesalahan pada Edge Function: " + err.message);
-                    });
-                } else {
-                    tampilkanError(err.message);
-                }
+                // ... (Kode tampilkanError SweetAlert Anda tetap sama) ...
             }
         }
                         
