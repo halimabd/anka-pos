@@ -46,7 +46,7 @@ serve(async (req) => {
           const { data: plg } = await supabaseAdmin
             .from('pelanggan')
             .select('id, total_poin')
-            .eq('nama', namaPlg)
+            .eq('nama_pelanggan', namaPlg)
             .maybeSingle();
 
           if (plg) {
