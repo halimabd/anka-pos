@@ -10,16 +10,15 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    const { paket, klien_id, nama, email } = await req.json();
+    const { paket, klien_id } = await req.json();
     if (!klien_id) throw new Error("klien_id wajib dikirim!");
 
-    // 1. Buat koneksi Admin Supabase
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // 2. Ambil Pengaturan Sistem Master dari Database
+    // 1. Ambil pengaturan sistem master
     const { data: sys, error: errSys } = await supabaseAdmin
       .from('pengaturan_sistem')
       .select('*')
@@ -29,39 +28,51 @@ Deno.serve(async (req) => {
     if (errSys || !sys) throw new Error("Pengaturan sistem belum dikonfigurasi di database!");
     if (!sys.midtrans_server_key) throw new Error("Server Key Master Midtrans kosong!");
 
-    // 3. Tentukan Harga Berdasarkan Database
+    // 2. Ambil data asli klien (nama dan email) dari tabel data_klien berdasarkan klien_id
+    const { data: klienData, error: errKlien } = await supabaseAdmin
+      .from('data_klien')
+      .select('nama, email')
+      .eq('klien_id', klien_id)
+      .single();
+
+    // Jika email di database kosong atau tidak valid, gunakan email cadangan yang valid
+    let namaKlien = klienData?.nama || "Klien ANKA POS";
+    let emailKlien = klienData?.email;
+    if (!emailKlien || !emailKlien.includes('@')) {
+      emailKlien = "klien@ankapos.com"; 
+    }
+
     let nominal = 0;
     let kodePaket = "";
 
     if (paket === "bulanan") {
       nominal = sys.harga_bulanan;
-      kodePaket = "BULAN";
+      kodePaket = "BLN";
     } else if (paket === "tahunan") {
       nominal = sys.harga_tahunan;
-      kodePaket = "TAHUN";
+      kodePaket = "THN";
     } else {
       throw new Error("Pilihan paket tidak valid");
     }
 
-    // 4. Siapkan Midtrans (Sandbox vs Production)
     const apiUrl = sys.midtrans_env === "production" 
       ? "https://app.midtrans.com/snap/v1/transactions" 
       : "https://app.sandbox.midtrans.com/snap/v1/transactions";
 
-    // Ambil 6 karakter terakhir dari klien_id agar tetap unik tapi sangat singkat
+    // 3. Format Order ID singkat (< 36 karakter)
     let singkatId = klien_id.replace(/-/g, '').slice(-6);
-    let angkaUnik = Date.now().toString().slice(-6); // 6 digit terakhir timestamp
-
-    // Format baru: SAAS-BULAN-abc123-456789 (Total dijamin di bawah 36 karakter)
-    const orderId = `SAAS-${kodePaket}-${singkatId}-${angkaUnik}`;
+    let angkaUnik = Date.now().toString().slice(-6);
+    const orderId = `S-${kodePaket}-${singkatId}-${angkaUnik}`;
 
     const payload = {
       transaction_details: { order_id: orderId, gross_amount: nominal },
-      customer_details: { first_name: nama || "Klien ANKA POS", email: email || "" },
+      customer_details: { 
+        first_name: namaKlien, 
+        email: emailKlien // ✨ Sekarang dijamin menggunakan format email yang valid
+      },
       callbacks: { finish: "https://anka-pos.vercel.app/#" }
     };
 
-    // 5. Tembak ke Midtrans
     const authHeader = "Basic " + btoa(sys.midtrans_server_key + ":");
     const response = await fetch(apiUrl, {
       method: 'POST',
