@@ -7256,7 +7256,7 @@
                       // 3. Tarik data transaksi dari Supabase (Pastikan status_transaksi ikut ditarik)
                       const { data: trx, error: errGet } = await window.supabaseClient
                           .from('transaksi')
-                          .select('detail_pesanan, status_transaksi, poin_dipakai, total_akhir, nama_pelanggan')
+                          .select('detail_pesanan, status_transaksi, poin_dipakai, total_akhir, nama_pelanggan, metode_pembayaran, no_struk')
                           .eq('id', idTransaksi)
                           .single();
       
