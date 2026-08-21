@@ -13396,28 +13396,44 @@
             }
         }
 
+        // ✨ FUNGSI BARU: Mengambil waktu nyata dari internet (Anti-Hack Tanggal HP)
+        async function getWaktuReal() {
+            try {
+                // Bertanya ke server waktu dunia (Zona Asia/Jakarta)
+                const response = await fetch('https://worldtimeapi.org/api/timezone/Asia/Jakarta');
+                if (!response.ok) throw new Error("Gagal akses API waktu");
+                
+                const data = await response.json();
+                return new Date(data.datetime).getTime(); // Mengembalikan waktu yang 100% akurat dari internet
+            } catch (error) {
+                console.warn("Gagal mengambil waktu internet, memakai waktu perangkat sebagai cadangan:", error);
+                // Fallback: Jika internet kasir bermasalah memanggil API, baru gunakan jam lokal
+                return new Date().getTime();
+            }
+        }
+
         // Fungsi untuk mengecek masa aktif klien
         async function cekMasaAktif() {
             const klienId = localStorage.getItem('klien_id');
-            if (!klienId) return; // Abaikan jika belum login
+            if (!klienId) return; 
 
             try {
-                // ✨ PERBAIKAN: Ubah dari 'pengaturan' menjadi 'data_klien'
                 const { data, error } = await window.supabaseClient
                     .from('data_klien') 
                     .select('masa_aktif')
-                    // Sesuaikan 'id' atau 'klien_id' tergantung nama kolom kunci utama di tabel data_klien Anda
                     .eq('klien_id', klienId) 
                     .single();
 
                 if (error) throw error;
 
                 if (data && data.masa_aktif) {
-                    // Konversi waktu dari database dan waktu saat ini
+                    // Waktu batas dari database Supabase Anda
                     const batasWaktu = new Date(data.masa_aktif).getTime();
-                    const waktuSekarang = new Date().getTime();
+                    
+                    // ✨ PERBAIKAN: Gunakan waktu nyata dari fungsi getWaktuReal() di atas!
+                    const waktuSekarang = await getWaktuReal();
 
-                    // Jika waktu sekarang melebihi batas waktu berlangganan
+                    // Jika waktu dari internet melebihi batas waktu berlangganan
                     if (waktuSekarang > batasWaktu) {
                         kunciAplikasi();
                     }
@@ -13463,15 +13479,22 @@
             // ✨ Catatan: Tombol tabProfilUser, Kelola Langganan (tabTagihan), 
             // dan Logout TETAP AMAN dan bisa diklik karena tidak kita masukkan ke daftar di atas.
 
-            // 4. Munculkan peringatan agar kasir paham mengapa menunya terkunci
+            // 4. Munculkan peringatan dengan gaya (Mini & Adaptif Light/Dark Mode)
             Swal.fire({
                 icon: 'warning',
-                title: '<strong style="font-size: 18px; color: #d33;">Masa Aktif Berakhir</strong>',
-                html: '<span style="font-size: 14px;">Masa langganan aplikasi Anda telah habis.<br><br>Beberapa menu dikunci sementara. Silakan selesaikan pembayaran perpanjangan untuk membuka akses menu kembali.</span>',
-                confirmButtonText: 'Mengerti',
-                confirmButtonColor: '#25D366',
-                allowOutsideClick: false, // Wajib klik tombol Mengerti
-                allowEscapeKey: false
+                title: '<strong style="font-size: 16px;">Masa Aktif Berakhir</strong>',
+                html: '<span style="font-size: 13px;">Masa langganan aplikasi Anda telah habis.<br><br>Beberapa menu dikunci sementara. Silakan selesaikan pembayaran perpanjangan untuk membuka akses menu kembali.</span>',
+                width: '300px',
+                padding: '15px',
+                background: 'var(--surface, #ffffff)',       // Menyesuaikan warna background tema
+                color: 'var(--text-dark, #333333)',          // Menyesuaikan warna teks tema
+                confirmButtonText: '<span style="font-size: 13px;">Mengerti</span>',
+                confirmButtonColor: '#3b82f6',               // Warna biru senada dengan tombol Kelola Langganan
+                allowOutsideClick: false,                    // Wajib klik tombol Mengerti
+                allowEscapeKey: false,
+                customClass: { 
+                    icon: 'ikon-mini-swal'                   // Menggunakan class ikon mini Anda
+                }
             });
         }
                         
