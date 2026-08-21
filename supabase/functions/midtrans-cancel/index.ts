@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
 
     const authHeader = "Basic " + btoa(pengaturan.midtransServerKey + ":");
     
-    // Tembak API Midtrans untuk memaksa transaksi kedaluwarsa
+    // Tembak API Midtrans
     const response = await fetch(expireUrl, {
       method: 'POST',
       headers: { 
@@ -52,15 +52,12 @@ Deno.serve(async (req) => {
     });
 
     const result = await response.json();
+    
+    // ✨ TAMBAHKAN LOG INI AGAR BISA DILIHAT DI SUPABASE DASHBOARD
+    console.log("Respon Midtrans untuk no_struk " + no_struk + ":", JSON.stringify(result));
 
     return new Response(JSON.stringify({ success: true, midtransResponse: result }), { 
       headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-    });
-
-  } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), { 
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
-      status: 400 
     });
   }
 });
