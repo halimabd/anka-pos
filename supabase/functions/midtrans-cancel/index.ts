@@ -31,17 +31,18 @@ Deno.serve(async (req) => {
       throw new Error("Server Key Midtrans tidak ditemukan.");
     }
 
-    // Tentukan URL API Core Midtrans untuk Cancel
+    // Tentukan URL API Core Midtrans 
     const baseUrl = pengaturan.midtransEnv === "production" 
       ? "https://api.midtrans.com" 
       : "https://api.sandbox.midtrans.com";
       
-    const cancelUrl = `${baseUrl}/v2/${no_struk}/cancel`;
+    // ✨ GUNAKAN ENDPOINT /expire AGAR SEMUA METODE PEMBAYARAN LANGSUNG KEDALUWARSA
+    const expireUrl = `${baseUrl}/v2/${no_struk}/expire`;
 
     const authHeader = "Basic " + btoa(pengaturan.midtransServerKey + ":");
     
-    // Tembak API Midtrans untuk membatalkan pesanan
-    const response = await fetch(cancelUrl, {
+    // Tembak API Midtrans untuk memaksa transaksi kedaluwarsa
+    const response = await fetch(expireUrl, {
       method: 'POST',
       headers: { 
           'Accept': 'application/json', 
