@@ -12770,58 +12770,58 @@
       
       // 5. Fungsi Pembantu untuk Mengatur Tampilan setelah Login Sukses
       function masukKeAplikasi(dataStaff) {
-          // Set variabel lokal/global aplikasi
-          currentUser = dataStaff.username; 
-          currentRole = dataStaff.role; 
-          currentNama = dataStaff.nama || dataStaff.username; // Pastikan nama tidak kosong
-          
-          // Ambil foto spesifik dari database staff_toko, jika kosong/null jadikan string kosong
-          let currentFoto = (dataStaff.foto_profil && dataStaff.foto_profil !== "null" && dataStaff.foto_profil.trim() !== "") ? dataStaff.foto_profil : ""; 
-          
-          // Simpan data kasir/owner yang aktif ke Local Storage
-          localStorage.setItem('pos_aktif_user', currentUser); 
-          localStorage.setItem('pos_aktif_role', currentRole); 
-          localStorage.setItem('pos_aktif_nama', currentNama); 
-          
-          // Simpan atau bersihkan memori foto agar tidak saling tumpang tindih antar user
-          if (currentFoto) {
-              localStorage.setItem('pos_aktif_foto', currentFoto);
-          } else {
-              localStorage.removeItem('pos_aktif_foto'); 
-          }
-          
-          // Ubah UI
-          const namaKasirEl = document.getElementById('namaKasir');
-          if (namaKasirEl) namaKasirEl.innerText = currentNama; 
-          
-          // Sembunyikan form login, tampilkan layar utama aplikasi
-          const loginView = document.getElementById('loginView');
-          const appView = document.getElementById('appView');
-          
-          if (loginView) loginView.style.display = 'none'; 
-          if (appView) appView.style.display = 'flex'; 
-          
-          // ✨ PANGGIL SEMUA FUNGSI INISIALISASI DI SINI (Terpusat)
-          if (typeof aturHakAkses === "function") aturHakAkses(currentRole);
-          if (typeof muatInfoLangganan === "function") muatInfoLangganan();
-          if (typeof muatDataKatalog === "function") muatDataKatalog(); 
-          if (typeof muatPengaturanData === "function") muatPengaturanData(); 
-          if (typeof muatManajemenKas === "function") muatManajemenKas();
-          if (typeof inisialisasiRealtime === "function") inisialisasiRealtime();
-          if (typeof muatDataProfilUser === "function") muatDataProfilUser();
-          if (typeof muatDaftarPelanggan === "function") muatDaftarPelanggan();
-          //if (typeof tampilkanNamaUser === "function") tampilkanNamaUser();
-          //if (typeof renderFotoProfilGlobal === "function") renderFotoProfilGlobal();
-          setTimeout(() => {
-              if (typeof tampilkanNamaUser === "function") {
-                  tampilkanNamaUser();
-              }
-          }, 50);
-      
-          setTimeout(() => {
-              if (typeof cekDanTawarkanInstall === "function") cekDanTawarkanInstall();
-          }, 1000);
-      }
+            // Set variabel lokal/global aplikasi
+            currentUser = dataStaff.username; 
+            currentRole = dataStaff.role; 
+            currentNama = dataStaff.nama || dataStaff.username; // Pastikan nama tidak kosong
+            
+            // Ambil foto spesifik dari database staff_toko, jika kosong/null jadikan string kosong
+            let currentFoto = (dataStaff.foto_profil && dataStaff.foto_profil !== "null" && dataStaff.foto_profil.trim() !== "") ? dataStaff.foto_profil : ""; 
+            
+            // Simpan data kasir/owner yang aktif ke Local Storage
+            localStorage.setItem('pos_aktif_user', currentUser); 
+            localStorage.setItem('pos_aktif_role', currentRole); 
+            localStorage.setItem('pos_aktif_nama', currentNama); 
+            
+            // Simpan atau bersihkan memori foto agar tidak saling tumpang tindih antar user
+            if (currentFoto) {
+                localStorage.setItem('pos_aktif_foto', currentFoto);
+            } else {
+                localStorage.removeItem('pos_aktif_foto'); 
+            }
+            
+            // Ubah UI
+            const namaKasirEl = document.getElementById('namaKasir');
+            if (namaKasirEl) namaKasirEl.innerText = currentNama; 
+            
+            // Sembunyikan form login, tampilkan layar utama aplikasi
+            const loginView = document.getElementById('loginView');
+            const appView = document.getElementById('appView');
+            
+            if (loginView) loginView.style.display = 'none'; 
+            if (appView) appView.style.display = 'flex'; 
+            
+            // ✨ PANGGIL SEMUA FUNGSI INISIALISASI DI SINI (Terpusat)
+            if (typeof aturHakAkses === "function") aturHakAkses(currentRole);
+            if (typeof muatInfoLangganan === "function") muatInfoLangganan();
+            if (typeof cekMasaAktif === "function") cekMasaAktif();
+            if (typeof muatDataKatalog === "function") muatDataKatalog(); 
+            if (typeof muatPengaturanData === "function") muatPengaturanData(); 
+            if (typeof muatManajemenKas === "function") muatManajemenKas();
+            if (typeof inisialisasiRealtime === "function") inisialisasiRealtime();
+            if (typeof muatDataProfilUser === "function") muatDataProfilUser();
+            if (typeof muatDaftarPelanggan === "function") muatDaftarPelanggan();
+
+            setTimeout(() => {
+                if (typeof tampilkanNamaUser === "function") {
+                    tampilkanNamaUser();
+                }
+            }, 50);
+
+            setTimeout(() => {
+                if (typeof cekDanTawarkanInstall === "function") cekDanTawarkanInstall();
+            }, 1000);
+        }
 
       function inisialisasiRealtime() {
           const tabelPantauan = ['produk', 'transaksi', 'pelanggan', 'arus_kas', 'staff_toko', 'data_klien', 'pengaturan'];
@@ -13394,6 +13394,85 @@
                 console.error("Error Detail:", err);
                 // ... (Kode tampilkanError SweetAlert Anda tetap sama) ...
             }
+        }
+
+        // Fungsi untuk mengecek masa aktif klien
+        async function cekMasaAktif() {
+            const klienId = localStorage.getItem('klien_id');
+            if (!klienId) return; // Abaikan jika belum login
+
+            try {
+                // ✨ PERBAIKAN: Ubah dari 'pengaturan' menjadi 'data_klien'
+                const { data, error } = await window.supabaseClient
+                    .from('data_klien') 
+                    .select('masa_aktif')
+                    // Sesuaikan 'id' atau 'klien_id' tergantung nama kolom kunci utama di tabel data_klien Anda
+                    .eq('klien_id', klienId) 
+                    .single();
+
+                if (error) throw error;
+
+                if (data && data.masa_aktif) {
+                    // Konversi waktu dari database dan waktu saat ini
+                    const batasWaktu = new Date(data.masa_aktif).getTime();
+                    const waktuSekarang = new Date().getTime();
+
+                    // Jika waktu sekarang melebihi batas waktu berlangganan
+                    if (waktuSekarang > batasWaktu) {
+                        kunciAplikasi();
+                    }
+                }
+            } catch (error) {
+                console.error("Gagal mengecek masa aktif:", error);
+            }
+        }
+
+        // Fungsi untuk mengunci menu tertentu dan mengarahkan ke tabTagihan
+        function kunciAplikasi() {
+            // 1. Pindah paksa ke tabTagihan
+            if (typeof gantiTab === 'function') {
+                // Kita simulasikan klik pada tombol Kelola Langganan agar status 'active' pindah ke sana
+                const btnTagihan = document.getElementById('btnKelolaLangganan');
+                gantiTab('tabTagihan', btnTagihan); 
+            }
+
+            // 2. Daftar ID menu navigasi yang harus DIKUNCI
+            const menuTerkunci = [
+                'btnNavKasir', 
+                'btnNavAnalitik', 
+                'btnNavRiwayat', 
+                'btnNavManajemenKas', 
+                'btnNavProduk', 
+                'btnNavPelanggan', 
+                'btnNavUsers', 
+                'btnNavPengaturan'
+            ];
+
+            // 3. Eksekusi penguncian: Buat menu jadi pudar dan matikan fungsi kliknya
+            menuTerkunci.forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) {
+                    btn.style.opacity = '0.3';             // Buat tombol jadi pudar/transparan
+                    btn.style.pointerEvents = 'none';      // Matikan deteksi klik dari mouse/layar sentuh
+                    btn.style.cursor = 'not-allowed';      // Ubah ikon kursor mouse
+                    btn.removeAttribute('onclick');        // Hapus fungsi pindah tab secara permanen
+                    btn.classList.remove('active');        // Cabut highlight 'active' jika ada
+                }
+            });
+
+            // ✨ Catatan: Tombol tabProfilUser, Kelola Langganan (tabTagihan), 
+            // dan Logout TETAP AMAN dan bisa diklik karena tidak kita masukkan ke daftar di atas.
+
+            // 4. Munculkan peringatan agar kasir paham mengapa menunya terkunci
+            Swal.fire({
+                icon: 'warning',
+                title: '<strong style="font-size: 18px; color: #d33;">Masa Aktif Berakhir</strong>',
+                html: '<span style="font-size: 14px;">Masa langganan aplikasi Anda telah habis.<br><br>Beberapa menu dikunci sementara. Silakan selesaikan pembayaran perpanjangan untuk membuka akses menu kembali.</span>',
+                confirmButtonText: 'Mengerti',
+                confirmButtonColor: '#25D366',
+                allowOutsideClick: false, // Wajib klik tombol Mengerti
+                allowEscapeKey: false
+            });
         }
                         
     </script>
