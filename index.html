@@ -7253,10 +7253,10 @@
                   });
       
                   try {
-                      // 3. Tarik data transaksi dari Supabase untuk dicek & diambil isi keranjangnya
+                      // 3. Tarik data transaksi dari Supabase (✨ TAMBAHKAN nama_pelanggan)
                       const { data: trx, error: errGet } = await window.supabaseClient
                           .from('transaksi')
-                          .select('detail_pesanan, status_transaksi, poin_dipakai, total_akhir')
+                          .select('detail_pesanan, status_transaksi, poin_dipakai, total_akhir, nama_pelanggan') // ✨ pastikan nama_pelanggan ikut dipanggil
                           .eq('id', idTransaksi)
                           .single();
       
@@ -7278,7 +7278,7 @@
       
                       if (errUpdate) throw errUpdate;
       
-                      // 5. Proses Pengembalian Stok ke Tabel Produk
+                      // 5A. Proses Pengembalian Stok ke Tabel Produk
                       let itemsRecon = [];
                       if (typeof trx.detail_pesanan === 'string') {
                           try { itemsRecon = JSON.parse(trx.detail_pesanan); } catch(e) {}
@@ -7302,8 +7302,41 @@
                           }
                       }
       
-                      // (Opsional: Jika Anda punya tabel 'pelanggan' di Supabase, Anda bisa menyisipkan 
-                      // kode di sini untuk mengembalikan `trx.poin_dipakai` kepada member terkait)
+                      // ✨ 5B. PROSES REKONSILIASI POIN PELANGGAN ✨
+                      const namaPlg = trx.nama_pelanggan;
+                      // Pastikan transaksi ini milik member (bukan pembeli Umum)
+                      if (namaPlg && namaPlg !== "Umum" && namaPlg !== "Umum / Cash") {
+                          
+                          // Cari data pelanggan di database
+                          const { data: plg, error: errPlg } = await window.supabaseClient
+                              .from('pelanggan')
+                              .select('id, total_poin')
+                              .eq('nama_pelanggan', namaPlg)
+                              .maybeSingle();
+
+                          if (!errPlg && plg) {
+                              let poinSekarang = parseInt(plg.total_poin) || 0;
+                              let poinDipakai = parseInt(trx.poin_dipakai) || 0;
+                              
+                              // Hitung poin yang tadinya didapat dari transaksi ini (asumsi 1 poin per Rp 10.000)
+                              let totalAkhir = parseFloat(trx.total_akhir) || 0;
+                              let poinDidapat = Math.floor(totalAkhir / 10000);
+
+                              // Rumus pemulihan: Poin Saat Ini + Dikembalikan Poin yang Dipakai - Ditarik Poin Bonus
+                              let poinBaru = poinSekarang + poinDipakai - poinDidapat;
+                              
+                              // Pastikan poin tidak menjadi minus
+                              if (poinBaru < 0) poinBaru = 0;
+
+                              // Update kembali poin ke database pelanggan
+                              await window.supabaseClient
+                                  .from('pelanggan')
+                                  .update({ total_poin: poinBaru })
+                                  .eq('id', plg.id);
+                                  
+                              console.log(`Poin ${namaPlg} dipulihkan: ${poinSekarang} + ${poinDipakai} - ${poinDidapat} = ${poinBaru}`);
+                          }
+                      }
       
                       // 6. Ubah Pop-up Loading menjadi Centang Hijau (Sukses)
                       Swal.fire({
