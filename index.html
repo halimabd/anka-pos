@@ -7267,11 +7267,12 @@
                       }
       
                       // 4. Ubah status transaksi menjadi "Dibatalkan" di Supabase
+                      let namaKasirVoid = localStorage.getItem('pos_aktif_nama') || (typeof currentUser !== 'undefined' ? currentUser : 'Admin');
                       const { error: errUpdate } = await window.supabaseClient
                           .from('transaksi')
                           .update({ 
                               status_transaksi: 'Dibatalkan',
-                              void_by: typeof currentUser !== 'undefined' ? currentUser : 'Admin'
+                              void_by: namaKasirVoid
                           })
                           .eq('id', idTransaksi);
       
