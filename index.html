@@ -7277,6 +7277,22 @@
                           .eq('id', idTransaksi);
       
                       if (errUpdate) throw errUpdate;
+
+                      // ✨ TAMBAHAN: JIKA INI TRANSAKSI MIDTRANS YANG MASIH PENDING, BATALKAN JUGA DI MIDTRANS!
+                      if (trx.status_transaksi === 'Pending' && trx.metode_pembayaran === 'Midtrans') {
+                          try {
+                              const klienId = localStorage.getItem('klien_id');
+                              await window.supabaseClient.functions.invoke('midtrans-cancel', {
+                                  body: JSON.stringify({ 
+                                      no_struk: trx.no_struk, 
+                                      klien_id: klienId 
+                                  })
+                              });
+                              console.log("Tagihan Midtrans berhasil dibatalkan secara remote.");
+                          } catch (errMidtransCancel) {
+                              console.error("Gagal membatalkan tagihan di Midtrans (mungkin sudah expired):", errMidtransCancel);
+                          }
+                      }
       
                       // ✨ KUNCI UTAMA: HANYA KEMBALIKAN STOK & POIN JIKA STATUSNYA SEBELUMNYA 'LUNAS'
                       // Jika statusnya masih 'Pending', berarti stok & poin belum pernah disentuh!
