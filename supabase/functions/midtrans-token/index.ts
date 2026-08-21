@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
     };
 
     // 👇 PENTING: Ganti INI DENGAN URL SUPABASE ANDA YANG ASLI 👇
-    const webhookUrl = "https://[GANTI_DENGAN_PROJECT_ID_ANDA].supabase.co/functions/v1/midtrans-webhook";
+    const webhookUrl = "https://xnbsbfhyzcwsofcydybw.supabase.co/functions/v1/midtrans-webhook";
 
     // Minta Token ke Midtrans
     const authHeader = "Basic " + btoa(pengaturan.midtransServerKey + ":");
