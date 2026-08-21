@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
       ? "https://api.midtrans.com" 
       : "https://api.sandbox.midtrans.com";
       
-    // ✨ GUNAKAN ENDPOINT /expire AGAR SEMUA METODE PEMBAYARAN LANGSUNG KEDALUWARSA
+    // ✨ ENDPOINT /expire
     const expireUrl = `${baseUrl}/v2/${no_struk}/expire`;
 
     const authHeader = "Basic " + btoa(pengaturan.midtransServerKey + ":");
@@ -53,11 +53,18 @@ Deno.serve(async (req) => {
 
     const result = await response.json();
     
-    // ✨ TAMBAHKAN LOG INI AGAR BISA DILIHAT DI SUPABASE DASHBOARD
+    // Log pesan dari midtrans
     console.log("Respon Midtrans untuk no_struk " + no_struk + ":", JSON.stringify(result));
 
     return new Response(JSON.stringify({ success: true, midtransResponse: result }), { 
       headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+    });
+
+  // ✨ PERBAIKAN DI SINI: tambahkan (error: any)
+  } catch (error: any) {
+    return new Response(JSON.stringify({ error: error.message }), { 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
+      status: 400 
     });
   }
 });
