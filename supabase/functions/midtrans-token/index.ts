@@ -8,7 +8,6 @@ const corsHeaders = {
 
 export default {
   fetch: withSupabase({ auth: ["publishable", "secret"] }, async (req, ctx) => {
-    // 1. Tangani CORS agar tidak diblokir oleh browser aplikasi POS Anda
     if (req.method === 'OPTIONS') {
       return new Response('ok', { headers: corsHeaders });
     }
@@ -18,7 +17,6 @@ export default {
       
       if (!klien_id) throw new Error("klien_id wajib dikirim!");
 
-      // 2. Ambil pengaturan menggunakan ctx.supabaseAdmin (Bypass RLS)
       const { data: pengaturan, error: errPengaturan } = await ctx.supabaseAdmin
         .from('pengaturan')
         .select('midtransServerKey, midtransEnv')
@@ -29,39 +27,50 @@ export default {
         throw new Error("Server Key Midtrans belum diatur oleh Owner!");
       }
 
-      // 3. Tentukan URL Midtrans
       const apiUrl = pengaturan.midtransEnv === "production" 
         ? "https://app.midtrans.com/snap/v1/transactions" 
         : "https://app.sandbox.midtrans.com/snap/v1/transactions";
 
-      const orderId = "INV-" + new Date().getTime();
-      
-      // ✨ WAKTU LOKAL UNTUK KEDALUWARSA (WIB / +0700)
+      // ✨ PERBAIKAN 1: ORDER ID PINTAR (Masukkan identitas klien)
+      // Ambil 6 karakter pertama dari klien_id untuk menghemat tempat
+      const idSingkat = klien_id.replace(/-/g, '').substring(0, 6).toUpperCase();
+      const timestamp = new Date().getTime().toString().slice(-6); // 6 digit akhir waktu
+      const orderId = `INV-${idSingkat}-${timestamp}`; 
+      // Hasilnya contoh: INV-A1B2C3-123456
+
       const d = new Date();
       d.setUTCHours(d.getUTCHours() + 7);
       const pad = (n: number) => n < 10 ? '0' + n : n;
       const orderTime = `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())} +0700`;
       
-      // ✨ PAYLOAD DENGAN ANTI-REFRESH & EXPIRY
       const payload = {
         transaction_details: { order_id: orderId, gross_amount: Math.round(total) },
         customer_details: { first_name: pelanggan || "Pelanggan Umum" },
         custom_expiry: {
             order_time: orderTime,
-            expiry_duration: 15, // Berlaku 15 Menit
+            expiry_duration: 15, 
             unit: "minute"       
         },
         callbacks: {
-            // 👇 GANTI ALAMAT INI DENGAN ALAMAT WEB GITHUB PAGES ANDA + TANDA PAGAR 👇
             finish: "https://anka-pos.vercel.app/#" 
         }
       };
 
-      // 4. Minta Token ke Midtrans
+      // ✨ PERBAIKAN 2: URL WEBHOOK OTOMATIS (Ganti dengan URL URL Edge Function Webhook Anda)
+      // Ingat: Ganti [PROJECT-REF] dengan ID Project Supabase Anda!
+      const webhookUrl = "https://xnbsbfhyzcwsofcydybw.supabase.co/functions/v1/midtrans-webhook";
+
       const authHeader = "Basic " + btoa(pengaturan.midtransServerKey + ":");
+      
       const response = await fetch(apiUrl, {
         method: 'POST',
-        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'Authorization': authHeader },
+        headers: { 
+            'Accept': 'application/json', 
+            'Content-Type': 'application/json', 
+            'Authorization': authHeader,
+            // ✨ PERBAIKAN 3: SUNTIKAN HEADER AJAIB INI!
+            'X-Override-Notification': webhookUrl
+        },
         body: JSON.stringify(payload)
       });
 
