@@ -13396,19 +13396,27 @@
             }
         }
 
-        // ✨ FUNGSI BARU: Mengambil waktu nyata dari internet (Anti-Hack Tanggal HP)
+        // ✨ FUNGSI BARU: Mengambil waktu nyata dari internet (Lebih Stabil & Anti-CORS)
         async function getWaktuReal() {
             try {
-                // Bertanya ke server waktu dunia (Zona Asia/Jakarta)
-                const response = await fetch('https://worldtimeapi.org/api/timezone/Asia/Jakarta');
-                if (!response.ok) throw new Error("Gagal akses API waktu");
+                // Menggunakan TimeAPI yang tidak memblokir browser (CORS-friendly)
+                const response = await fetch('https://timeapi.io/api/Time/current/zone?timeZone=Asia/Jakarta');
+                
+                if (!response.ok) {
+                    throw new Error("Server waktu menolak permintaan");
+                }
                 
                 const data = await response.json();
-                return new Date(data.datetime).getTime(); // Mengembalikan waktu yang 100% akurat dari internet
+                // TimeAPI mengembalikan field bernama 'dateTime'
+                return new Date(data.dateTime).getTime(); 
+                
             } catch (error) {
-                console.warn("Gagal mengambil waktu internet, memakai waktu perangkat sebagai cadangan:", error);
-                // Fallback: Jika internet kasir bermasalah memanggil API, baru gunakan jam lokal
-                return new Date().getTime();
+                // 🚨 JIKA GAGAL: Jangan pernah percaya jam perangkat!
+                console.error("Gagal mengambil waktu internet. Mode Lockdown diaktifkan:", error);
+                
+                // Kita kembalikan nilai Infinity (Waktu tak terhingga di masa depan)
+                // Ini memastikan (waktuSekarang > batasWaktu) SELALU BENAR, sehingga menu langsung dikunci.
+                return Infinity; 
             }
         }
 
