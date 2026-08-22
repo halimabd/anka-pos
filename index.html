@@ -2693,7 +2693,7 @@
 
               <details class="pengaturan-accordion" id="owner-danger-zone" style="display: none; margin-top: 24px;">
                     <summary>
-                        <h4 style="margin: 0; font-size: 16px; color: #dc2626; font-weight: 600; display: flex; align-items: center; gap: 6px;">
+                        <h4 style="margin: 0; font-size: 16px; color: #ef4444; font-weight: 600; display: flex; align-items: center; gap: 6px;">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
                                 <line x1="12" y1="9" x2="12" y2="13"></line>
@@ -2704,25 +2704,28 @@
                     </summary>
                     
                     <div class="isi-pengaturan">
-                        <div style="background-color: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; padding: 16px; margin-top: 8px;">
-                            <p style="font-size: 12px; color: #991b1b; margin-top: 0; margin-bottom: 16px; line-height: 1.5;">
-                                <strong>Peringatan Kritis:</strong> Pilih data yang ingin Anda hapus secara permanen. Jika Anda memilih "Data Karyawan", akun Owner/Auth Anda akan tetap dipertahankan.
+                        <!-- Box adaptif, menggunakan warna merah semi-transparan untuk mode gelap/terang -->
+                        <div style="background-color: var(--bg-danger-light, rgba(239, 68, 68, 0.05)); border: 1px solid var(--border-danger, rgba(239, 68, 68, 0.3)); border-radius: 8px; padding: 16px; margin-top: 8px;">
+                            <p style="font-size: 12px; color: var(--text-danger, #ef4444); margin-top: 0; margin-bottom: 16px; line-height: 1.5;">
+                                <strong>Peringatan Kritis:</strong> Pilih data yang ingin Anda hapus secara permanen. Jika Anda memilih "Data Karyawan", akun Owner akan tetap dipertahankan.
                             </p>
 
-                            <!-- CSS untuk Toggle Switch -->
+                            <!-- CSS untuk Toggle Switch (Bisa di-load dengan baik di Dark/Light Mode) -->
                             <style>
                                 .reset-toggle-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-                                .reset-toggle-label { font-size: 13px; color: #7f1d1d; font-weight: 500; }
+                                .reset-toggle-label { font-size: 13px; color: var(--text-dark, #333333); font-weight: 500; }
                                 .switch { position: relative; display: inline-block; width: 40px; height: 22px; flex-shrink: 0;}
                                 .switch input { opacity: 0; width: 0; height: 0; }
-                                .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #f87171; transition: .4s; border-radius: 22px; }
-                                .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+                                /* Mode mati (Off) - Memakai border-color agar kalem di Dark Mode */
+                                .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--border-color, #cbd5e1); transition: .4s; border-radius: 22px; }
+                                .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: #ffffff; transition: .4s; border-radius: 50%; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+                                /* Mode Nyala (On) - Selalu merah peringatan */
                                 input:checked + .slider { background-color: #dc2626; }
                                 input:checked + .slider:before { transform: translateX(18px); }
                             </style>
                             
                             <!-- Daftar Opsi Toggle -->
-                            <div class="reset-options" style="margin-bottom: 20px; border-top: 1px solid #fecaca; border-bottom: 1px solid #fecaca; padding: 12px 0;">
+                            <div class="reset-options" style="margin-bottom: 20px; border-top: 1px solid var(--border-danger, rgba(239, 68, 68, 0.2)); border-bottom: 1px solid var(--border-danger, rgba(239, 68, 68, 0.2)); padding: 12px 0;">
                                 
                                 <div class="reset-toggle-row">
                                     <span class="reset-toggle-label">Data Transaksi & Arus Kas</span>
