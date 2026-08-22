@@ -13251,92 +13251,125 @@
       }
 
       let deferredPrompt;
-      const btnInstallApp = document.getElementById('btnInstallApp');
-      
-      // 1. Cek apakah aplikasi sedang dibuka dari Layar Utama (sudah terinstal)
-      function cekStatusAplikasi() {
-          // Jika dibuka di mode standalone (aplikasi terinstal), sembunyikan tombol
-          if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
-              if (btnInstallApp) btnInstallApp.style.display = 'none';
-          }
-      }
-      cekStatusAplikasi();
-      
-      // 2. Tangkap event 'beforeinstallprompt' yang dikirim browser jika app belum diinstal
-      window.addEventListener('beforeinstallprompt', (e) => {
-          // Cegah banner install bawaan browser muncul secara otomatis
-          e.preventDefault();
-          // Simpan event untuk dipanggil nanti saat tombol diklik
-          deferredPrompt = e;
-          
-          // Munculkan tombol kustom kita
-          if (btnInstallApp) {
-              btnInstallApp.style.display = 'flex';
-          }
-      });
-      
-      // 3. Logika ketika tombol diklik
-      if (btnInstallApp) {
-          btnInstallApp.addEventListener('click', async () => {
-              if (deferredPrompt) {
-                  // Tampilkan popup install bawaan browser
-                  deferredPrompt.prompt();
-                  
-                  // Tunggu pilihan user (Apakah mereka klik Install atau Batal)
-                  const { outcome } = await deferredPrompt.userChoice;
-                  if (outcome === 'accepted') {
-                      console.log('User menyetujui instalasi PWA');
-                  } else {
-                      console.log('User membatalkan instalasi PWA');
-                  }
-                  
-                  // Event prompt hanya bisa dipakai sekali, kosongkan lagi
-                  deferredPrompt = null;
-                  // Sembunyikan tombol setelah diklik
-                  btnInstallApp.style.display = 'none';
-              }
-          });
-      }
-      
-      // 4. Deteksi otomatis saat instalasi berhasil dilakukan
-      window.addEventListener('appinstalled', () => {
-          // Sembunyikan tombol jika instalasi berhasil
-          if (btnInstallApp) btnInstallApp.style.display = 'none';
-          deferredPrompt = null;
-          console.log('ANKA POS berhasil diinstal!');
-      });
+        const btnInstallApp = document.getElementById('btnInstallApp');
 
-      // Tangkap event instalasi
-      window.addEventListener('beforeinstallprompt', (e) => {
-          e.preventDefault();
-          deferredPrompt = e;
-      });
-      
-      // Logika tombol install di dalam modal
-      document.getElementById('btnConfirmInstall').addEventListener('click', async () => {
-          if (deferredPrompt) {
-              // Tampilkan prompt bawaan browser
-              deferredPrompt.prompt();
-              const { outcome } = await deferredPrompt.userChoice;
-              if (outcome === 'accepted') {
-                  console.log('App diinstal!');
-              }
-              deferredPrompt = null;
-          }
-          // Sembunyikan modal
-          document.getElementById('modalInstallApp').style.display = 'none';
-      });
-      
-      // Panggil fungsi ini SETELAH proses masukKeAplikasi(dataStaff) selesai
-      function cekDanTawarkanInstall() {
-          // Jika aplikasi belum diinstal (bukan standalone) dan prompt tersedia
-          const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-          
-          if (!isStandalone && deferredPrompt) {
-              // Tampilkan modal kita
-              document.getElementById('modalInstallApp').style.display = 'flex';
-          }
-      }
+        // 1. Deteksi Sistem Operasi & Status Instalasi
+        // Mengecek apakah perangkat adalah produk Apple (iPhone/iPad/iPod)
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+        // Fungsi dinamis mengecek apakah aplikasi sudah terinstal (Standalone)
+        function cekApakahStandalone() {
+            return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+        }
+
+        // 2. Cek status aplikasi saat pertama kali dimuat
+        function cekStatusAplikasi() {
+            if (cekApakahStandalone()) {
+                // Jika sudah diinstal, sembunyikan tombol
+                if (btnInstallApp) btnInstallApp.style.display = 'none';
+            } else if (isIOS) {
+                // Khusus iOS: Karena tidak ada trigger 'beforeinstallprompt', 
+                // kita langsung munculkan tombol install jika belum standalone
+                if (btnInstallApp) btnInstallApp.style.display = 'flex';
+            }
+        }
+        cekStatusAplikasi();
+
+        // 3. Tangkap event 'beforeinstallprompt' (HANYA BERJALAN DI ANDROID/PC)
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault(); // Cegah banner otomatis
+            deferredPrompt = e; // Simpan event
+            
+            // Munculkan tombol di antarmuka (header/sidebar)
+            if (btnInstallApp) {
+                btnInstallApp.style.display = 'flex';
+            }
+        });
+
+        // ✨ FUNGSI BARU: Pop-up Tutorial Khusus iPhone/iOS
+        function tampilkanTutorialiOS() {
+            Swal.fire({
+                title: '<strong style="font-size: 16px;">Install di iPhone</strong>',
+                html: `
+                    <div style="font-size: 14px; text-align: left; line-height: 1.6;">
+                        Untuk pengalaman terbaik layaknya aplikasi asli:<br><br>
+                        1. Ketuk ikon <b>Bagikan (Share)</b> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle;"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg> di bawah layar.<br>
+                        2. Gulir ke bawah lalu pilih <b>"Tambah ke Layar Utama"</b>.<br>
+                        3. Ketuk <b>"Tambah"</b> di sudut kanan atas.
+                    </div>
+                `,
+                icon: 'info',
+                width: '320px',
+                background: 'var(--surface, #ffffff)',
+                color: 'var(--text-dark, #333333)',
+                confirmButtonText: 'Mengerti',
+                confirmButtonColor: '#3b82f6',
+                customClass: { icon: 'ikon-mini-swal' }
+            });
+        }
+
+        // 4. Logika ketika tombol UI (Header/Sidebar) diklik
+        if (btnInstallApp) {
+            btnInstallApp.addEventListener('click', async () => {
+                if (isIOS) {
+                    // Jika iPhone, tampilkan tutorial cara install
+                    tampilkanTutorialiOS();
+                } else if (deferredPrompt) {
+                    // Jika Android/PC, tampilkan prompt bawaan
+                    deferredPrompt.prompt();
+                    const { outcome } = await deferredPrompt.userChoice;
+                    if (outcome === 'accepted') {
+                        console.log('User menyetujui instalasi PWA');
+                        btnInstallApp.style.display = 'none';
+                    }
+                    deferredPrompt = null;
+                }
+            });
+        }
+
+        // 5. Logika tombol install di dalam Modal Kustom HTML Anda
+        const btnConfirmInstall = document.getElementById('btnConfirmInstall');
+        if (btnConfirmInstall) {
+            btnConfirmInstall.addEventListener('click', async () => {
+                // Sembunyikan modal HTML-nya terlebih dahulu
+                const modalApp = document.getElementById('modalInstallApp');
+                if (modalApp) modalApp.style.display = 'none';
+
+                if (isIOS) {
+                    tampilkanTutorialiOS();
+                } else if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    const { outcome } = await deferredPrompt.userChoice;
+                    if (outcome === 'accepted') console.log('App diinstal!');
+                    deferredPrompt = null;
+                }
+            });
+        }
+
+        // 6. Deteksi otomatis saat instalasi berhasil dilakukan (Sistem OS)
+        window.addEventListener('appinstalled', () => {
+            if (btnInstallApp) btnInstallApp.style.display = 'none';
+            const modalApp = document.getElementById('modalInstallApp');
+            if (modalApp) modalApp.style.display = 'none';
+            
+            deferredPrompt = null;
+            console.log('ANKA POS berhasil diinstal!');
+        });
+
+        // 7. Panggil fungsi ini SETELAH proses masukKeAplikasi(dataStaff) selesai
+        function cekDanTawarkanInstall() {
+            // Abaikan jika aplikasi sudah diinstal
+            if (cekApakahStandalone()) return; 
+
+            if (isIOS) {
+                // iOS: Langsung tampilkan SweetAlert tutorial 
+                tampilkanTutorialiOS();
+            } else if (deferredPrompt) {
+                // Android/PC: Tampilkan modal HTML buatan Anda
+                const modalInstallApp = document.getElementById('modalInstallApp');
+                if (modalInstallApp) modalInstallApp.style.display = 'flex';
+            }
+        }
 
       async function muatInfoLangganan() {
             let klienId = localStorage.getItem('klien_id');
