@@ -12544,79 +12544,142 @@
           }
       }
 
-      // 2. Fungsi Eksekusi Hard Reset
       async function konfirmasiHardReset() {
-        // Ambil data role dari Local Storage
-        let roleAktif = localStorage.getItem('pos_aktif_role') || 
-                        sessionStorage.getItem('pos_aktif_role') || 
-                        window.currentRole;
-
-        // Normalisasi teks role
-        if (!roleAktif || roleAktif.toString().trim().toLowerCase() !== 'owner') {
-            alert('Akses Ditolak: Hanya Owner yang dapat mengakses fitur ini.');
-            return;
-        }
-
-        // SweetAlert2 Prompt dengan await
-        let result = await Swal.fire({
-            title: '<strong style="font-size: 16px; color: #dc2626;">Peringatan Kritis</strong>',
-            html: '<span style="font-size: 13px;">Semua data transaksi <b>dan folder penyimpanan file di Google Drive</b> akan dihapus permanen kecuali akun Owner.<br><br>Ketik <b>"RESET SEMUA"</b>:</span>',
-            input: 'text',
-            inputPlaceholder: 'Ketik RESET SEMUA',
-            inputAttributes: {
-                style: 'font-size: 12px; height: 32px; padding: 4px 8px; box-sizing: border-box; text-align: center;'
-            },
-            icon: 'warning',
-            width: '300px',
-            padding: '15px',
-            background: 'var(--surface, #ffffff)', 
-            color: 'var(--text-dark, #333333)',     
-            showCancelButton: true,
-            confirmButtonColor: '#dc2626',          
-            cancelButtonColor: '#64748b',
-            confirmButtonText: '<span style="font-size: 13px;">Reset</span>',
-            cancelButtonText: '<span style="font-size: 13px;">Batal</span>',
-            customClass: {
-                icon: 'ikon-mini-swal'
-            },
-            inputValidator: (value) => {
-                if (!value || value.trim() !== 'RESET SEMUA') {
-                    return 'Kata kunci salah! Ketik "RESET SEMUA".';
-                }
+            // 1. Validasi Akses Owner
+            let roleAktif = localStorage.getItem('pos_aktif_role') || sessionStorage.getItem('pos_aktif_role') || window.currentRole;
+            if (!roleAktif || roleAktif.toString().trim().toLowerCase() !== 'owner') {
+                alert('Akses Ditolak: Hanya Owner yang dapat mengakses fitur ini.');
+                return;
             }
-        });
 
-        if (result.isConfirmed) {
-            Swal.fire({
-                title: '<strong style="font-size: 16px;">Memproses</strong>',
-                html: '<span style="font-size: 13px;">Sedang membersihkan database...</span>',
-                width: '300px',
-                padding: '15px',
-                background: 'var(--surface, #ffffff)',
-                color: 'var(--text-dark, #333333)',
-                allowOutsideClick: false,
-                didOpen: () => {
-                    Swal.showLoading();
+            // 2. Kumpulkan Status Toggle
+            const opsiReset = {
+                transaksi: document.getElementById('reset-transaksi').checked,
+                produk: document.getElementById('reset-produk').checked,
+                pelanggan: document.getElementById('reset-pelanggan').checked,
+                karyawan: document.getElementById('reset-karyawan').checked
+            };
+
+            if (!opsiReset.transaksi && !opsiReset.produk && !opsiReset.pelanggan && !opsiReset.karyawan) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: '<strong style="font-size: 16px;">Opsi Kosong</strong>',
+                    html: '<span style="font-size: 13px;">Silakan pilih minimal satu data yang ingin di-reset.</span>',
+                    width: '300px', padding: '15px',
+                    background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)',
+                    confirmButtonColor: '#3b82f6',
+                    customClass: { icon: 'ikon-mini-swal' }
+                });
+                return;
+            }
+
+            // 3. Konfirmasi Terakhir
+            let result = await Swal.fire({
+                title: '<strong style="font-size: 16px; color: #dc2626;">Peringatan Kritis</strong>',
+                html: '<span style="font-size: 13px;">Data yang dipilih akan dihapus permanen dari database.<br><br>Ketik <b>"RESET"</b> untuk melanjutkan:</span>',
+                input: 'text',
+                inputPlaceholder: 'Ketik RESET',
+                inputAttributes: { style: 'font-size: 12px; height: 32px; padding: 4px 8px; text-align: center;' },
+                icon: 'warning',
+                width: '300px', padding: '15px',
+                background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)',     
+                showCancelButton: true, confirmButtonColor: '#dc2626', cancelButtonColor: '#64748b',
+                confirmButtonText: '<span style="font-size: 13px;">Reset Sekarang</span>',
+                cancelButtonText: '<span style="font-size: 13px;">Batal</span>',
+                customClass: { icon: 'ikon-mini-swal' },
+                inputValidator: (value) => {
+                    if (!value || value.trim() !== 'RESET') return 'Kata kunci salah! Ketik "RESET".';
                 }
             });
 
-            try {
-                // Memanggil fungsi backend menggunakan panggilBackend
-                let response = await panggilBackend('backendHardReset', { roleAktif: roleAktif }); 
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: '<strong style="font-size: 16px;">Memproses</strong>',
+                    html: '<span style="font-size: 13px;">Sedang menghapus data dari server...</span>',
+                    width: '300px', padding: '15px',
+                    background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)',
+                    allowOutsideClick: false,
+                    didOpen: () => { Swal.showLoading(); }
+                });
 
-                if (response && response.success) {
-                    alert(response.message); 
-                    window.location.href = '?page=login'; 
-                } else {
-                    alert(response ? response.message : 'Terjadi kesalahan pada respons server.');
+                try {
+                    const klienId = localStorage.getItem('klien_id');
+                    if (!klienId) throw new Error("ID Klien (Toko) tidak ditemukan di perangkat ini.");
+
+                    let tugasHapus = [];
+                    let listBerhasil = [];
+
+                    // 🌟 PROSES EKSEKUSI HAPUS KE SUPABASE 🌟
+                    
+                    if (opsiReset.transaksi) {
+                        // Menghapus tabel transaksi
+                        tugasHapus.push(
+                            window.supabaseClient.from('transaksi').delete().eq('klien_id', klienId)
+                            .then(({error}) => { if(error) throw error; listBerhasil.push("Data Transaksi"); })
+                        );
+                        
+                        // ✨ TAMBAHAN: Menghapus tabel arus_kas secara bersamaan
+                        tugasHapus.push(
+                            window.supabaseClient.from('arus_kas').delete().eq('klien_id', klienId)
+                            .then(({error}) => { if(error) throw error; listBerhasil.push("Data Arus Kas"); })
+                        );
+                    }
+
+                    if (opsiReset.produk) {
+                        tugasHapus.push(
+                            window.supabaseClient.from('produk').delete().eq('klien_id', klienId)
+                            .then(({error}) => { if(error) throw error; listBerhasil.push("Katalog Produk"); })
+                        );
+                    }
+
+                    if (opsiReset.pelanggan) {
+                        tugasHapus.push(
+                            window.supabaseClient.from('pelanggan').delete().eq('klien_id', klienId)
+                            .then(({error}) => { if(error) throw error; listBerhasil.push("Data Pelanggan"); })
+                        );
+                    }
+
+                    if (opsiReset.karyawan) {
+                        tugasHapus.push(
+                            window.supabaseClient.from('staff_toko').delete()
+                            .eq('klien_id', klienId)
+                            .neq('role', 'owner')
+                            .neq('role', 'Owner')
+                            .then(({error}) => { if(error) throw error; listBerhasil.push("Akun Karyawan"); })
+                        );
+                    }
+
+                    // Tunggu semua proses hapus selesai secara paralel
+                    await Promise.all(tugasHapus);
+
+                    // Tampilkan Notifikasi Sukses
+                    Swal.fire({
+                        icon: 'success',
+                        title: '<strong style="font-size: 16px;">Reset Selesai!</strong>',
+                        html: `<span style="font-size: 13px;">Data berikut berhasil dikosongkan:<br><br><b>${listBerhasil.join('<br>')}</b></span>`,
+                        width: '300px', padding: '15px',
+                        background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)',
+                        confirmButtonColor: '#25D366',
+                        customClass: { icon: 'ikon-mini-swal' }
+                    }).then(() => {
+                        // Muat ulang halaman agar UI Dashboard ikut bersih
+                        window.location.reload(); 
+                    });
+
+                } catch (error) {
+                    console.error("Gagal melakukan reset ke Supabase:", error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: '<strong style="font-size: 16px;">Error Server</strong>',
+                        html: `<span style="font-size: 13px;">Terjadi kesalahan saat menghapus data:<br>${error.message}</span>`,
+                        width: '300px', padding: '15px',
+                        background: 'var(--surface, #ffffff)', color: 'var(--text-dark, #333333)',
+                        confirmButtonColor: '#d33',
+                        customClass: { icon: 'ikon-mini-swal' }
+                    });
                 }
-
-            } catch (error) {
-                console.error("Gagal melakukan hard reset:", error);
-                alert('Terjadi kesalahan pada server: ' + (error.message || error));
             }
         }
-      }
 
       // Fungsi untuk membuat suara Beep instan bawaan browser (Tanpa File Mp3/Wav luar)
       function bunyikanBeep() {
