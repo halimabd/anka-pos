@@ -4591,8 +4591,9 @@
             let btnUsers = document.getElementById('btnNavUsers');
             let btnPengaturan = document.getElementById('btnNavPengaturan');
             
-            // ✨ TARGET BARU: Tombol Kelola Langganan
+            // ✨ TARGET BARU: Tombol Kelola Langganan & Manajemen Kas
             let btnKelolaLangganan = document.getElementById('btnKelolaLangganan');
+            let btnManajemenKas = document.getElementById('btnNavManajemenKas');
             
             // ==========================================
             // 2. ELEMEN RAHASIA (LABA)
@@ -4620,6 +4621,7 @@
                 if(btnPelanggan) btnPelanggan.style.display = 'block';
                 if(btnUsers) btnUsers.style.display = 'block';
                 if(btnPengaturan) btnPengaturan.style.display = 'block';
+                if(btnManajemenKas) btnManajemenKas.style.display = 'block';
                 
                 if(cardLaba1) cardLaba1.style.display = 'block';
                 if(cardLaba2) cardLaba2.style.display = 'block';
@@ -4632,12 +4634,11 @@
                 if(cartPpnCheck) cartPpnCheck.disabled = false; 
                 if(settingPpnCheck) settingPpnCheck.disabled = false;
 
-                // ✨ LOGIKA KHUSUS TOMBOL LANGGANAN (HANYA OWNER)
                 if (btnKelolaLangganan) {
                     if (role === 'Owner') {
-                        btnKelolaLangganan.style.display = 'flex'; // Gunakan flex agar icon tetap ke tengah
+                        btnKelolaLangganan.style.display = 'flex'; 
                     } else {
-                        btnKelolaLangganan.style.display = 'none'; // Admin tidak bisa melihat ini
+                        btnKelolaLangganan.style.display = 'none'; 
                     }
                 }
 
@@ -4649,6 +4650,7 @@
                 if(btnPelanggan) btnPelanggan.style.display = 'block';
                 if(btnUsers) btnUsers.style.display = 'none'; 
                 if(btnPengaturan) btnPengaturan.style.display = 'block'; 
+                if(btnManajemenKas) btnManajemenKas.style.display = 'block';
                 
                 if(cardLaba1) cardLaba1.style.display = 'none'; 
                 if(cardLaba2) cardLaba2.style.display = 'none'; 
@@ -4667,25 +4669,22 @@
                     settingPpnCheck.disabled = true;
                 }
 
-                // ✨ Sembunyikan Tombol Langganan untuk Supervisor
                 if (btnKelolaLangganan) btnKelolaLangganan.style.display = 'none';
 
             } else if (role === 'Staff') {
                 // 🧑‍💼 STAFF (HANYA MENU KASIR)
-                // Menyembunyikan SEMUA tombol navigasi agar tidak bisa ke halaman lain
                 if(btnAnalitik) btnAnalitik.style.display = 'none';
                 if(btnRiwayat) btnRiwayat.style.display = 'none';
                 if(btnProduk) btnProduk.style.display = 'none';
                 if(btnPelanggan) btnPelanggan.style.display = 'none';
                 if(btnUsers) btnUsers.style.display = 'none';
                 if(btnPengaturan) btnPengaturan.style.display = 'none';
+                if(btnManajemenKas) btnManajemenKas.style.display = 'none'; // ✨ Disembunyikan untuk Staff
                 
-                // Sembunyikan info Laba
                 if(cardLaba1) cardLaba1.style.display = 'none';
                 if(cardLaba2) cardLaba2.style.display = 'none';
                 if(cardLaba3) cardLaba3.style.display = 'none';
                 
-                // Sembunyikan Pengaturan (sebagai pengaman tambahan)
                 if(grupProfil) grupProfil.style.display = 'none';
                 if(grupPembayaran) grupPembayaran.style.display = 'none';
                 if(areaKeranjang) areaKeranjang.style.display = 'none';
@@ -4702,13 +4701,14 @@
                 if (btnKelolaLangganan) btnKelolaLangganan.style.display = 'none';
 
             } else {
-                // 🛒 KASIR (Role default lama Anda, tetap dibiarkan agar tidak merusak data lama)
+                // 🛒 KASIR 
                 if(btnAnalitik) btnAnalitik.style.display = 'block'; 
                 if(btnRiwayat) btnRiwayat.style.display = 'block';   
                 if(btnProduk) btnProduk.style.display = 'none';      
                 if(btnPelanggan) btnPelanggan.style.display = 'block';
                 if(btnUsers) btnUsers.style.display = 'none';        
                 if(btnPengaturan) btnPengaturan.style.display = 'block'; 
+                if(btnManajemenKas) btnManajemenKas.style.display = 'block'; // Kasir tetap bisa melihat Manajemen Kas
                 
                 if(cardLaba1) cardLaba1.style.display = 'none'; 
                 if(cardLaba2) cardLaba2.style.display = 'none'; 
@@ -4727,7 +4727,6 @@
                     settingPpnCheck.disabled = true;
                 }
 
-                // ✨ Sembunyikan Tombol Langganan untuk Kasir
                 if (btnKelolaLangganan) btnKelolaLangganan.style.display = 'none';
             }
             
