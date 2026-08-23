@@ -221,46 +221,56 @@
       .fee-row { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-muted); margin-bottom: 8px; }
       .cart-total-text { display: flex; justify-content: space-between; font-size: 18px; font-weight: 700; color: var(--text-dark); margin: 16px 0; border-top: 1px dashed var(--border-color); padding-top: 16px; }
 
-      /* --- CUSTOM DROPDOWN TIER --- */
+      /* --- CUSTOM DROPDOWN TIER (DISEMPURNAKAN) --- */
         .custom-select-wrapper {
             position: relative;
             width: 100%;
         }
         .custom-select-trigger {
+            box-sizing: border-box; /* KUNCI AGAR TIDAK MENABRAK */
             width: 100%;
-            padding: 8px 8px;
+            height: 34px; /* Memaksa tinggi sama dengan input sebelahnya */
+            padding: 6px 8px;
             font-size: 12px;
             background: #ffffff;
             border: 1px solid var(--border-color, #cbd5e1);
-            border-radius: 4px;
+            border-radius: 6px; /* Disesuaikan agar membulat seperti gambar */
             cursor: pointer;
             display: flex;
             justify-content: space-between;
             align-items: center;
             user-select: none;
         }
+        .custom-select-text {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-right: 4px;
+        }
         .custom-select-options {
-            display: none; /* Sembunyikan secara default */
+            display: none;
+            box-sizing: border-box;
             position: absolute;
             background: #ffffff;
             border: 1px solid var(--border-color, #cbd5e1);
-            border-radius: 4px;
+            border-radius: 6px;
             width: 100%;
             z-index: 99;
             top: 100%;
             left: 0;
             margin-top: 4px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
             overflow: hidden;
         }
         .custom-select-options.open {
             display: block;
         }
         .custom-option {
-            padding: 8px;
+            padding: 8px 12px;
             font-size: 12px;
             cursor: pointer;
             border-bottom: 1px solid #f1f5f9;
+            transition: background-color 0.2s;
         }
         .custom-option:last-child {
             border-bottom: none;
@@ -9582,25 +9592,21 @@
                         </svg>
                     </button>
                 </div>
-                <div class="tier-row" style="display: flex; gap: 6px; align-items: flex-end;">
+                <div class="tier-row" style="display: flex; gap: 8px; align-items: flex-end; width: 100%;">
+                    
                     <div class="tier-col" style="flex: 1; min-width: 0;">
                         <label style="font-size: 9px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 4px; white-space: nowrap;">Min. Beli</label>
-                        <input type="number" class="tier-input tier-min" value="${min}" min="1" style="width: 100%; padding: 8px 4px; font-size: 12px; text-align: center;">
+                        <input type="number" class="tier-input tier-min" value="${min}" min="1" style="box-sizing: border-box; width: 100%; height: 34px; padding: 6px 4px; font-size: 12px; text-align: center; border: 1px solid #cbd5e1; border-radius: 6px;">
                     </div>
                     
-                    <!-- ✨ CUSTOM DROPDOWN DIMULAI DI SINI -->
                     <div class="tier-col" style="flex: 1.5; min-width: 0;">
                         <label style="font-size: 9px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 4px; white-space: nowrap;">Tipe Diskon</label>
-                        
                         <div class="custom-select-wrapper" onclick="toggleDropdownTier(this, event)">
-                            <!-- Input hidden ini berfungsi menyimpan value persis seperti <select> asli -->
                             <input type="hidden" class="tier-input tier-tipe" value="${tipe}">
-                            
                             <div class="custom-select-trigger">
                                 <span class="custom-select-text">${textTipe}</span>
                                 <span style="font-size: 10px; color: #888;">▼</span>
                             </div>
-                            
                             <div class="custom-select-options">
                                 <div class="custom-option" onclick="pilihTierTipe(this, '%', '% Persen', event)">% Persen</div>
                                 <div class="custom-option" onclick="pilihTierTipe(this, 'Rp', 'Rp Nominal', event)">Rp Nominal</div>
@@ -9608,12 +9614,12 @@
                             </div>
                         </div>
                     </div>
-                    <!-- ✨ AKHIR CUSTOM DROPDOWN -->
 
-                    <div class="tier-col" style="flex: 1.2; min-width: 0;">
+                    <div class="tier-col" style="flex: 1; min-width: 0;">
                         <label class="tier-val-label" style="font-size: 9px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 4px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">${labelTipe}</label>
-                        <input type="number" class="tier-input tier-val" value="${val}" min="0" style="width: 100%; padding: 8px 4px; font-size: 12px; text-align: center;">
+                        <input type="number" class="tier-input tier-val" value="${val}" min="0" style="box-sizing: border-box; width: 100%; height: 34px; padding: 6px 4px; font-size: 12px; text-align: center; border: 1px solid #cbd5e1; border-radius: 6px;">
                     </div>
+
                 </div>
             `;
             container.appendChild(div);
