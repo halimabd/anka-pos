@@ -221,6 +221,55 @@
       .fee-row { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-muted); margin-bottom: 8px; }
       .cart-total-text { display: flex; justify-content: space-between; font-size: 18px; font-weight: 700; color: var(--text-dark); margin: 16px 0; border-top: 1px dashed var(--border-color); padding-top: 16px; }
 
+      /* --- CUSTOM DROPDOWN TIER --- */
+        .custom-select-wrapper {
+            position: relative;
+            width: 100%;
+        }
+        .custom-select-trigger {
+            width: 100%;
+            padding: 8px 8px;
+            font-size: 12px;
+            background: #ffffff;
+            border: 1px solid var(--border-color, #cbd5e1);
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+        }
+        .custom-select-options {
+            display: none; /* Sembunyikan secara default */
+            position: absolute;
+            background: #ffffff;
+            border: 1px solid var(--border-color, #cbd5e1);
+            border-radius: 4px;
+            width: 100%;
+            z-index: 99;
+            top: 100%;
+            left: 0;
+            margin-top: 4px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .custom-select-options.open {
+            display: block;
+        }
+        .custom-option {
+            padding: 8px;
+            font-size: 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .custom-option:last-child {
+            border-bottom: none;
+        }
+        .custom-option:hover {
+            background-color: var(--bg-primary-light, #e0f2fe);
+            color: var(--primary, #0ea5e9);
+        }
+
       .switch.switch-small {
         width: 32px;
         height: 18px;
@@ -9512,46 +9561,63 @@
 
       // --- LOGIKA UI DISKON BERTINGKAT (FIX TERPOTONG) ---
       function tambahTierHtml(min = 1, tipe = '%', val = 0) {
-          let container = document.getElementById('tierListWadah');
-          let tierCount = container.children.length + 1;
-          let labelTipe = tipe === '%' ? 'Persen (%)' : (tipe === 'Rp' ? 'Nominal (Rp)' : 'Jml Gratis');
-          
-          let div = document.createElement('div');
-          div.className = 'tier-container';
-          div.innerHTML = `
-              <div class="tier-header">
-                <span class="tier-title-teks">TIER ${tierCount}</span>
-                <!-- Tombol Hapus dengan Ikon SVG -->
-                <button type="button" class="btn-hapus-tier" onclick="this.parentElement.parentElement.remove(); updatePenomoranTier();" title="Hapus Tier">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="3 6 5 6 21 6"></polyline>
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                    <line x1="10" y1="11" x2="10" y2="17"></line>
-                    <line x1="14" y1="11" x2="14" y2="17"></line>
-                  </svg>
-                </button>
-              </div>
-              <div class="tier-row" style="display: flex; gap: 6px; align-items: flex-end;">
-                  <div class="tier-col" style="flex: 1; min-width: 0;">
-                      <label style="font-size: 9px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 4px; white-space: nowrap;">Min. Beli</label>
-                      <input type="number" class="tier-input tier-min" value="${min}" min="1" style="width: 100%; padding: 8px 4px; font-size: 12px; text-align: center;">
-                  </div>
-                  <div class="tier-col" style="flex: 1.5; min-width: 0;">
-                      <label style="font-size: 9px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 4px; white-space: nowrap;">Tipe Diskon</label>
-                      <select class="tier-input tier-tipe" onchange="ubahLabelTier(this)" style="width: 100%; padding: 8px 16px 8px 4px !important; font-size: 12px; background-position: right 2px center !important; cursor: pointer;">
-                          <option value="%" ${tipe === '%' ? 'selected' : ''}>% Persen</option>
-                          <option value="Rp" ${tipe === 'Rp' ? 'selected' : ''}>Rp Nominal</option>
-                          <option value="Gratis" ${tipe === 'Gratis' ? 'selected' : ''}>Gratis Pcs</option>
-                      </select>
-                  </div>
-                  <div class="tier-col" style="flex: 1.2; min-width: 0;">
-                      <label class="tier-val-label" style="font-size: 9px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 4px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">${labelTipe}</label>
-                      <input type="number" class="tier-input tier-val" value="${val}" min="0" style="width: 100%; padding: 8px 4px; font-size: 12px; text-align: center;">
-                  </div>
-              </div>
-          `;
-          container.appendChild(div);
-      }
+            let container = document.getElementById('tierListWadah');
+            let tierCount = container.children.length + 1;
+            
+            // Tentukan label dan teks awal berdasarkan nilai default
+            let labelTipe = tipe === '%' ? 'Persen (%)' : (tipe === 'Rp' ? 'Nominal (Rp)' : 'Jml Gratis');
+            let textTipe = tipe === '%' ? '% Persen' : (tipe === 'Rp' ? 'Rp Nominal' : 'Gratis Pcs');
+
+            let div = document.createElement('div');
+            div.className = 'tier-container';
+            div.innerHTML = `
+                <div class="tier-header">
+                    <span class="tier-title-teks">TIER ${tierCount}</span>
+                    <button type="button" class="btn-hapus-tier" onclick="this.parentElement.parentElement.remove(); updatePenomoranTier();" title="Hapus Tier">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            <line x1="10" y1="11" x2="10" y2="17"></line>
+                            <line x1="14" y1="11" x2="14" y2="17"></line>
+                        </svg>
+                    </button>
+                </div>
+                <div class="tier-row" style="display: flex; gap: 6px; align-items: flex-end;">
+                    <div class="tier-col" style="flex: 1; min-width: 0;">
+                        <label style="font-size: 9px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 4px; white-space: nowrap;">Min. Beli</label>
+                        <input type="number" class="tier-input tier-min" value="${min}" min="1" style="width: 100%; padding: 8px 4px; font-size: 12px; text-align: center;">
+                    </div>
+                    
+                    <!-- ✨ CUSTOM DROPDOWN DIMULAI DI SINI -->
+                    <div class="tier-col" style="flex: 1.5; min-width: 0;">
+                        <label style="font-size: 9px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 4px; white-space: nowrap;">Tipe Diskon</label>
+                        
+                        <div class="custom-select-wrapper" onclick="toggleDropdownTier(this, event)">
+                            <!-- Input hidden ini berfungsi menyimpan value persis seperti <select> asli -->
+                            <input type="hidden" class="tier-input tier-tipe" value="${tipe}">
+                            
+                            <div class="custom-select-trigger">
+                                <span class="custom-select-text">${textTipe}</span>
+                                <span style="font-size: 10px; color: #888;">▼</span>
+                            </div>
+                            
+                            <div class="custom-select-options">
+                                <div class="custom-option" onclick="pilihTierTipe(this, '%', '% Persen', event)">% Persen</div>
+                                <div class="custom-option" onclick="pilihTierTipe(this, 'Rp', 'Rp Nominal', event)">Rp Nominal</div>
+                                <div class="custom-option" onclick="pilihTierTipe(this, 'Gratis', 'Gratis Pcs', event)">Gratis Pcs</div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- ✨ AKHIR CUSTOM DROPDOWN -->
+
+                    <div class="tier-col" style="flex: 1.2; min-width: 0;">
+                        <label class="tier-val-label" style="font-size: 9px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 4px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">${labelTipe}</label>
+                        <input type="number" class="tier-input tier-val" value="${val}" min="0" style="width: 100%; padding: 8px 4px; font-size: 12px; text-align: center;">
+                    </div>
+                </div>
+            `;
+            container.appendChild(div);
+        }
 
       function ubahLabelTier(selectEl) {
           let label = selectEl.parentElement.nextElementSibling.querySelector('.tier-val-label');
@@ -9600,6 +9666,52 @@
           }
           return qtyTarget;
       }
+
+      // Membuka atau menutup dropdown yang sedang diklik
+        function toggleDropdownTier(wrapperEl, event) {
+            let optionsList = wrapperEl.querySelector('.custom-select-options');
+            
+            // Tutup dropdown lain yang sedang terbuka
+            document.querySelectorAll('.custom-select-options').forEach(el => {
+                if (el !== optionsList) el.classList.remove('open');
+            });
+
+            optionsList.classList.toggle('open');
+        }
+
+        // Menangani saat opsi dipilih
+        function pilihTierTipe(itemEl, val, teks, event) {
+            event.stopPropagation(); // Mencegah dropdown tertutup otomatis dan error klik berulang
+            
+            let wrapperEl = itemEl.closest('.custom-select-wrapper');
+            let hiddenInput = wrapperEl.querySelector('.tier-tipe');
+            let triggerText = wrapperEl.querySelector('.custom-select-text');
+            let optionsList = wrapperEl.querySelector('.custom-select-options');
+            
+            // Update data dan tampilan
+            hiddenInput.value = val;
+            triggerText.innerText = teks;
+            
+            // Tutup dropdown
+            optionsList.classList.remove('open');
+            
+            // Update label nominal di sebelahnya
+            let tierRow = wrapperEl.closest('.tier-row');
+            let labelUang = tierRow.querySelector('.tier-val-label');
+            
+            if (val === '%') labelUang.innerText = 'Persen (%)';
+            else if (val === 'Rp') labelUang.innerText = 'Nominal (Rp)';
+            else if (val === 'Gratis') labelUang.innerText = 'Jml Gratis';
+        }
+
+        // Menutup dropdown jika klik sembarang tempat (di luar box)
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.custom-select-wrapper')) {
+                document.querySelectorAll('.custom-select-options').forEach(el => {
+                    el.classList.remove('open');
+                });
+            }
+        });
 
       let html5QrCodeLive = null;
       let lastScanTime = 0; // Untuk mengatur jeda antar scan agar tidak ter-scan dobel beruntun
