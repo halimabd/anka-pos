@@ -2710,18 +2710,22 @@
                                 <strong>Peringatan Kritis:</strong> Pilih data yang ingin Anda hapus secara permanen. Jika Anda memilih "Data Karyawan", akun Owner akan tetap dipertahankan.
                             </p>
 
-                            <!-- CSS untuk Toggle Switch (Bisa di-load dengan baik di Dark/Light Mode) -->
+                            <!-- CSS KHUSUS UNTUK TOGGLE MERAH (Sudah diganti namanya agar tidak bentrok) -->
                             <style>
                                 .reset-toggle-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
                                 .reset-toggle-label { font-size: 13px; color: var(--text-dark, #333333); font-weight: 500; }
-                                .switch { position: relative; display: inline-block; width: 40px; height: 22px; flex-shrink: 0;}
-                                .switch input { opacity: 0; width: 0; height: 0; }
-                                /* Mode mati (Off) - Memakai border-color agar kalem di Dark Mode */
-                                .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--border-color, #cbd5e1); transition: .4s; border-radius: 22px; }
-                                .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: #ffffff; transition: .4s; border-radius: 50%; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+                                
+                                /* Class diubah menjadi switch-danger */
+                                .switch-danger { position: relative; display: inline-block; width: 40px; height: 22px; flex-shrink: 0;}
+                                .switch-danger input { opacity: 0; width: 0; height: 0; }
+                                
+                                /* Class diubah menjadi slider-danger */
+                                .slider-danger { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--border-color, #cbd5e1); transition: .4s; border-radius: 22px; }
+                                .slider-danger:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: #ffffff; transition: .4s; border-radius: 50%; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+                                
                                 /* Mode Nyala (On) - Selalu merah peringatan */
-                                input:checked + .slider { background-color: #dc2626; }
-                                input:checked + .slider:before { transform: translateX(18px); }
+                                .switch-danger input:checked + .slider-danger { background-color: #dc2626; }
+                                .switch-danger input:checked + .slider-danger:before { transform: translateX(18px); }
                             </style>
                             
                             <!-- Daftar Opsi Toggle -->
@@ -2729,33 +2733,33 @@
                                 
                                 <div class="reset-toggle-row">
                                     <span class="reset-toggle-label">Data Transaksi & Arus Kas</span>
-                                    <label class="switch">
+                                    <label class="switch-danger">
                                         <input type="checkbox" id="reset-transaksi" checked>
-                                        <span class="slider"></span>
+                                        <span class="slider-danger"></span>
                                     </label>
                                 </div>
 
                                 <div class="reset-toggle-row">
                                     <span class="reset-toggle-label">Data Produk & Katalog</span>
-                                    <label class="switch">
+                                    <label class="switch-danger">
                                         <input type="checkbox" id="reset-produk">
-                                        <span class="slider"></span>
+                                        <span class="slider-danger"></span>
                                     </label>
                                 </div>
 
                                 <div class="reset-toggle-row">
                                     <span class="reset-toggle-label">Data Pelanggan</span>
-                                    <label class="switch">
+                                    <label class="switch-danger">
                                         <input type="checkbox" id="reset-pelanggan">
-                                        <span class="slider"></span>
+                                        <span class="slider-danger"></span>
                                     </label>
                                 </div>
 
                                 <div class="reset-toggle-row">
                                     <span class="reset-toggle-label">Data Karyawan (Kecuali Owner)</span>
-                                    <label class="switch">
+                                    <label class="switch-danger">
                                         <input type="checkbox" id="reset-karyawan">
-                                        <span class="slider"></span>
+                                        <span class="slider-danger"></span>
                                     </label>
                                 </div>
 
