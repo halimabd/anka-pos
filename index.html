@@ -4311,12 +4311,24 @@
               <label>Nama Lengkap</label><input type="text" id="userNamaLengkap" placeholder="Contoh: Budi Santoso">
               <label>Username (Untuk Login)</label><input type="text" id="userUsername">
               <label>Password</label><input type="text" id="userPassword">
-              <label>Role Jabatan</label>
-              <select id="userRole">
-                <option value="Kasir">Kasir</option>
-                <option value="Supervisor">Supervisor</option>
-                <option value="Owner">Owner</option>
-              </select>
+              <label style="font-size: 12px; font-weight: 600; color: var(--text-dark, #333); margin-bottom: 6px; display: block;">Role Jabatan</label>
+                <!-- Custom Dropdown Role Jabatan -->
+                <div class="custom-select-wrapper" onclick="toggleDropdownRole(this, event)">
+                    <!-- ID userRole dipindah ke sini agar fungsi simpan data Anda tetap bekerja -->
+                    <input type="hidden" id="userRole" value="Kasir">                   
+                    <!-- Tampilan tombol dropdown (Tinggi disesuaikan untuk form standar, misalnya 38px) -->
+                    <div class="custom-select-trigger" style="height: 38px; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                        <span class="custom-select-text">Kasir</span>
+                        <span style="font-size: 10px; color: #888;">▼</span>
+                    </div>                    
+                    <!-- Daftar Opsi -->
+                    <div class="custom-select-options">
+                        <div class="custom-option" onclick="pilihRole(this, 'Kasir', event)">Kasir</div>
+                        <div class="custom-option" onclick="pilihRole(this, 'Staff', event)">Staff</div>
+                        <div class="custom-option" onclick="pilihRole(this, 'Supervisor', event)">Supervisor</div>
+                        <div class="custom-option" onclick="pilihRole(this, 'Owner', event)">Owner</div>
+                    </div>
+                </div>
               
               <!-- ✨ INI INPUT NO TELP BARUNYA ✨ -->
               <label>No. Telp</label><input type="text" id="userNoTelp" placeholder="Contoh: 081234567890">
@@ -8614,6 +8626,37 @@
         document.getElementById('dropdownMenuContainer').classList.toggle('show'); 
         document.getElementById('searchPelangganKasir').focus(); 
       }
+
+      // Membuka atau menutup dropdown Role
+        function toggleDropdownRole(wrapperEl, event) {
+            let optionsList = wrapperEl.querySelector('.custom-select-options');
+            
+            // Tutup dropdown lain jika ada yang sedang terbuka agar tidak tumpang tindih
+            document.querySelectorAll('.custom-select-options').forEach(el => {
+                if (el !== optionsList) el.classList.remove('open');
+            });
+
+            optionsList.classList.toggle('open');
+        }
+
+        // Menangani saat opsi Role dipilih
+        function pilihRole(itemEl, val, event) {
+            // Mencegah dropdown langsung tertutup dan memicu event klik ganda
+            event.stopPropagation(); 
+            
+            let wrapperEl = itemEl.closest('.custom-select-wrapper');
+            let hiddenInput = wrapperEl.querySelector('#userRole');
+            let triggerText = wrapperEl.querySelector('.custom-select-text');
+            let optionsList = wrapperEl.querySelector('.custom-select-options');
+            
+            // Update value pada input tersembunyi (untuk disimpan ke database)
+            hiddenInput.value = val;
+            // Update teks yang terlihat oleh pengguna di layar
+            triggerText.innerText = val;
+            
+            // Tutup daftar opsi
+            optionsList.classList.remove('open');
+        }
   
       async function segarkanDropdownPelangganKasir() { 
           try {
